@@ -18,14 +18,17 @@ struct nbt_list {
 };
 
 
-int32_t* get_chunk_heightmap(nbt_node* chunk)
+unsigned char* get_chunk_heightmap(nbt_node* chunk)
 {
-	int32_t* heightmap = (int32_t*)malloc(CHUNKSIZE * sizeof(int32_t));
+	unsigned char* heightmap = (unsigned char*)malloc(CHUNKSIZE);
 
-	nbt_node* hmap = nbt_find_by_name(chunk, "HeightMap");
-	if (hmap->type == TAG_INT_ARRAY)
+	nbt_node* hdata = nbt_find_by_name(chunk, "HeightMap");
+	if (hdata->type == TAG_INT_ARRAY)
 	{
-		memcpy(heightmap, hmap->payload.tag_int_array.data, CHUNKSIZE * sizeof(int32_t));
+		for (int i = 0; i < CHUNKSIZE; i++)
+		{
+			heightmap[i] = *(hdata->payload.tag_int_array.data + i) & 0xff;
+		}
 	}
 
 	return heightmap;

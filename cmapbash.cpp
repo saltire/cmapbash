@@ -34,11 +34,11 @@ int main(int argc, char **argv)
 
 	//cout << nbt_dump_ascii(chunk);
 
-	int32_t* hmap = get_chunk_heightmap(chunk);
+	unsigned char* heightmap = get_chunk_heightmap(chunk);
 	for (int i = 0; i < CHUNKSIZE; i++) {
-		cout << hmap[i] << " ";
+		cout << (int)heightmap[i] << " ";
 	}
-	free(hmap);
+	free(heightmap);
 
 	nbt_free(chunk);
 
