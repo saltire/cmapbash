@@ -1,22 +1,14 @@
 #include "nbt.h"
 
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-
-using namespace std;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define BLOCKS 16
 #define CHUNKSIZE BLOCKS * BLOCKS
 #define SECTIONS 16
 #define SECHEIGHT 16
 #define SECSIZE SECHEIGHT * CHUNKSIZE
-
-
-struct nbt_list {
-	struct nbt_node* data; /* A single node's data. */
-	struct list_head entry;
-};
 
 
 unsigned char* get_chunk_heightmap(nbt_node* chunk)
@@ -52,7 +44,7 @@ unsigned char* get_chunk_blocks(nbt_node* chunk)
 				nbt_node* ynode = nbt_find_by_name(section->data, "Y");
 				if (ynode->type != TAG_BYTE)
 				{
-					cout << "Problem parsing sections." << endl;
+					printf("Problem parsing sections.\n");
 				}
 				int8_t y = ynode->payload.tag_byte;
 
@@ -60,10 +52,10 @@ unsigned char* get_chunk_blocks(nbt_node* chunk)
 				if (bdata->type != TAG_BYTE_ARRAY ||
 						bdata->payload.tag_byte_array.length != SECSIZE)
 				{
-					cout << "Problem parsing blocks." << endl;
+					printf("Problem parsing blocks.\n");
 				}
 
-				cout << "Copying " << SECSIZE << " blocks from section " << y << endl;
+				printf("Copying %d blocks from section %d\n", SECSIZE, y);
 				memcpy(blocks + y * SECSIZE, bdata->payload.tag_byte_array.data, SECSIZE);
 			}
 		}

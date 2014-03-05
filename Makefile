@@ -1,5 +1,5 @@
-sources = ${wildcard *.cpp}
-objects = ${sources:%.cpp=%.o} \
+sources = ${wildcard *.c}
+objects = ${sources:%.c=%.o} \
 	cNBT/buffer.o cNBT/nbt_loading.o cNBT/nbt_parsing.o cNBT/nbt_treeops.o cNBT/nbt_util.o \
 	lodepng/lodepng.o
 
@@ -7,14 +7,14 @@ objects = ${sources:%.cpp=%.o} \
 cNBT/%.o : cNBT/%.c
 	gcc -std=c99 $< -c -o $@
 
-lodepng/%.o : lodepng/%.cpp
-	g++ $< -c -o $@
+lodepng/%.o : lodepng/%.c
+	gcc $< -c -o $@
 
-%.o : %.cpp
-	g++ $< -c -I cNBT/ -I lodepng/
+%.o : %.c
+	gcc $< -c -I cNBT/ -I lodepng/
 
 cmapbash : $(objects)
-	g++ $(objects) -lz -o cmapbash
+	gcc $(objects) -lz -o cmapbash
 
 
 clean :
