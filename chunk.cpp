@@ -1,14 +1,15 @@
 #include "nbt.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
-#include <stdio.h>
 
 using namespace std;
 
 #define BLOCKS 16
-#define SECHEIGHT 16
-#define SECTIONS 16
 #define CHUNKSIZE BLOCKS * BLOCKS
+#define SECTIONS 16
+#define SECHEIGHT 16
 #define SECSIZE SECHEIGHT * CHUNKSIZE
 
 

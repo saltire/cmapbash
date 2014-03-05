@@ -1,20 +1,18 @@
-
 #include "nbt.h"
 
 #include "lodepng.h"
 
 #include "chunk.h"
+#include "render.h"
 
-#include <errno.h>
+#include <cerrno>
+#include <cstdlib>
 #include <iostream>
 
 using namespace std;
 
 #define BLOCKS 16
-#define SECHEIGHT 16
-#define SECTIONS 16
 #define CHUNKSIZE BLOCKS * BLOCKS
-#define SECSIZE SECHEIGHT * CHUNKSIZE
 
 
 int main(int argc, char **argv)
@@ -36,12 +34,10 @@ int main(int argc, char **argv)
 	//cout << nbt_dump_ascii(chunk);
 
 	unsigned char* heightmap = get_chunk_heightmap(chunk);
-	for (int i = 0; i < CHUNKSIZE; i++) {
-		cout << (int)heightmap[i] << " ";
-	}
-	free(heightmap);
-
 	nbt_free(chunk);
+
+	render_greyscale("chunk.png", heightmap, BLOCKS, BLOCKS);
+	free(heightmap);
 
 	return 0;
 }
