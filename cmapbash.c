@@ -2,13 +2,13 @@
 
 #include "nbt.h"
 
+#include "chunk.h"
 #include "region.h"
-#include "render.h"
 
 
 int main(int argc, char **argv)
 {
-	/*
+/*
 	if (argc < 2)
 	{
 		printf("Please specify an NBT file to parse.\n");
@@ -23,15 +23,15 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	//puts(nbt_dump_ascii(chunk));
+	puts(nbt_dump_ascii(chunk));
 
-	render_chunk_heightmap(chunk, "heightmap.png");
-	render_chunk_colours(chunk, "chunk.png", "colours.csv");
+	//save_chunk_heightmap(chunk, "heightmap.png");
+	//save_chunk_blockmap(chunk, "chunk.png", "colours.csv");
 
 	nbt_free(chunk);
-	*/
+*/
 
-	render_region("r.0.0.mca");
+	save_region_blockmap("r.0.0.mca", "regionmap.png", "colours.csv");
 
 	return 0;
 }
