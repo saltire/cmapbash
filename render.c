@@ -1,15 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "nbt.h"
 
 #include "lodepng.h"
 
+#include "chunk.h"
+
+
 #define BLOCKTYPES 176
-#define CHUNKWIDTH 16
-#define CHUNKAREA CHUNKWIDTH * CHUNKWIDTH
-#define SECTIONS 16
-#define SECHEIGHT 16
-#define SECSIZE SECHEIGHT * CHUNKAREA
-#define CHUNKHEIGHT SECHEIGHT * SECTIONS
+
+
+void render_chunk_heightmap(nbt_node* chunk, const char* filename)
+{
+	unsigned char* heightmap = get_chunk_heightmap(chunk);
+	unsigned char* image = (unsigned char*)malloc(CHUNKAREA * 4);
+	for (int b = 0; b < CHUNKAREA; b++)
+	{
+		printf("Rendering height %d at (%d, %d)\n",
+				(int)heightmap[b], b % CHUNKWIDTH, b / CHUNKWIDTH);
+		// colour values must be big-endian, so copy them manually
+		image[b * 4] = heightmap[b];
+		image[b * 4 + 1] = heightmap[b];
+		image[b * 4 + 2] = heightmap[b];
+		image[b * 4 + 3] = 255;
+	}
+	lodepng_encode32_file(filename, image, CHUNKWIDTH, CHUNKWIDTH);
+	free(image);
+}
 
 
 unsigned char* read_colours(const char* filename)
@@ -28,17 +47,17 @@ unsigned char* read_colours(const char* filename)
 		unsigned char id;
 		for (int i = 0; i < 6; i++)
 		{
-			char* value = strsep(&line, ",");
+			char* value = strtok(i == 0 ? line : NULL, ",");
 			unsigned char num = (value == NULL ? 0 : (char)strtol(value, NULL, 0));
 
 			if (i == 0)
 			{
-				id = num;
+				//id = num;
 				printf("id = %d\n", num);
 			}
 			else if (i == 1 && num != 0)
 			{
-				puts("Breaking");
+				//printf("Data type = %d; breaking\n", (int)num);
 				break;
 			}
 			else if (i > 1)
@@ -55,23 +74,23 @@ unsigned char* read_colours(const char* filename)
 }
 
 
-void render_blocks(const char* filename, const char* colourfile, const unsigned char* blocks,
-		const unsigned w, const unsigned h)
+void render_chunk_colours(nbt_node* chunk, const char* filename, const char* colourfile)
 {
+	unsigned char* blocks = get_chunk_blocks(chunk);
 	unsigned char* colours = read_colours(colourfile);
-	unsigned char* image = (unsigned char*)malloc(w * h * 4);
+	unsigned char* image = (unsigned char*)malloc(CHUNKAREA * 4);
 
 	int offset;
 	unsigned char blockid;
-	for (int b = 0; b < w * h; b++)
+	for (int b = 0; b < CHUNKAREA; b++)
 	{
 		for (int y = CHUNKHEIGHT - 1; y >= 0; y--)
 		{
 			blockid = blocks[y * CHUNKAREA + b];
 			if (blockid != 0)
 			{
-				printf("Writing blockid %d at (%d, %d, %d)\n", (int)blockid,
-						b % CHUNKWIDTH, b / CHUNKWIDTH, y);
+				//printf("Writing blockid %d at (%d, %d, %d)\n", (int)blockid,
+				//		b % CHUNKWIDTH, b / CHUNKWIDTH, y);
 				for (char c = 0; c < 4; c++)
 				{
 					image[b * 4 + c] = colours[blockid * 4 + c];
@@ -80,24 +99,8 @@ void render_blocks(const char* filename, const char* colourfile, const unsigned 
 			}
 		}
 	}
-	lodepng_encode32_file("chunk.png", image, w, h);
+	lodepng_encode32_file(filename, image, CHUNKWIDTH, CHUNKWIDTH);
+	free(blocks);
 	free(colours);
-	free(image);
-}
-
-
-void render_greyscale(const char* filename, const unsigned char* values,
-		const unsigned w, const unsigned h)
-{
-	unsigned char* image = (unsigned char*)malloc(w * h * 4);
-	for (int b = 0; b < w * h; b++)
-	{
-		// colour values must be big-endian, so copy them manually
-		image[b * 4] = values[b];
-		image[b * 4 + 1] = values[b];
-		image[b * 4 + 2] = values[b];
-		image[b * 4 + 3] = 255;
-	}
-	lodepng_encode32_file("chunk.png", image, w, h);
 	free(image);
 }

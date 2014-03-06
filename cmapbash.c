@@ -1,15 +1,10 @@
 #include <errno.h>
-#include <stdlib.h>
 
 #include "nbt.h"
 
 #include "lodepng.h"
 
-#include "chunk.h"
 #include "render.h"
-
-#define BLOCKS 16
-#define CHUNKSIZE BLOCKS * BLOCKS
 
 
 int main(int argc, char **argv)
@@ -30,15 +25,8 @@ int main(int argc, char **argv)
 
 	//puts(nbt_dump_ascii(chunk));
 
-	/*
-	unsigned char* heightmap = get_chunk_heightmap(chunk);
-	render_greyscale("chunk.png", heightmap, BLOCKS, BLOCKS);
-	free(heightmap);
-	*/
-
-	unsigned char* blocks = get_chunk_blocks(chunk);
-	render_blocks("chunk.png", "colours.csv", blocks, BLOCKS, BLOCKS);
-	free(blocks);
+	render_chunk_heightmap(chunk, "heightmap.png");
+	render_chunk_colours(chunk, "chunk.png", "colours.csv");
 
 	nbt_free(chunk);
 	return 0;

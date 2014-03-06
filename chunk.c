@@ -4,21 +4,17 @@
 
 #include "nbt.h"
 
-#define BLOCKS 16
-#define CHUNKSIZE BLOCKS * BLOCKS
-#define SECTIONS 16
-#define SECHEIGHT 16
-#define SECSIZE SECHEIGHT * CHUNKSIZE
+#include "chunk.h"
 
 
 unsigned char* get_chunk_heightmap(nbt_node* chunk)
 {
-	unsigned char* heightmap = (unsigned char*)malloc(CHUNKSIZE);
+	unsigned char* heightmap = (unsigned char*)malloc(CHUNKAREA);
 
 	nbt_node* hdata = nbt_find_by_name(chunk, "HeightMap");
 	if (hdata->type == TAG_INT_ARRAY)
 	{
-		for (int i = 0; i < CHUNKSIZE; i++)
+		for (int i = 0; i < CHUNKAREA; i++)
 		{
 			heightmap[i] = *(hdata->payload.tag_int_array.data + i) & 0xff;
 		}

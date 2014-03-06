@@ -11,7 +11,7 @@ lodepng/%.o : lodepng/%.c
 	gcc $< -c -o $@
 
 %.o : %.c
-	gcc $< -c -I cNBT/ -I lodepng/
+	gcc -std=c99 $< -c -I cNBT/ -I lodepng/
 
 cmapbash : $(objects)
 	gcc $(objects) -lz -o cmapbash
