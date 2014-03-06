@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 	nbt_node* chunk = nbt_parse_path(argv[1]);
 	if (errno != NBT_OK)
 	{
-		printf("Parsing error: %d\n", errno);
+		printf("Error %d reading NBT file: %s\n", errno, argv[1]);
 		return 0;
 	}
 
@@ -31,7 +31,13 @@ int main(int argc, char **argv)
 	nbt_free(chunk);
 */
 
-	save_region_blockmap("r.0.0.mca", "regionmap.png", "colours.csv");
+	if (argc < 2)
+	{
+		printf("Please specify a region file to parse.\n");
+		return 0;
+	}
+
+	save_region_blockmap(argv[1], "regionmap.png", "colours.csv");
 
 	return 0;
 }

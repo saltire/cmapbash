@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,12 +7,12 @@
 #define BLOCK_TYPES 176
 
 
-unsigned char* read_colours(const char* filename)
+unsigned char* read_colours(const char* colourfile)
 {
-	FILE* csv = fopen(filename, "r");
+	FILE* csv = fopen(colourfile, "r");
 	if (csv == NULL)
 	{
-		printf("Error reading file!\n");
+		printf("Error %d reading colour file: %s\n", errno, colourfile);
 	}
 
 	unsigned char* colours = (unsigned char*)malloc(BLOCK_TYPES * 4);
@@ -43,7 +44,9 @@ unsigned char* read_colours(const char* filename)
 			}
 		}
 	}
-	//free(line);
+	free(line);
+
+	fclose(csv);
 	return colours;
 }
 

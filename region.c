@@ -17,7 +17,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
 	{
-		printf("Error reading file!\n");
+		printf("Error %d reading region file: %s\n", errno, regionfile);
 	}
 
 	unsigned int offset[REGION_CHUNK_AREA];
@@ -38,7 +38,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 			c = cz * REGION_CHUNK_WIDTH + cx;
 			if (offset[c] == 0) continue;
 
-			printf("Reading chunk %d (%d, %d) from offset %d (at %d).\n", c, cx, cz,
+			printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
 					offset[c], offset[c] * SECTOR_LENGTH);
 			fseek(region, offset[c] * SECTOR_LENGTH, SEEK_SET);
 			unsigned char buffer[4];
@@ -46,7 +46,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 			int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
 
 			fseek(region, 1, SEEK_CUR);
-			//printf("Reading %d bytes at %ld.\n", length, ftell(region));
+			printf("Reading %d bytes at %#lx.\n", length, ftell(region));
 			char* cdata = (char*)malloc(length);
 			fread(cdata, length, 1, region);
 			nbt_node* chunk = nbt_parse_compressed(cdata, length);
@@ -86,6 +86,8 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 			free(chunkimage);
 		}
 	}
+
+	fclose(region);
 	return regionimage;
 }
 
