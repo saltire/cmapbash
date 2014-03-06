@@ -1,8 +1,8 @@
-#include "nbt.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "nbt.h"
 
 #define BLOCKS 16
 #define CHUNKSIZE BLOCKS * BLOCKS
