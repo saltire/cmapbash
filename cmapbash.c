@@ -2,13 +2,13 @@
 
 #include "nbt.h"
 
-#include "lodepng.h"
-
+#include "region.h"
 #include "render.h"
 
 
 int main(int argc, char **argv)
 {
+	/*
 	if (argc < 2)
 	{
 		printf("Please specify an NBT file to parse.\n");
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 	nbt_node* chunk = nbt_parse_path(argv[1]);
 	if (errno != NBT_OK)
 	{
-		printf("Parsing error!\n");
+		printf("Parsing error: %d\n", errno);
 		return 0;
 	}
 
@@ -29,6 +29,10 @@ int main(int argc, char **argv)
 	render_chunk_colours(chunk, "chunk.png", "colours.csv");
 
 	nbt_free(chunk);
+	*/
+
+	render_region("r.0.0.mca");
+
 	return 0;
 }
 

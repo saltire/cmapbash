@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "nbt.h"
 
@@ -18,8 +17,9 @@ void render_chunk_heightmap(nbt_node* chunk, const char* filename)
 	unsigned char* image = (unsigned char*)malloc(CHUNKAREA * 4);
 	for (int b = 0; b < CHUNKAREA; b++)
 	{
-		printf("Rendering height %d at (%d, %d)\n",
-				(int)heightmap[b], b % CHUNKWIDTH, b / CHUNKWIDTH);
+		//printf("Rendering height %d at (%d, %d)\n",
+		//		(int)heightmap[b], b % CHUNKWIDTH, b / CHUNKWIDTH);
+
 		// colour values must be big-endian, so copy them manually
 		image[b * 4] = heightmap[b];
 		image[b * 4 + 1] = heightmap[b];
@@ -52,8 +52,8 @@ unsigned char* read_colours(const char* filename)
 
 			if (i == 0)
 			{
-				//id = num;
-				printf("id = %d\n", num);
+				id = num;
+				//printf("id = %d\n", num);
 			}
 			else if (i == 1 && num != 0)
 			{
@@ -62,7 +62,6 @@ unsigned char* read_colours(const char* filename)
 			}
 			else if (i > 1)
 			{
-				printf("%d %d\n", i, (int)num);
 				//printf("setting %d (%d) to %d\n", id * 4 + i - 2, (int)&(colours[id * 4 + i - 2]), num);
 				colours[id * 4 + i - 2] = num;
 				//puts("done");
@@ -91,6 +90,8 @@ void render_chunk_colours(nbt_node* chunk, const char* filename, const char* col
 			{
 				//printf("Writing blockid %d at (%d, %d, %d)\n", (int)blockid,
 				//		b % CHUNKWIDTH, b / CHUNKWIDTH, y);
+
+				// colour values must be big-endian, so copy them manually
 				for (char c = 0; c < 4; c++)
 				{
 					image[b * 4 + c] = colours[blockid * 4 + c];
