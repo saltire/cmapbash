@@ -26,10 +26,11 @@ int main(int argc, char **argv)
 	puts(nbt_dump_ascii(chunk));
 
 	//save_chunk_heightmap(chunk, "heightmap.png");
-	//save_chunk_blockmap(chunk, "chunk.png", "colours.csv");
+	save_chunk_blockmap(chunk, "chunk.png", "colours.csv");
 
 	nbt_free(chunk);
 */
+
 
 	if (argc < 2)
 	{
@@ -38,6 +39,7 @@ int main(int argc, char **argv)
 	}
 
 	save_region_blockmap(argv[1], "regionmap.png", "colours.csv");
+
 
 	return 0;
 }

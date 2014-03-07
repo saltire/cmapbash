@@ -64,32 +64,72 @@ unsigned char* get_chunk_heightmap(nbt_node* chunk)
 }
 
 
+unsigned char* get_block_colour(unsigned char* blocks, int b, unsigned char* colours)
+{
+	unsigned char blockid;
+	for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
+	{
+		blockid = blocks[y * CHUNK_BLOCK_AREA + b];
+		if (blockid >= BLOCK_TYPES) blockid = 0; // unknown block type defaults to air
+		if (blockid != 0) break;
+	}
+	return &colours[blockid * CHANNELS];
+}
+
+
+void combine_alpha(unsigned char* top, unsigned char* bottom)
+{
+	if (top[3] == 255) return;
+
+	for (int ch = 0; ch < 3; ch++)
+	{
+		top[ch] = (top[ch] * top[3] + bottom[ch] * bottom[3] * (255 - top[3]) / 255) / 255;
+	}
+	top[3] = top[3] + bottom[3] - top[3] * bottom[3] / 255;
+}
+
+
+unsigned char* get_block_colour_at_height(unsigned char* blocks, int b, int y, unsigned char* colours)
+{
+	unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
+	unsigned char* colour = &colours[blockid * CHANNELS];
+	if (*(colour + 3) < 255)
+	{
+		unsigned char* next = get_block_colour_at_height(blocks, b, y - 1, colours);
+		combine_alpha(colour, next);
+	}
+	return colour;
+}
+
+
+void get_block_colour_alpha(unsigned char* blocks, int b, unsigned char* colours,
+		unsigned char* pixel)
+{
+	unsigned char blockid;
+	unsigned char* colour;
+	for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
+	{
+		blockid = blocks[y * CHUNK_BLOCK_AREA + b];
+		if (blockid != 0)
+		{
+			//printf("getting block colour for block %d at height %d\n", b, y);
+			colour = get_block_colour_at_height(blocks, b, y, colours);
+			break;
+		}
+	}
+	memcpy(pixel, colour, CHANNELS);
+}
+
+
 unsigned char* render_chunk_blockmap(nbt_node* chunk, const char* colourfile)
 {
 	unsigned char* blocks = get_chunk_blocks(chunk);
 	unsigned char* colours = read_colours(colourfile);
 	unsigned char* image = (unsigned char*)calloc(CHUNK_BLOCK_AREA * 4, sizeof(char));
 
-	int offset;
-	unsigned char blockid;
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
 	{
-		for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
-		{
-			blockid = blocks[y * CHUNK_BLOCK_AREA + b];
-			if (blockid != 0)
-			{
-				//printf("Writing blockid %d at (%d, %d, %d)\n", (int)blockid,
-				//		b % CHUNKWIDTH, b / CHUNKWIDTH, y);
-
-				// colour values must be big-endian, so copy them manually
-				for (char c = 0; c < 4; c++)
-				{
-					image[b * 4 + c] = colours[blockid * 4 + c];
-				}
-				break;
-			}
-		}
+		get_block_colour_alpha(blocks, b, colours, &image[b * CHANNELS]);
 	}
 	free(blocks);
 	free(colours);
