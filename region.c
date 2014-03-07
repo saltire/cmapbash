@@ -12,7 +12,8 @@
 #define SECTOR_LENGTH 4096
 
 
-unsigned char* render_region_blockmap(const char* regionfile, const char* colourfile)
+unsigned char* render_region_blockmap(const char* regionfile, const char* colourfile,
+		const char alpha)
 {
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
@@ -38,15 +39,15 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 			c = cz * REGION_CHUNK_WIDTH + cx;
 			if (offset[c] == 0) continue;
 
-			printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
-					offset[c], offset[c] * SECTOR_LENGTH);
+			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
+			//		offset[c], offset[c] * SECTOR_LENGTH);
 			fseek(region, offset[c] * SECTOR_LENGTH, SEEK_SET);
 			unsigned char buffer[4];
 			fread(buffer, 1, 4, region);
 			int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
 
 			fseek(region, 1, SEEK_CUR);
-			printf("Reading %d bytes at %#lx.\n", length, ftell(region));
+			//printf("Reading %d bytes at %#lx.\n", length, ftell(region));
 			char* cdata = (char*)malloc(length);
 			fread(cdata, length, 1, region);
 			nbt_node* chunk = nbt_parse_compressed(cdata, length);
@@ -59,7 +60,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 
 			//puts(nbt_dump_ascii(chunk));
 
-			unsigned char* chunkimage = render_chunk_blockmap(chunk, colourfile);
+			unsigned char* chunkimage = render_chunk_blockmap(chunk, colourfile, alpha);
 			free(chunk);
 
 			for (bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
@@ -92,9 +93,10 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 }
 
 
-void save_region_blockmap(const char* regionfile, const char* imagefile, const char* colourfile)
+void save_region_blockmap(const char* regionfile, const char* imagefile, const char* colourfile,
+		const char alpha)
 {
-	unsigned char* regionimage = render_region_blockmap(regionfile, colourfile);
+	unsigned char* regionimage = render_region_blockmap(regionfile, colourfile, alpha);
 	lodepng_encode32_file(imagefile, regionimage, REGION_BLOCK_WIDTH, REGION_BLOCK_WIDTH);
 	free(regionimage);
 }

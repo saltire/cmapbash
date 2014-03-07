@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	save_region_blockmap(argv[1], "regionmap.png", "colours.csv");
+	save_region_blockmap(argv[1], "regionmap.png", "colours.csv", 1);
 
 
 	return 0;
