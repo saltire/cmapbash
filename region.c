@@ -2,10 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "nbt.h"
-
-#include "lodepng.h"
-
 #include "region.h"
 
 
@@ -65,22 +61,12 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 
 			for (bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
 			{
-				for (bx = 0; bx < CHUNK_BLOCK_WIDTH; bx++)
-				{
-					// the position of the block in the chunk
-					b = bz * CHUNK_BLOCK_WIDTH + bx;
-
-					// the position of the block in the region (pixel #)
-					px = cx * CHUNK_BLOCK_WIDTH + bx;
-					pz = cz * CHUNK_BLOCK_WIDTH + bz;
-					p = pz * REGION_BLOCK_WIDTH + px;
-
-					// add each channel in big-endian order
-					for (char ch = 0; ch < 4; ch++)
-					{
-						regionimage[p * 4 + ch] = chunkimage[b * 4 + ch];
-					}
-				}
+				// copy a line of pixel data from the chunk image to the region image
+				int offset = (cz * CHUNK_BLOCK_WIDTH + bz) * REGION_BLOCK_WIDTH
+						+ cx * CHUNK_BLOCK_WIDTH;
+				memcpy(&regionimage[offset * CHANNELS],
+						&chunkimage[bz * CHUNK_BLOCK_WIDTH * CHANNELS],
+						CHUNK_BLOCK_WIDTH * CHANNELS);
 			}
 
 			// [paste chunk image into region image]

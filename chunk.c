@@ -1,12 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "nbt.h"
-
-#include "lodepng.h"
-
 #include "chunk.h"
-#include "colours.h"
 
 
 unsigned char* get_chunk_blocks(nbt_node* chunk)

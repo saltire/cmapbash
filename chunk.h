@@ -1,3 +1,10 @@
+#include "nbt.h"
+
+#include "lodepng.h"
+
+#include "colours.h"
+
+
 #define CHUNK_BLOCK_WIDTH 16
 #define CHUNK_BLOCK_AREA CHUNK_BLOCK_WIDTH * CHUNK_BLOCK_WIDTH
 #define CHUNK_SECTION_HEIGHT 16
