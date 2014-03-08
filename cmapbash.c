@@ -4,6 +4,7 @@
 
 #include "chunk.h"
 #include "region.h"
+#include "world.h"
 
 
 int main(int argc, char **argv)
@@ -31,7 +32,7 @@ int main(int argc, char **argv)
 	nbt_free(chunk);
 */
 
-
+/*
 	if (argc < 2)
 	{
 		printf("Please specify a region file to parse.\n");
@@ -39,6 +40,15 @@ int main(int argc, char **argv)
 	}
 
 	save_region_blockmap(argv[1], "regionmap.png", "colours.csv", 1);
+*/
+
+
+	if (argc < 2)
+	{
+		printf("Please specify a world directory.\n");
+		return 0;
+	}
+	save_world_blockmap(argv[1], "worldmap.png", "colours.csv", 1);
 
 
 	return 0;
