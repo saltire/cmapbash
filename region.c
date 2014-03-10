@@ -27,12 +27,11 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 
 	unsigned char* regionimage = (unsigned char*)calloc(REGION_BLOCK_AREA * 4, sizeof(char));
 
-	unsigned int cx, cz, c, bx, bz, b, px, pz, p;
-	for (cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
+	for (int cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
 	{
-		for (cx = 0; cx < REGION_CHUNK_WIDTH; cx++)
+		for (int cx = 0; cx < REGION_CHUNK_WIDTH; cx++)
 		{
-			c = cz * REGION_CHUNK_WIDTH + cx;
+			int c = cz * REGION_CHUNK_WIDTH + cx;
 			if (offset[c] == 0) continue;
 
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
@@ -59,7 +58,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 			unsigned char* chunkimage = render_chunk_blockmap(chunk, colourfile, alpha);
 			free(chunk);
 
-			for (bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
+			for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
 			{
 				// copy a line of pixel data from the chunk image to the region image
 				int offset = (cz * CHUNK_BLOCK_WIDTH + bz) * REGION_BLOCK_WIDTH
@@ -68,8 +67,6 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 						&chunkimage[bz * CHUNK_BLOCK_WIDTH * CHANNELS],
 						CHUNK_BLOCK_WIDTH * CHANNELS);
 			}
-
-			// [paste chunk image into region image]
 			free(chunkimage);
 		}
 	}

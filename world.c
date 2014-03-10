@@ -34,9 +34,9 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const char
 			else
 			{
 				rxmin = rx < rxmin ? rx : rxmin;
-				rxmax = rx > rxmin ? rx : rxmax;
+				rxmax = rx > rxmax ? rx : rxmax;
 				rzmin = rz < rzmin ? rz : rzmin;
-				rzmax = rz > rzmin ? rz : rzmax;
+				rzmax = rz > rzmax ? rz : rzmax;
 			}
 			count++;
 		}
@@ -51,14 +51,20 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const char
 
 	// create an array of region files and
 	rewinddir(dir);
-	char path[255];
 	while ((ent = readdir(dir)) != NULL)
 	{
-		if (sscanf(ent->d_name, "r.%d.%d.mca", &rx, &rz))
+		char ext[3];
+		int pos;
+		// the %n check prevents matching filenames with trailing characters
+		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &pos) &&
+				!strcmp(ext, "mca") && pos == strlen(ent->d_name))
 		{
-			printf("Rendering region %d, %d\n", rx, rz);
+			// TODO: add support for .mcr files
 
-			// TODO: path/filename joining needs to be more flexible
+			printf("Rendering region %d, %d from filename %s\n", rx, rz, ent->d_name);
+
+			// FIXME: path/filename joining needs to be more flexible
+			char path[255];
 			sprintf(path, "%s/%s", worlddir, ent->d_name);
 
 			unsigned char* regionimage = render_region_blockmap(path, colourfile, alpha);
