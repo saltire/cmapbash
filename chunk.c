@@ -73,7 +73,7 @@ void combine_alpha(unsigned char* top, unsigned char* bottom)
 
 
 void get_block_colour_at_height(unsigned char* blocks, int b, int y,
-		unsigned char* colours, unsigned char* pixel)
+		const unsigned char* colours, unsigned char* pixel)
 {
 	// copy the block colour into the pixel buffer
 	unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
@@ -92,7 +92,7 @@ void get_block_colour_at_height(unsigned char* blocks, int b, int y,
 }
 
 
-void get_block_colour(unsigned char* blocks, unsigned char* colours, int b,
+void get_block_colour(unsigned char* blocks, const unsigned char* colours, int b,
 		unsigned char* pixel, char alpha)
 {
 	unsigned char blockid;
@@ -118,10 +118,10 @@ void get_block_colour(unsigned char* blocks, unsigned char* colours, int b,
 }
 
 
-unsigned char* render_chunk_blockmap(nbt_node* chunk, const char* colourfile, const char alpha)
+unsigned char* render_chunk_blockmap(nbt_node* chunk, const unsigned char* colours,
+		const char alpha)
 {
 	unsigned char* blocks = get_chunk_blocks(chunk);
-	unsigned char* colours = read_colours(colourfile);
 	unsigned char* image = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
 
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
@@ -129,7 +129,6 @@ unsigned char* render_chunk_blockmap(nbt_node* chunk, const char* colourfile, co
 		get_block_colour(blocks, colours, b, &image[b * CHANNELS], alpha);
 	}
 	free(blocks);
-	free(colours);
 	return image;
 }
 
@@ -156,10 +155,10 @@ unsigned char* render_chunk_heightmap(nbt_node* chunk)
 }
 
 
-void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const char* colourfile,
+void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const unsigned char* colours,
 		const char alpha)
 {
-	unsigned char* chunkimage = render_chunk_blockmap(chunk, colourfile, alpha);
+	unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, alpha);
 	lodepng_encode32_file(imagefile, chunkimage, CHUNK_BLOCK_WIDTH, CHUNK_BLOCK_WIDTH);
 	free(chunkimage);
 }

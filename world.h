@@ -1,2 +1,2 @@
-void save_world_blockmap(const char* worlddir, const char* imagefile, const char* colourfile,
+void save_world_blockmap(const char* worlddir, const char* imagefile, const unsigned char* colours,
 		const char alpha);

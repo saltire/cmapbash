@@ -8,7 +8,7 @@
 #define SECTOR_LENGTH 4096
 
 
-unsigned char* render_region_blockmap(const char* regionfile, const char* colourfile,
+unsigned char* render_region_blockmap(const char* regionfile, const unsigned char* colours,
 		const char alpha)
 {
 	FILE* region = fopen(regionfile, "r");
@@ -55,7 +55,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 
 			//puts(nbt_dump_ascii(chunk));
 
-			unsigned char* chunkimage = render_chunk_blockmap(chunk, colourfile, alpha);
+			unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, alpha);
 			free(chunk);
 
 			for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
@@ -76,10 +76,10 @@ unsigned char* render_region_blockmap(const char* regionfile, const char* colour
 }
 
 
-void save_region_blockmap(const char* regionfile, const char* imagefile, const char* colourfile,
-		const char alpha)
+void save_region_blockmap(const char* regionfile, const char* imagefile,
+		const unsigned char* colours, const char alpha)
 {
-	unsigned char* regionimage = render_region_blockmap(regionfile, colourfile, alpha);
+	unsigned char* regionimage = render_region_blockmap(regionfile, colours, alpha);
 	lodepng_encode32_file(imagefile, regionimage, REGION_BLOCK_WIDTH, REGION_BLOCK_WIDTH);
 	free(regionimage);
 }

@@ -1,7 +1,9 @@
 #include <errno.h>
+#include <stdlib.h>
 
 #include "nbt.h"
 
+#include "colours.h"
 #include "chunk.h"
 #include "region.h"
 #include "world.h"
@@ -9,6 +11,7 @@
 
 int main(int argc, char **argv)
 {
+	unsigned char* colours = read_colours("colours.csv");
 /*
 	if (argc < 2)
 	{
@@ -27,7 +30,7 @@ int main(int argc, char **argv)
 	puts(nbt_dump_ascii(chunk));
 
 	//save_chunk_heightmap(chunk, "heightmap.png");
-	save_chunk_blockmap(chunk, "chunk.png", "colours.csv");
+	save_chunk_blockmap(chunk, "chunk.png", colours);
 
 	nbt_free(chunk);
 */
@@ -39,7 +42,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	save_region_blockmap(argv[1], "regionmap.png", "colours.csv", 1);
+	save_region_blockmap(argv[1], "regionmap.png", colours, 1);
 */
 
 
@@ -48,9 +51,9 @@ int main(int argc, char **argv)
 		printf("Please specify a world directory.\n");
 		return 0;
 	}
-	save_world_blockmap(argv[1], "worldmap.png", "colours.csv", 1);
+	save_world_blockmap(argv[1], "worldmap.png", colours, 1);
 
-
+	free(colours);
 	return 0;
 }
 

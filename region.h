@@ -7,7 +7,7 @@
 #define REGION_BLOCK_AREA REGION_CHUNK_AREA * CHUNK_BLOCK_AREA
 
 
-unsigned char* render_region_blockmap(const char* regionfile, const char* colourfile,
+unsigned char* render_region_blockmap(const char* regionfile, const unsigned char* colours,
 		const char alpha);
-void save_region_blockmap(const char* regionfile, const char* imagefile, const char* colourfile,
-		const char alpha);
+void save_region_blockmap(const char* regionfile, const char* imagefile,
+		const unsigned char* colours, const char alpha);

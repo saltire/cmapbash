@@ -7,7 +7,7 @@
 #include "region.h"
 
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const char* colourfile,
+void save_world_blockmap(const char* worlddir, const char* imagefile, const unsigned char* colours,
 		const char alpha)
 {
 	DIR* dir = opendir(worlddir);
@@ -67,7 +67,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const char
 			char path[255];
 			sprintf(path, "%s/%s", worlddir, ent->d_name);
 
-			unsigned char* regionimage = render_region_blockmap(path, colourfile, alpha);
+			unsigned char* regionimage = render_region_blockmap(path, colours, alpha);
 			for (int bz = 0; bz < REGION_BLOCK_WIDTH; bz++)
 			{
 				// copy a line of pixel data from the region image to the world image
