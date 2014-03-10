@@ -72,6 +72,22 @@ void combine_alpha(unsigned char* top, unsigned char* bottom)
 }
 
 
+void adjust_colour_by_height(unsigned char* pixel, int y)
+{
+	for (int c = 0; c < CHANNELS - 1; c++)
+	{
+		float contrast = 0.8;
+
+		int mod = y - 128; // +/- distance from center
+		int limit = 128 - abs(mod); // distance to top or bottom
+		int adjust = (mod / 128) * limit; // amount to adjust
+
+		pixel[c] = (unsigned char)(pixel[c] + adjust * (1 - contrast));
+		//pixel[c] = (unsigned char)(pixel[c] * contrast + y * (1 - contrast));
+	}
+}
+
+
 void get_block_colour_at_height(unsigned char* blocks, int b, int y,
 		const unsigned char* colours, unsigned char* pixel)
 {
@@ -89,6 +105,7 @@ void get_block_colour_at_height(unsigned char* blocks, int b, int y,
 		}
 		combine_alpha(pixel, next);
 	}
+	adjust_colour_by_height(pixel, y);
 }
 
 
