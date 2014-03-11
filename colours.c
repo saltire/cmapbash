@@ -6,7 +6,7 @@
 #include "colours.h"
 
 
-unsigned char* read_colours(const char* colourfile)
+colour* read_colours(const char* colourfile)
 {
 	FILE* csv = fopen(colourfile, "r");
 	if (csv == NULL)
@@ -14,13 +14,13 @@ unsigned char* read_colours(const char* colourfile)
 		printf("Error %d reading colour file: %s\n", errno, colourfile);
 	}
 
-	unsigned char* colours = (unsigned char*)calloc(BLOCK_TYPES * CHANNELS, sizeof(char));
+	colour* colours = (colour*)calloc(BLOCK_TYPES, sizeof(colour));
 
 	char* line = (char*)malloc(60);
 	while (fgets(line, 60, csv))
 	{
-		unsigned char id;
-		for (int i = 0; i < 2 + CHANNELS; i++)
+		unsigned char id, mask, type;
+		for (int i = 0; i < 3 + CHANNELS; i++)
 		{
 			char* value = strtok(i == 0 ? line : NULL, ",");
 			unsigned char num = (value == NULL ? 0 : (char)strtol(value, NULL, 0));
@@ -28,18 +28,22 @@ unsigned char* read_colours(const char* colourfile)
 			if (i == 0)
 			{
 				id = num;
-				//printf("id = %d\n", num);
 			}
-			else if (i == 1 && num != 0)
+			else if (i == 1)
 			{
-				//printf("Data type = %d; breaking\n", (int)num);
-				break;
+				mask = num;
 			}
-			else if (i > 1)
+			else if (i == 2)
 			{
-				//printf("setting %d (%d) to %d\n", id * 4 + i - 2, (int)&(colours[id * 4 + i - 2]), num);
-				colours[id * CHANNELS + i - 2] = num;
-				//puts("done");
+				type = num;
+				if (type == 0)
+				{
+					colours[id].mask = mask;
+				}
+			}
+			else if (i > 2)
+			{
+				colours[id].types[type * CHANNELS + i - 3] = num;
 			}
 		}
 	}
@@ -48,6 +52,3 @@ unsigned char* read_colours(const char* colourfile)
 	fclose(csv);
 	return colours;
 }
-
-
-

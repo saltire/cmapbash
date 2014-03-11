@@ -17,10 +17,10 @@
 unsigned char* get_chunk_blocks(nbt_node* chunk);
 unsigned char* get_chunk_heightmap(nbt_node* chunk);
 
-unsigned char* render_chunk_blockmap(nbt_node* chunk, const unsigned char* colours,
+unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours,
 		const char alpha);
 unsigned char* render_chunk_heightmap(nbt_node* chunk);
 
-void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const unsigned char* colours,
+void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
 		const char alpha);
 void save_chunk_heightmap(nbt_node* chunk, const char* imagefile);

@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "region.h"
+#include "world.h"
 
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const unsigned char* colours,
+void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
 		const char alpha)
 {
 	DIR* dir = opendir(worlddir);
@@ -42,6 +42,12 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const unsi
 		}
 	}
 
+	if (count == 0)
+	{
+		printf("No regions found in directory: %s\n", worlddir);
+		return;
+	}
+
 	// TODO: find region crop dimensions
 
 	int w = (rxmax - rxmin + 1) * REGION_BLOCK_WIDTH;
@@ -51,6 +57,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const unsi
 
 	// create an array of region files and
 	rewinddir(dir);
+	int rc = 0;
 	while ((ent = readdir(dir)) != NULL)
 	{
 		char ext[3];
@@ -61,7 +68,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const unsi
 		{
 			// TODO: add support for .mcr files
 
-			printf("Rendering region %d, %d from filename %s\n", rx, rz, ent->d_name);
+			printf("Rendering region %d/%d at %d, %d\n", rc, count, rx, rz);
 
 			// FIXME: path/filename joining needs to be more flexible
 			char path[255];
@@ -78,6 +85,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const unsi
 						REGION_BLOCK_WIDTH * CHANNELS);
 			}
 			free(regionimage);
+			rc++;
 		}
 	}
 	closedir(dir);

@@ -4,10 +4,8 @@
 #include "chunk.h"
 
 
-unsigned char* get_chunk_blocks(nbt_node* chunk)
+unsigned char* get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data)
 {
-	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
-
 	nbt_node* sections = nbt_find_by_name(chunk, "Sections");
 	if (sections->type == TAG_LIST)
 	{
@@ -24,21 +22,33 @@ unsigned char* get_chunk_blocks(nbt_node* chunk)
 				}
 				int8_t y = ynode->payload.tag_byte;
 
-				nbt_node* bdata = nbt_find_by_name(section->data, "Blocks");
-				if (bdata->type != TAG_BYTE_ARRAY ||
-						bdata->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME)
+				nbt_node* sblocks = nbt_find_by_name(section->data, "Blocks");
+				if (sblocks->type != TAG_BYTE_ARRAY ||
+						sblocks->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME)
 				{
 					printf("Problem parsing blocks.\n");
 				}
-
-				//printf("Copying %d blocks from section %d\n", SECSIZE, y);
-				memcpy(blocks + y * SECTION_BLOCK_VOLUME, bdata->payload.tag_byte_array.data,
+				//printf("Copying %d block ids from section %d\n", SECSIZE, y);
+				memcpy(blocks + y * SECTION_BLOCK_VOLUME, sblocks->payload.tag_byte_array.data,
 						SECTION_BLOCK_VOLUME);
+
+				nbt_node* sdata = nbt_find_by_name(section->data, "Data");
+				if (sdata->type != TAG_BYTE_ARRAY ||
+						sdata->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME / 2)
+				{
+					printf("Problem parsing blocks.\n");
+				}
+				//printf("Copying %d block data from section %d\n", SECSIZE, y);
+				for (int i = 0; i < SECTION_BLOCK_VOLUME; i+=2)
+				{
+					unsigned char byte = sdata->payload.tag_byte_array.data[i / 2];
+					//printf("%d, %d, %d\n", byte, byte / 16, byte % 16);
+					data[y * SECTION_BLOCK_VOLUME + i] = byte % 16;
+					data[y * SECTION_BLOCK_VOLUME + i + 1] = byte / 16;
+				}
 			}
 		}
 	}
-
-	return blocks;
 }
 
 
@@ -77,23 +87,26 @@ void adjust_colour_by_height(unsigned char* pixel, int y)
 	for (int c = 0; c < CHANNELS - 1; c++)
 	{
 		float contrast = 0.8;
+		pixel[c] = (unsigned char)(pixel[c] * contrast + y * (1 - contrast));
 
-		int mod = y - 128; // +/- distance from center
-		int limit = 128 - abs(mod); // distance to top or bottom
-		int adjust = (mod / 128) * limit; // amount to adjust
-
-		pixel[c] = (unsigned char)(pixel[c] + adjust * (1 - contrast));
-		//pixel[c] = (unsigned char)(pixel[c] * contrast + y * (1 - contrast));
+		// TODO: a higher contrast height shader
+		//int mod = y - 128; // +/- distance from center
+		//int limit = 128 - abs(mod); // distance to top or bottom
+		//int adjust = (mod / 128) * limit; // amount to adjust
+		//pixel[c] = (unsigned char)(pixel[c] + adjust * (1 - contrast));
 	}
 }
 
 
-void get_block_colour_at_height(unsigned char* blocks, int b, int y,
-		const unsigned char* colours, unsigned char* pixel)
+void get_block_colour_at_height(unsigned char* blocks, unsigned char* data, const colour* colours,
+		int b, int y, unsigned char* pixel)
 {
 	// copy the block colour into the pixel buffer
 	unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
-	memcpy(pixel, &colours[blockid * CHANNELS], CHANNELS);
+	unsigned char type = data[y * CHUNK_BLOCK_AREA + b] % colours[blockid].mask;
+	memcpy(pixel, &colours[blockid].types[type * CHANNELS], CHANNELS);
+	//printf("blockid %d, type %d: %d, %d, %d, %d\n", blockid, type,
+	//		pixel[0], pixel[1], pixel[2], pixel[3]);
 
 	// if block colour is not fully opaque, get the next block and combine with this one
 	if (pixel[3] < 255)
@@ -101,7 +114,7 @@ void get_block_colour_at_height(unsigned char* blocks, int b, int y,
 		unsigned char next[CHANNELS] = {0};
 		if (y > 0)
 		{
-			get_block_colour_at_height(blocks, b, y - 1, colours, (unsigned char*)next);
+			get_block_colour_at_height(blocks, data, colours, b, y - 1, (unsigned char*)next);
 		}
 		combine_alpha(pixel, next);
 	}
@@ -109,24 +122,24 @@ void get_block_colour_at_height(unsigned char* blocks, int b, int y,
 }
 
 
-void get_block_colour(unsigned char* blocks, const unsigned char* colours, int b,
+void get_block_colour(unsigned char* blocks, unsigned char* data, const colour* colours, int b,
 		unsigned char* pixel, char alpha)
 {
-	unsigned char blockid;
 	for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
 	{
-		blockid = blocks[y * CHUNK_BLOCK_AREA + b];
+		unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
 		if (blockid >= BLOCK_TYPES) blockid = 0; // unknown block type defaults to air
 		if (blockid != 0)
 		{
 			if (alpha)
 			{
-				get_block_colour_at_height(blocks, b, y, colours, pixel);
+				get_block_colour_at_height(blocks, data, colours, b, y, pixel);
 			}
 			else
 			{
+				unsigned char type = data[y * CHUNK_BLOCK_AREA + b] % colours[blockid].mask;
 				// copy the block colour into the pixel buffer, setting alpha to full
-				memcpy(pixel, &colours[blockid * CHANNELS], CHANNELS - 1);
+				memcpy(pixel, &colours[blockid].types[type * CHANNELS], CHANNELS - 1);
 				pixel[3] = 255;
 			}
 			break;
@@ -135,17 +148,21 @@ void get_block_colour(unsigned char* blocks, const unsigned char* colours, int b
 }
 
 
-unsigned char* render_chunk_blockmap(nbt_node* chunk, const unsigned char* colours,
+unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours,
 		const char alpha)
 {
-	unsigned char* blocks = get_chunk_blocks(chunk);
+	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+
+	get_chunk_blockdata(chunk, blocks, data);
 	unsigned char* image = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
 
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
 	{
-		get_block_colour(blocks, colours, b, &image[b * CHANNELS], alpha);
+		get_block_colour(blocks, data, colours, b, &image[b * CHANNELS], alpha);
 	}
 	free(blocks);
+	free(data);
 	return image;
 }
 
@@ -172,7 +189,7 @@ unsigned char* render_chunk_heightmap(nbt_node* chunk)
 }
 
 
-void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const unsigned char* colours,
+void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
 		const char alpha)
 {
 	unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, alpha);

@@ -5,10 +5,7 @@
 #include "region.h"
 
 
-#define SECTOR_LENGTH 4096
-
-
-unsigned char* render_region_blockmap(const char* regionfile, const unsigned char* colours,
+unsigned char* render_region_blockmap(const char* regionfile, const colour* colours,
 		const char alpha)
 {
 	FILE* region = fopen(regionfile, "r");
@@ -77,7 +74,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const unsigned cha
 
 
 void save_region_blockmap(const char* regionfile, const char* imagefile,
-		const unsigned char* colours, const char alpha)
+		const colour* colours, const char alpha)
 {
 	unsigned char* regionimage = render_region_blockmap(regionfile, colours, alpha);
 	lodepng_encode32_file(imagefile, regionimage, REGION_BLOCK_WIDTH, REGION_BLOCK_WIDTH);

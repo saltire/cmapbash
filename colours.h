@@ -2,4 +2,10 @@
 #define CHANNELS 4
 
 
-unsigned char* read_colours(const char* filename);
+typedef struct colour {
+	unsigned char mask;
+	unsigned char types[16 * CHANNELS];
+} colour;
+
+
+colour* read_colours(const char* filename);

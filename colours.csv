@@ -1,331 +1,331 @@
-0,0,0,0,0,0,0,air
-1,0,133,130,121,255,16,stone
-2,0,75,119,15,255,14,grass block
-3,0,93,75,46,255,22,dirt
-3,1,93,75,46,255,22,grassless dirt
-3,2,93,75,46,255,22,podzol
-4,0,149,146,137,255,26,cobblestone
-5,0,193,157,101,255,11,oak wood planks
-5,1,142,103,58,255,11,spruce wood planks
-5,2,221,199,142,255,11,birch wood planks
-5,3,201,145,106,255,11,jungle wood planks
-5,4,208,132,82,255,11,acacia wood planks
-5,5,70,44,16,255,11,dark oak wood planks
-6,0,64,143,47,255,0,oak sapling
-6,1,80,54,26,255,0,spruce sapling
-6,2,81,116,45,255,0,birch sapling
-6,3,31,41,7,255,0,jungle sapling
-6,4,103,126,23,255,0,acacia sapling
-6,5,69,150,51,255,0,dark oak sapling
-7,0,71,71,74,255,0,bedrock
-8,0,69,124,186,102,0,flowing water
-9,0,69,124,186,102,0,water
-10,0,229,148,37,255,0,flowing lava
-11,0,229,148,37,255,0,lava
-12,0,134,124,77,255,14,sand
-12,1,164,83,30,255,14,red sand
-13,0,84,73,55,255,24,gravel
-14,0,227,162,34,255,0,gold ore
-15,0,161,121,79,255,0,iron ore
-16,0,50,54,63,255,0,coal ore
-17,0,105,84,51,255,0,oak wood up/down
-17,1,32,77,18,255,0,spruce wood up/down
-17,2,223,223,223,255,0,birch wood up/down
-17,3,124,94,39,255,0,jungle wood up/down
-17,4,105,84,51,255,0,oak wood east/west
-17,5,32,77,18,255,0,spruce wood east/west
-17,6,223,223,223,255,0,birch wood east/west
-17,7,124,94,39,255,0,jungle wood east/west
-17,8,105,84,51,255,0,oak wood north/south
-17,9,32,77,18,255,0,spruce wood north/south
-17,10,223,223,223,255,0,birch wood north/south
-17,11,124,94,39,255,0,jungle wood north/south
-17,12,105,84,51,255,0,oak wood bark
-17,13,32,77,18,255,0,spruce wood bark
-17,14,223,223,223,255,0,birch wood bark
-17,15,124,94,39,255,0,jungle wood bark
-18,0,62,76,66,153,12,oak leaves
-18,1,62,76,66,153,12,spruce leaves
-18,2,62,76,66,153,12,birch leaves
-18,3,62,76,66,153,12,jungle leaves
-19,0,206,206,74,255,0,sponge
-20,0,161,196,201,89,0,glass
-21,0,102,112,134,255,10,lapis lazuli ore
-22,0,29,71,165,255,5,lapis lazuli block
-23,0,107,107,107,255,0,dispenser
-24,0,165,156,102,255,14,sandstone
-24,1,165,156,102,255,14,chiseled sandstone
-24,2,165,156,102,255,14,smooth sandstone
-25,0,100,67,50,255,10,note block
-26,0,175,116,116,255,0,bed
-27,0,160,134,72,255,0,powered rail
-28,0,120,114,92,255,0,detector rail
-29,0,106,102,95,255,0,sticky piston
-30,0,220,220,220,191,0,cobweb
-31,0,123,79,25,255,25,shrub
-31,1,110,166,68,255,12,grass
-31,2,110,166,68,255,12,fern
-32,0,123,79,25,255,25,dead bush
-33,0,106,102,95,255,0,piston
-34,0,153,129,89,255,0,piston extension
-35,0,230,230,230,255,10,white wool
-35,1,233,130,3,255,10,orange wool
-35,2,226,91,236,255,10,magenta wool
-35,3,115,158,232,255,10,light blue wool
-35,4,247,238,11,255,10,yellow wool
-35,5,42,214,3,255,10,lime wool
-35,6,239,105,149,255,10,pink wool
-35,7,84,84,84,255,10,grey wool
-35,8,155,155,155,255,10,light grey wool
-35,9,24,105,139,255,10,cyan wool
-35,10,123,44,193,255,10,purple wool
-35,11,63,76,184,255,10,blue wool
-35,12,111,80,33,255,10,brown wool
-35,13,75,97,42,255,10,green wool
-35,14,171,47,42,255,10,red wool
-35,15,36,36,36,255,10,black wool
-36,0,0,0,0,0,0,block moved by piston
-37,0,66,97,54,255,0,dandelion
-38,0,76,126,169,255,0,poppy
-38,0,42,191,253,255,0,blue orchid
-38,0,188,111,251,255,0,allium
-38,0,216,222,230,255,0,azure bluet
-38,0,208,54,18,255,0,red tulip
-38,0,222,115,31,255,0,orange tulip
-38,0,243,243,243,255,0,yellow tulip
-38,0,234,190,234,255,0,pink tulip
-38,0,234,230,173,255,0,oxeye daisy
-39,0,166,130,0,255,0,brown mushroom
-40,0,182,15,15,255,0,red mushroom
-41,0,255,241,69,255,0,gold block
-42,0,230,230,230,255,0,iron block
-43,0,173,171,163,255,0,double stone slab
-43,1,236,227,180,255,0,double sandstone slab
-43,2,193,157,101,255,11,double wooden slab
-43,3,149,146,137,255,26,double cobblestone slab
-43,4,161,54,1,255,0,double brick slab
-43,5,169,167,159,255,7,double stone brick slab
-43,6,30,16,19,255,0,double nether brick slab
-43,7,236,232,226,255,0,double quartz slab
-43,8,173,171,163,255,0,double smooth stone slab
-43,9,236,227,180,255,0,double smooth sandstone slab
-43,10,236,232,226,255,0,double tile quartz slab
-44,0,110,101,89,255,0,stone slab
-44,1,236,227,180,255,0,sandstone slab
-44,2,193,157,101,255,11,wooden slab
-44,3,149,146,137,255,26,cobblestone slab
-44,4,161,54,1,255,0,brick slab
-44,5,169,167,159,255,7,stone brick slab
-44,6,30,16,19,255,0,nether brick slab
-44,7,236,232,226,255,0,quartz slab
-45,0,161,54,1,255,0,bricks
-46,0,193,60,23,255,0, tnt
-47,0,106,102,95,255,0,bookshelf
-48,0,67,75,49,255,27,moss stone
-49,0,58,47,58,255,0,obsidian
-50,0,254,203,58,198,0,torch
-51,0,255,170,30,198,0,fire
-52,0,245,220,50,255,0,monster spawner
-53,0,107,75,37,255,11,wooden stairs
-54,0,149,119,91,255,0,chest
-55,0,105,19,19,255,0,redstone wire
-56,0,114,227,252,255,0,diamond ore
-57,0,148,196,214,255,0,diamond block
-58,0,154,124,89,255,0,crafting table
-59,0,123,137,19,255,0,wheat seeds
-60,0,111,74,46,255,0,farmland
-61,0,143,115,66,255,0,furnace
-62,0,143,115,66,255,0,burning furnace
-63,0,193,182,126,255,0,sign post
-64,0,193,157,101,255,11,wooden door
-65,0,130,115,89,33,0,ladder
-66,0,102,98,92,181,0,rail
-67,0,104,97,84,255,26,cobblestone stairs
-68,0,0,0,0,0,0,wall sign
-69,0,0,0,0,0,0,lever
-70,0,0,0,0,0,0,stone pressure plate
-71,0,248,248,248,255,0,iron door
-72,0,0,0,0,0,0,wooden pressure plate
-73,0,157,97,97,255,0,redstone ore
-74,0,157,97,97,255,0,glowing redstone ore
-75,0,235,130,57,255,0,redstone torch off
-76,0,255,0,0,255,0,redstone torch on
-77,0,0,0,0,0,0,stone button
-78,0,220,230,236,255,0,snow
-79,0,144,192,220,56,0, ice
-80,0,220,230,236,255,0,snow block
-81,0,54,101,15,255,0,cactus
-82,0,220,220,255,255,0,clay
-83,0,123,150,67,255,0,sugar cane
-84,0,105,88,72,255,0,jukebox
-85,0,104,83,36,255,11,fence
-86,0,207,119,4,255,13,pumpkin
-87,0,117,48,48,255,2,netherrack
-88,0,87,64,50,255,1,soul sand
-89,0,139,113,60,255,7,glowstone block
-90,0,52,0,255,255,63,portal
-91,0,190,134,13,255,18,jack-o-lantern
-92,0,230,201,203,255,8,cake block
-93,0,151,147,147,255,2,redstone repeater off
-94,0,161,147,147,255,2,redstone repeater on
-95,0,125,91,38,255,0,stained glass
-95,0,230,230,230,89,0,white stained glass
-95,1,233,130,3,89,0,orange stained glass
-95,2,226,91,236,89,0,magenta stained glass
-95,3,115,158,232,89,0,light blue stained glass
-95,4,247,238,11,89,0,yellow stained glass
-95,5,42,214,3,89,0,lime stained glass
-95,6,239,105,149,89,0,pink stained glass
-95,7,84,84,84,89,0,grey stained glass
-95,8,155,155,155,89,0,light grey stained glass
-95,9,24,105,139,89,0,cyan stained glass
-95,10,123,44,193,89,0,purple stained glass
-95,11,63,76,184,89,0,blue stained glass
-95,12,111,80,33,89,0,brown stained glass
-95,13,75,97,42,89,0,green stained glass
-95,14,171,47,42,89,0,red stained glass
-95,15,36,36,36,89,0,black stained glass
-96,0,126,93,45,239,5,trapdoor
-97,0,128,128,128,255,16,monster egg
-98,0,169,167,159,255,7,stone bricks
-99,0,141,106,83,255,0,huge brown mushroom
-100,0,182,37,36,255,6,huge red mushroom
-101,0,109,108,106,255,6,iron bars
-102,0,255,255,255,40,0,glass pane
-103,0,151,153,36,255,10,melon
-104,0,115,170,73,255,0,pumpkin stem
-105,0,115,170,73,255,0,melon stem
-106,0,51,130,36,181,12,vines
-107,0,137,112,65,224,0,fence gate
-108,0,208,93,66,255,0,brick stairs
-109,0,122,122,122,255,7,stone brick stairs
-110,0,128,107,111,255,0,mycelium
-111,0,75,119,15,255,0,lily pad
-112,0,30,16,19,255,0,nether brick
-113,0,30,16,19,255,0,nether brick fence
-114,0,30,16,19,255,0,nether brick stairs
-115,0,118,0,0,255,0,nether wart
-116,0,88,23,22,255,0,enchantment table
-117,0,0,0,0,0,0,brewing stand
-118,0,64,64,64,255,0,cauldron
-119,0,0,0,0,0,0,end portal
-120,0,47,87,84,255,0,end portal frame
-121,0,195,189,137,255,0,end stone
-122,0,8,8,12,255,0,dragon egg
-123,0,176,116,80,255,0,redstone lamp off
-124,0,255,217,164,255,0,redstone lamp on
-125,0,193,157,101,255,11,oak wood double slab
-125,1,142,103,58,255,11,spruce wood double slab
-125,2,221,199,142,255,11,birch wood double slab
-125,3,201,145,106,255,11,jungle wood double slab
-125,4,208,132,82,255,11,acacia wood double slab
-125,5,70,44,16,255,11,dark oak wood double slab
-126,0,193,157,101,255,11,oak wood slab
-126,1,142,103,58,255,11,spruce wood slab
-126,2,221,199,142,255,11,birch wood slab
-126,3,201,145,106,255,11,jungle wood slab
-126,4,208,132,82,255,11,acacia wood slab
-126,5,70,44,16,255,11,dark oak wood slab
-127,0,0,0,0,0,0,cocoa
-128,0,236,227,180,255,0,sandstone stairs
-129,0,72,70,60,255,0,emerald ore
-130,0,0,0,0,0,0,ender chest
-131,0,0,0,0,0,0,tripwire hook
-132,0,0,0,0,0,0,tripwire
-133,0,34,233,134,255,0,emerald block
-134,0,142,103,58,255,0,spruce wood stairs
-135,0,221,199,142,255,0,birch wood stairs
-136,0,201,145,106,255,0,jungle wood stairs
-137,0,199,126,79,255,0,command block
-138,0,156,242,237,255,0,beacon
-139,0,149,146,137,255,26,cobblestone wall
-139,1,67,75,49,255,27,mossy cobblestone wall
-140,0,0,0,0,0,0,flower pot
-141,0,0,0,0,0,0,carrots
-142,0,0,0,0,0,0,potatoes
-143,0,0,0,0,0,0,wooden button
-144,0,0,0,0,0,0,mob head
-145,0,0,0,0,0,0,anvil
-146,0,0,0,0,0,0,trapped chest
-147,0,0,0,0,0,0,weighted pressure plate light
-148,0,0,0,0,0,0,weighted pressure plate heavy
-149,0,0,0,0,0,0,redstone comparator
-151,0,0,0,0,0,0,daylight sensor
-152,0,167,27,8,255,0,redstone block
-153,0,200,145,129,255,0,nether quartz ore
-154,0,0,0,0,0,0,hopper
-155,0,236,232,226,225,0,quartz block
-156,0,236,232,226,225,0,quartz stairs
-157,0,0,0,0,0,0,activator rail
-158,0,0,0,0,0,0,dropper
-159,0,197,181,173,255,0,white stained clay
-159,1,233,130,3,255,0,orange stained clay
-159,2,149,87,108,255,0,magenta stained clay
-159,3,112,108,138,255,0,light blue stained clay
-159,4,39,81,73,255,0,yellow stained clay
-159,5,103,117,52,255,0,lime stained clay
-159,6,160,77,78,255,0,pink stained clay
-159,7,51,44,41,255,0,grey stained clay
-159,8,125,110,106,255,0,light grey stained clay
-159,9,86,90,91,255,0,cyan stained clay
-159,10,118,69,86,255,0,purple stained clay
-159,11,268,35,36,255,0,blue stained clay
-159,12,77,50,36,255,0,brown stained clay
-159,13,70,49,32,255,0,green stained clay
-159,14,142,60,46,255,0,red stained clay
-159,15,31,24,21,255,0,black stained clay
-160,0,230,230,230,89,0,white stained glass pane
-160,1,233,130,3,89,0,orange stained glass pane
-160,2,226,91,236,89,0,magenta stained glass pane
-160,3,115,158,232,89,0,light blue stained glass pane
-160,4,247,238,11,89,0,yellow stained glass pane
-160,5,42,214,3,89,0,lime stained glass pane
-160,6,239,105,149,89,0,pink stained glass pane
-160,7,84,84,84,89,0,grey stained glass pane
-160,8,155,155,155,89,0,light grey stained glass pane
-160,9,24,105,139,89,0,cyan stained glass pane
-160,10,123,44,193,89,0,purple stained glass pane
-160,11,63,76,184,89,0,blue stained glass pane
-160,12,111,80,33,89,0,brown stained glass pane
-160,13,75,97,42,89,0,green stained glass pane
-160,14,171,47,42,89,0,red stained glass pane
-160,15,36,36,36,89,0,black stained glass pane
-161,0,0,0,0,0,0,acacia leaves
-161,1,0,0,0,0,0,dark oak leaves
-162,0,108,101,90,255,0,acacia wood up/down
-162,1,54,42,24,255,0,dark oak wood up/down
-162,4,108,101,90,255,0,acacia wood east/west
-162,5,54,42,24,255,0,dark oak wood east/west
-162,8,108,101,90,255,0,acacia wood north/south
-162,9,54,42,24,255,0,dark oak wood north/south
-162,12,108,101,90,255,0,acacia wood bark
-162,13,54,42,24,255,0,dark oak wood bark
-163,0,208,132,82,255,11,acacia wood stairs
-164,0,70,44,16,255,11,dark oak wood stairs
-170,0,173,149,21,255,0,hay block
-171,0,230,230,230,255,10,white carpet
-171,1,233,130,3,255,10,orange carpet
-171,2,226,91,236,255,10,magenta carpet
-171,3,115,158,232,255,10,light blue carpet
-171,4,247,238,11,255,10,yellow carpet
-171,5,42,214,3,255,10,lime carpet
-171,6,239,105,149,255,10,pink carpet
-171,7,84,84,84,255,10,grey carpet
-171,8,155,155,155,255,10,light grey carpet
-171,9,24,105,139,255,10,cyan carpet
-171,10,123,44,193,255,10,purple carpet
-171,11,63,76,184,255,10,blue carpet
-171,12,111,80,33,255,10,brown carpet
-171,13,75,97,42,255,10,green carpet
-171,14,171,47,42,255,10,red carpet
-171,15,36,36,36,255,10,black carpet
-172,0,149,91,66,255,22,hardened clay
-173,0,21,21,21,255,22,coal block
-174,0,151,35,91,255,0,packed ice
-175,0,232,190,32,255,0,sunflower
-175,1,186,157,190,255,0,lilac
-175,2,75,119,15,255,0,double tallgrass
-175,3,75,119,15,255,0,large fern
-175,4,209,6,9,255,0,rose bush
-175,5,229,189,247,255,0,peony
-175,8,0,0,0,0,0,top half of large plant
+0,1,0,0,0,0,0,0,air
+1,8,0,133,130,121,255,16,stone
+2,1,0,75,119,15,255,14,grass block
+3,4,0,93,75,46,255,22,dirt
+3,1,1,93,75,46,255,22,grassless dirt
+3,1,2,93,75,46,255,22,podzol
+4,1,0,149,146,137,255,26,cobblestone
+5,8,0,193,157,101,255,11,oak wood planks
+5,1,1,142,103,58,255,11,spruce wood planks
+5,1,2,221,199,142,255,11,birch wood planks
+5,1,3,201,145,106,255,11,jungle wood planks
+5,1,4,208,132,82,255,11,acacia wood planks
+5,1,5,70,44,16,255,11,dark oak wood planks
+6,8,0,64,143,47,255,0,oak sapling
+6,1,1,80,54,26,255,0,spruce sapling
+6,1,2,81,116,45,255,0,birch sapling
+6,1,3,31,41,7,255,0,jungle sapling
+6,1,4,103,126,23,255,0,acacia sapling
+6,1,5,69,150,51,255,0,dark oak sapling
+7,1,0,71,71,74,255,0,bedrock
+8,1,0,69,124,186,102,0,flowing water
+9,1,0,69,124,186,102,0,water
+10,1,0,229,148,37,255,0,flowing lava
+11,1,0,229,148,37,255,0,lava
+12,2,0,134,124,77,255,14,sand
+12,1,1,164,83,30,255,14,red sand
+13,1,0,84,73,55,255,24,gravel
+14,1,0,227,162,34,255,0,gold ore
+15,1,0,161,121,79,255,0,iron ore
+16,1,0,50,54,63,255,0,coal ore
+17,4,0,105,84,51,255,0,oak wood up/down
+17,1,1,32,77,18,255,0,spruce wood up/down
+17,1,2,223,223,223,255,0,birch wood up/down
+17,1,3,124,94,39,255,0,jungle wood up/down
+17,1,4,105,84,51,255,0,oak wood east/west
+17,1,5,32,77,18,255,0,spruce wood east/west
+17,1,6,223,223,223,255,0,birch wood east/west
+17,1,7,124,94,39,255,0,jungle wood east/west
+17,1,8,105,84,51,255,0,oak wood north/south
+17,1,9,32,77,18,255,0,spruce wood north/south
+17,1,10,223,223,223,255,0,birch wood north/south
+17,1,11,124,94,39,255,0,jungle wood north/south
+17,1,12,105,84,51,255,0,oak wood bark
+17,1,13,32,77,18,255,0,spruce wood bark
+17,1,14,223,223,223,255,0,birch wood bark
+17,1,15,124,94,39,255,0,jungle wood bark
+18,4,0,62,76,66,153,12,oak leaves
+18,1,1,62,76,66,153,12,spruce leaves
+18,1,2,62,76,66,153,12,birch leaves
+18,1,3,62,76,66,153,12,jungle leaves
+19,1,0,206,206,74,255,0,sponge
+20,1,0,161,196,201,89,0,glass
+21,1,0,102,112,134,255,10,lapis lazuli ore
+22,1,0,29,71,165,255,5,lapis lazuli block
+23,1,0,107,107,107,255,0,dispenser
+24,4,0,165,156,102,255,14,sandstone
+24,1,1,165,156,102,255,14,chiseled sandstone
+24,1,2,165,156,102,255,14,smooth sandstone
+25,1,0,100,67,50,255,10,note block
+26,1,0,175,116,116,255,0,bed
+27,1,0,160,134,72,255,0,powered rail
+28,1,0,120,114,92,255,0,detector rail
+29,1,0,106,102,95,255,0,sticky piston
+30,1,0,220,220,220,191,0,cobweb
+31,4,0,123,79,25,255,25,shrub
+31,1,1,110,166,68,255,12,grass
+31,1,2,110,166,68,255,12,fern
+32,1,0,123,79,25,255,25,dead bush
+33,1,0,106,102,95,255,0,piston
+34,1,0,153,129,89,255,0,piston extension
+35,16,0,230,230,230,255,10,white wool
+35,1,1,233,130,3,255,10,orange wool
+35,1,2,226,91,236,255,10,magenta wool
+35,1,3,115,158,232,255,10,light blue wool
+35,1,4,247,238,11,255,10,yellow wool
+35,1,5,42,214,3,255,10,lime wool
+35,1,6,239,105,149,255,10,pink wool
+35,1,7,84,84,84,255,10,grey wool
+35,1,8,155,155,155,255,10,light grey wool
+35,1,9,24,105,139,255,10,cyan wool
+35,1,10,123,44,193,255,10,purple wool
+35,1,11,63,76,184,255,10,blue wool
+35,1,12,111,80,33,255,10,brown wool
+35,1,13,75,97,42,255,10,green wool
+35,1,14,171,47,42,255,10,red wool
+35,1,15,36,36,36,255,10,black wool
+36,1,0,0,0,0,0,0,block moved by piston
+37,1,0,66,97,54,255,0,dandelion
+38,8,0,76,126,169,255,0,poppy
+38,1,1,42,191,253,255,0,blue orchid
+38,1,2,188,111,251,255,0,allium
+38,1,3,216,222,230,255,0,azure bluet
+38,1,4,208,54,18,255,0,red tulip
+38,1,5,222,115,31,255,0,orange tulip
+38,1,6,243,243,243,255,0,yellow tulip
+38,1,7,234,190,234,255,0,pink tulip
+38,1,8,234,230,173,255,0,oxeye daisy
+39,1,0,166,130,0,255,0,brown mushroom
+40,1,0,182,15,15,255,0,red mushroom
+41,1,0,255,241,69,255,0,gold block
+42,1,0,230,230,230,255,0,iron block
+43,16,0,173,171,163,255,0,double stone slab
+43,1,1,236,227,180,255,0,double sandstone slab
+43,1,2,193,157,101,255,11,double wooden slab
+43,1,3,149,146,137,255,26,double cobblestone slab
+43,1,4,161,54,1,255,0,double brick slab
+43,1,5,169,167,159,255,7,double stone brick slab
+43,1,6,30,16,19,255,0,double nether brick slab
+43,1,7,236,232,226,255,0,double quartz slab
+43,1,8,173,171,163,255,0,double smooth stone slab
+43,1,9,236,227,180,255,0,double smooth sandstone slab
+43,1,10,236,232,226,255,0,double tile quartz slab
+44,8,0,110,101,89,255,0,stone slab
+44,1,1,236,227,180,255,0,sandstone slab
+44,1,2,193,157,101,255,11,wooden slab
+44,1,3,149,146,137,255,26,cobblestone slab
+44,1,4,161,54,1,255,0,brick slab
+44,1,5,169,167,159,255,7,stone brick slab
+44,1,6,30,16,19,255,0,nether brick slab
+44,1,7,236,232,226,255,0,quartz slab
+45,1,0,161,54,1,255,0,bricks
+46,1,0,193,60,23,255,0, tnt
+47,1,0,106,102,95,255,0,bookshelf
+48,1,0,67,75,49,255,27,moss stone
+49,1,0,58,47,58,255,0,obsidian
+50,1,0,254,203,58,198,0,torch
+51,1,0,255,170,30,198,0,fire
+52,1,0,245,220,50,255,0,monster spawner
+53,1,0,107,75,37,255,11,wooden stairs
+54,1,0,149,119,91,255,0,chest
+55,1,0,105,19,19,255,0,redstone wire
+56,1,0,114,227,252,255,0,diamond ore
+57,1,0,148,196,214,255,0,diamond block
+58,1,0,154,124,89,255,0,crafting table
+59,1,0,123,137,19,255,0,wheat seeds
+60,1,0,111,74,46,255,0,farmland
+61,1,0,143,115,66,255,0,furnace
+62,1,0,143,115,66,255,0,burning furnace
+63,1,0,193,182,126,255,0,sign post
+64,1,0,193,157,101,255,11,wooden door
+65,1,0,130,115,89,33,0,ladder
+66,1,0,102,98,92,181,0,rail
+67,1,0,104,97,84,255,26,cobblestone stairs
+68,1,0,0,0,0,0,0,wall sign
+69,1,0,0,0,0,0,0,lever
+70,1,0,0,0,0,0,0,stone pressure plate
+71,1,0,248,248,248,255,0,iron door
+72,1,0,0,0,0,0,0,wooden pressure plate
+73,1,0,157,97,97,255,0,redstone ore
+74,1,0,157,97,97,255,0,glowing redstone ore
+75,1,0,235,130,57,255,0,redstone torch off
+76,1,0,255,0,0,255,0,redstone torch on
+77,1,0,0,0,0,0,0,stone button
+78,1,0,220,230,236,255,0,snow
+79,1,0,144,192,220,56,0, ice
+80,1,0,220,230,236,255,0,snow block
+81,1,0,54,101,15,255,0,cactus
+82,1,0,220,220,255,255,0,clay
+83,1,0,123,150,67,255,0,sugar cane
+84,1,0,105,88,72,255,0,jukebox
+85,1,0,104,83,36,255,11,fence
+86,1,0,207,119,4,255,13,pumpkin
+87,1,0,117,48,48,255,2,netherrack
+88,1,0,87,64,50,255,1,soul sand
+89,1,0,139,113,60,255,7,glowstone block
+90,1,0,52,0,255,255,63,portal
+91,1,0,190,134,13,255,18,jack-o-lantern
+92,1,0,230,201,203,255,8,cake block
+93,1,0,151,147,147,255,2,redstone repeater off
+94,1,0,161,147,147,255,2,redstone repeater on
+95,16,0,125,91,38,255,0,stained glass
+95,1,0,230,230,230,89,0,white stained glass
+95,1,1,233,130,3,89,0,orange stained glass
+95,1,2,226,91,236,89,0,magenta stained glass
+95,1,3,115,158,232,89,0,light blue stained glass
+95,1,4,247,238,11,89,0,yellow stained glass
+95,1,5,42,214,3,89,0,lime stained glass
+95,1,6,239,105,149,89,0,pink stained glass
+95,1,7,84,84,84,89,0,grey stained glass
+95,1,8,155,155,155,89,0,light grey stained glass
+95,1,9,24,105,139,89,0,cyan stained glass
+95,1,10,123,44,193,89,0,purple stained glass
+95,1,11,63,76,184,89,0,blue stained glass
+95,1,12,111,80,33,89,0,brown stained glass
+95,1,13,75,97,42,89,0,green stained glass
+95,1,14,171,47,42,89,0,red stained glass
+95,1,15,36,36,36,89,0,black stained glass
+96,1,0,126,93,45,239,5,trapdoor
+97,1,0,128,128,128,255,16,monster egg
+98,1,0,169,167,159,255,7,stone bricks
+99,1,0,141,106,83,255,0,huge brown mushroom
+100,1,0,182,37,36,255,6,huge red mushroom
+101,1,0,109,108,106,255,6,iron bars
+102,1,0,255,255,255,40,0,glass pane
+103,1,0,151,153,36,255,10,melon
+104,1,0,115,170,73,255,0,pumpkin stem
+105,1,0,115,170,73,255,0,melon stem
+106,1,0,51,130,36,181,12,vines
+107,1,0,137,112,65,224,0,fence gate
+108,1,0,208,93,66,255,0,brick stairs
+109,1,0,122,122,122,255,7,stone brick stairs
+110,1,0,128,107,111,255,0,mycelium
+111,1,0,75,119,15,255,0,lily pad
+112,1,0,30,16,19,255,0,nether brick
+113,1,0,30,16,19,255,0,nether brick fence
+114,1,0,30,16,19,255,0,nether brick stairs
+115,1,0,118,0,0,255,0,nether wart
+116,1,0,88,23,22,255,0,enchantment table
+117,1,0,0,0,0,0,0,brewing stand
+118,1,0,64,64,64,255,0,cauldron
+119,1,0,0,0,0,0,0,end portal
+120,1,0,47,87,84,255,0,end portal frame
+121,1,0,195,189,137,255,0,end stone
+122,1,0,8,8,12,255,0,dragon egg
+123,1,0,176,116,80,255,0,redstone lamp off
+124,1,0,255,217,164,255,0,redstone lamp on
+125,8,0,193,157,101,255,11,oak wood double slab
+125,1,1,142,103,58,255,11,spruce wood double slab
+125,1,2,221,199,142,255,11,birch wood double slab
+125,1,3,201,145,106,255,11,jungle wood double slab
+125,1,4,208,132,82,255,11,acacia wood double slab
+125,1,5,70,44,16,255,11,dark oak wood double slab
+126,8,0,193,157,101,255,11,oak wood slab
+126,1,1,142,103,58,255,11,spruce wood slab
+126,1,2,221,199,142,255,11,birch wood slab
+126,1,3,201,145,106,255,11,jungle wood slab
+126,1,4,208,132,82,255,11,acacia wood slab
+126,1,5,70,44,16,255,11,dark oak wood slab
+127,1,0,0,0,0,0,0,cocoa
+128,1,0,236,227,180,255,0,sandstone stairs
+129,1,0,72,70,60,255,0,emerald ore
+130,1,0,0,0,0,0,0,ender chest
+131,1,0,0,0,0,0,0,tripwire hook
+132,1,0,0,0,0,0,0,tripwire
+133,1,0,34,233,134,255,0,emerald block
+134,1,0,142,103,58,255,0,spruce wood stairs
+135,1,0,221,199,142,255,0,birch wood stairs
+136,1,0,201,145,106,255,0,jungle wood stairs
+137,1,0,199,126,79,255,0,command block
+138,1,0,156,242,237,255,0,beacon
+139,1,0,149,146,137,255,26,cobblestone wall
+139,1,1,67,75,49,255,27,mossy cobblestone wall
+140,1,0,0,0,0,0,0,flower pot
+141,1,0,0,0,0,0,0,carrots
+142,1,0,0,0,0,0,0,potatoes
+143,1,0,0,0,0,0,0,wooden button
+144,1,0,0,0,0,0,0,mob head
+145,1,0,0,0,0,0,0,anvil
+146,1,0,0,0,0,0,0,trapped chest
+147,1,0,0,0,0,0,0,weighted pressure plate light
+148,1,0,0,0,0,0,0,weighted pressure plate heavy
+149,1,0,0,0,0,0,0,redstone comparator
+151,1,0,0,0,0,0,0,daylight sensor
+152,1,0,167,27,8,255,0,redstone block
+153,1,0,200,145,129,255,0,nether quartz ore
+154,1,0,0,0,0,0,0,hopper
+155,1,0,236,232,226,225,0,quartz block
+156,1,0,236,232,226,225,0,quartz stairs
+157,1,0,0,0,0,0,0,activator rail
+158,1,0,0,0,0,0,0,dropper
+159,16,0,197,181,173,255,0,white stained clay
+159,1,1,233,130,3,255,0,orange stained clay
+159,1,2,149,87,108,255,0,magenta stained clay
+159,1,3,112,108,138,255,0,light blue stained clay
+159,1,4,39,81,73,255,0,yellow stained clay
+159,1,5,103,117,52,255,0,lime stained clay
+159,1,6,160,77,78,255,0,pink stained clay
+159,1,7,51,44,41,255,0,grey stained clay
+159,1,8,125,110,106,255,0,light grey stained clay
+159,1,9,86,90,91,255,0,cyan stained clay
+159,1,10,118,69,86,255,0,purple stained clay
+159,1,11,268,35,36,255,0,blue stained clay
+159,1,12,77,50,36,255,0,brown stained clay
+159,1,13,70,49,32,255,0,green stained clay
+159,1,14,142,60,46,255,0,red stained clay
+159,1,15,31,24,21,255,0,black stained clay
+160,16,0,230,230,230,89,0,white stained glass pane
+160,1,1,233,130,3,89,0,orange stained glass pane
+160,1,2,226,91,236,89,0,magenta stained glass pane
+160,1,3,115,158,232,89,0,light blue stained glass pane
+160,1,4,247,238,11,89,0,yellow stained glass pane
+160,1,5,42,214,3,89,0,lime stained glass pane
+160,1,6,239,105,149,89,0,pink stained glass pane
+160,1,7,84,84,84,89,0,grey stained glass pane
+160,1,8,155,155,155,89,0,light grey stained glass pane
+160,1,9,24,105,139,89,0,cyan stained glass pane
+160,1,10,123,44,193,89,0,purple stained glass pane
+160,1,11,63,76,184,89,0,blue stained glass pane
+160,1,12,111,80,33,89,0,brown stained glass pane
+160,1,13,75,97,42,89,0,green stained glass pane
+160,1,14,171,47,42,89,0,red stained glass pane
+160,1,15,36,36,36,89,0,black stained glass pane
+161,2,0,62,76,66,153,12,acacia leaves
+161,1,1,62,76,66,153,12,dark oak leaves
+162,2,0,108,101,90,255,0,acacia wood up/down
+162,1,1,54,42,24,255,0,dark oak wood up/down
+162,1,4,108,101,90,255,0,acacia wood east/west
+162,1,5,54,42,24,255,0,dark oak wood east/west
+162,1,8,108,101,90,255,0,acacia wood north/south
+162,1,9,54,42,24,255,0,dark oak wood north/south
+162,1,12,108,101,90,255,0,acacia wood bark
+162,1,13,54,42,24,255,0,dark oak wood bark
+163,1,0,208,132,82,255,11,acacia wood stairs
+164,1,0,70,44,16,255,11,dark oak wood stairs
+170,1,0,173,149,21,255,0,hay block
+171,16,0,230,230,230,255,10,white carpet
+171,1,1,233,130,3,255,10,orange carpet
+171,1,2,226,91,236,255,10,magenta carpet
+171,1,3,115,158,232,255,10,light blue carpet
+171,1,4,247,238,11,255,10,yellow carpet
+171,1,5,42,214,3,255,10,lime carpet
+171,1,6,239,105,149,255,10,pink carpet
+171,1,7,84,84,84,255,10,grey carpet
+171,1,8,155,155,155,255,10,light grey carpet
+171,1,9,24,105,139,255,10,cyan carpet
+171,1,10,123,44,193,255,10,purple carpet
+171,1,11,63,76,184,255,10,blue carpet
+171,1,12,111,80,33,255,10,brown carpet
+171,1,13,75,97,42,255,10,green carpet
+171,1,14,171,47,42,255,10,red carpet
+171,1,15,36,36,36,255,10,black carpet
+172,1,0,149,91,66,255,22,hardened clay
+173,1,0,21,21,21,255,22,coal block
+174,1,0,151,35,91,255,0,packed ice
+175,8,0,232,190,32,255,0,sunflower
+175,1,1,186,157,190,255,0,lilac
+175,1,2,75,119,15,255,0,double tallgrass
+175,1,3,75,119,15,255,0,large fern
+175,1,4,209,6,9,255,0,rose bush
+175,1,5,229,189,247,255,0,peony
+175,1,8,0,0,0,0,0,top half of large plant

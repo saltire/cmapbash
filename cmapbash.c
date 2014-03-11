@@ -3,15 +3,12 @@
 
 #include "nbt.h"
 
-#include "colours.h"
-#include "chunk.h"
-#include "region.h"
 #include "world.h"
 
 
 int main(int argc, char **argv)
 {
-	unsigned char* colours = read_colours("colours.csv");
+	colour* colours = read_colours("colours.csv");
 /*
 	if (argc < 2)
 	{
