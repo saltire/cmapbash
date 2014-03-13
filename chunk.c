@@ -99,14 +99,19 @@ void adjust_colour_by_height(unsigned char* pixel, int y)
 {
 	for (int c = 0; c < ALPHA; c++)
 	{
-		float contrast = 0.8;
-		pixel[c] = (unsigned char)(pixel[c] * contrast + y * (1 - contrast));
+		// linear height shader
+		//float contrast = 0.8;
+		//pixel[c] = pixel[c] * contrast + y * (1 - contrast);
 
-		// TODO: a higher contrast height shader
-		//int mod = y - 128; // +/- distance from center
-		//int limit = 128 - abs(mod); // distance to top or bottom
-		//int adjust = (mod / 128) * limit; // amount to adjust
-		//pixel[c] = (unsigned char)(pixel[c] + adjust * (1 - contrast));
+		// curved, higher contrast height shader
+		float contrast = 0.7; // amount of contrast
+		float center = 0.3; // gamma correction
+
+		int alt = y - (center * 255); // +/- distance from center
+		unsigned char limit = alt < 0 ? pixel[c] : 255 - pixel[c]; // room to adjust
+		int mod = limit * (float)alt /
+				(alt < 0 ? center * 255 : (1 - center) * 255); // amount to adjust
+		pixel[c] = pixel[c] + mod * contrast;
 	}
 }
 
@@ -116,9 +121,9 @@ void adjust_colour_by_lum(unsigned char* pixel, unsigned char light)
 	for (int c = 0; c < ALPHA; c++)
 	{
 		float darkness = 0.2;
-		float lightness = (float)light / 16;
+		float lightness = (float)light / 15;
 		//printf("Rendering pixel with lightness %d (%f): %d -> ", light, lightness, pixel[c]);
-		pixel[c] = (unsigned char)(pixel[c] * (darkness + (1 - darkness) * lightness));
+		pixel[c] = pixel[c] * (darkness + (1 - darkness) * lightness);
 		//printf("%d\n", pixel[c]);
 	}
 }
