@@ -191,6 +191,7 @@ unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours,
 	}
 	free(blocks);
 	free(data);
+	free(blight);
 	return image;
 }
 

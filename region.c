@@ -53,7 +53,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 			//puts(nbt_dump_ascii(chunk));
 
 			unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, alpha);
-			free(chunk);
+			nbt_free(chunk);
 
 			for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
 			{
