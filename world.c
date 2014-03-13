@@ -18,15 +18,17 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 	}
 
 	// list directory to find the number of region files, and image dimensions
-	int count = 0;
-	int rx, rz;
-	int rxmin, rxmax, rzmin, rzmax;
+	int rcount = 0;
+	int rx, rz, rxmin, rxmax, rzmin, rzmax;
 	struct dirent* ent;
+	char ext[4]; // three-char extension + null char
+	int length; // check filename length to prevent matching filenames with trailing characters
 	while ((ent = readdir(dir)) != NULL)
 	{
-		if (sscanf(ent->d_name, "r.%d.%d.mca", &rx, &rz))
+		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
+				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			if (!count)
+			if (!rcount)
 			{
 				rxmin = rxmax = rx;
 				rzmin = rzmax = rz;
@@ -38,11 +40,11 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 				rzmin = rz < rzmin ? rz : rzmin;
 				rzmax = rz > rzmax ? rz : rzmax;
 			}
-			count++;
+			rcount++;
 		}
 	}
 
-	if (count == 0)
+	if (rcount == 0)
 	{
 		printf("No regions found in directory: %s\n", worlddir);
 		return;
@@ -52,7 +54,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 
 	int w = (rxmax - rxmin + 1) * REGION_BLOCK_WIDTH;
 	int h = (rzmax - rzmin + 1) * REGION_BLOCK_WIDTH;
-	printf("Read %d regions. Image dimensions: %d x %d\n", count, w, h);
+	printf("Read %d regions. Image dimensions: %d x %d\n", rcount, w, h);
 	unsigned char* worldimage = (unsigned char*)malloc(w * h * CHANNELS);
 
 	// create an array of region files and
@@ -60,15 +62,13 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 	int rc = 0;
 	while ((ent = readdir(dir)) != NULL)
 	{
-		char ext[3];
-		int pos;
-		// the %n check prevents matching filenames with trailing characters
-		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &pos) &&
-				!strcmp(ext, "mca") && pos == strlen(ent->d_name))
+		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
+				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
 			// TODO: add support for .mcr files
 
-			printf("Rendering region %d/%d at %d, %d\n", rc, count, rx, rz);
+			rc++;
+			printf("Rendering region %d/%d at %d, %d\n", rc, rcount, rx, rz);
 
 			// FIXME: path/filename joining needs to be more flexible
 			char path[255];
@@ -85,7 +85,6 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 						REGION_BLOCK_WIDTH * CHANNELS);
 			}
 			free(regionimage);
-			rc++;
 		}
 	}
 	closedir(dir);

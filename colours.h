@@ -1,5 +1,6 @@
 #define BLOCK_TYPES 176
 #define CHANNELS 4
+#define ALPHA CHANNELS - 1
 
 
 typedef struct colour {
