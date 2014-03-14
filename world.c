@@ -43,17 +43,59 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 			rcount++;
 		}
 	}
-
 	if (rcount == 0)
 	{
 		printf("No regions found in directory: %s\n", worlddir);
 		return;
 	}
 
-	// TODO: find region crop dimensions
+	char path[255];
 
-	int w = (rxmax - rxmin + 1) * REGION_BLOCK_WIDTH;
-	int h = (rzmax - rzmin + 1) * REGION_BLOCK_WIDTH;
+	int margins[4];
+	int rmargins[4];
+	for (int i = 0; i < 4; i++)
+	{
+		margins[i] = REGION_BLOCK_WIDTH;
+	}
+
+	rewinddir(dir);
+	while ((ent = readdir(dir)) != NULL)
+	{
+		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
+				!strcmp(ext, "mca") && length == strlen(ent->d_name))
+		{
+			// check margins if this region is on the edge of the map
+			if (rx == rxmin || rx == rxmax || rz == rzmin || rz == rzmax)
+			{
+				sprintf(path, "%s/%s", worlddir, ent->d_name);
+				get_region_margins(path, rmargins);
+				//printf("Margins for region %d, %d: N %d, E %d, S %d, W %d\n",
+				//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
+
+				// use margins for the specific edge(s) that this region touches
+				if (rz == rzmin) // north
+				{
+					margins[0] = rmargins[0] < margins[0] ? rmargins[0] : margins[0];
+				}
+				if (rx == rxmax) // east
+				{
+					margins[1] = rmargins[1] < margins[1] ? rmargins[1] : margins[1];
+				}
+				if (rz == rzmax) // south
+				{
+					margins[2] = rmargins[2] < margins[2] ? rmargins[2] : margins[2];
+				}
+				if (rx == rxmin) // west
+				{
+					margins[3] = rmargins[3] < margins[3] ? rmargins[3] : margins[3];
+				}
+			}
+		}
+	}
+	//printf("Margins: N %d, E %d, S %d, W %d\n", margins[0], margins[1], margins[2], margins[3]);
+
+	int w = (rxmax - rxmin + 1) * REGION_BLOCK_WIDTH - margins[1] - margins[3];
+	int h = (rzmax - rzmin + 1) * REGION_BLOCK_WIDTH - margins[0] - margins[2];
 	printf("Read %d regions. Image dimensions: %d x %d\n", rcount, w, h);
 	unsigned char* worldimage = (unsigned char*)malloc(w * h * CHANNELS);
 
@@ -71,18 +113,25 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 			printf("Rendering region %d/%d at %d, %d\n", rc, rcount, rx, rz);
 
 			// FIXME: path/filename joining needs to be more flexible
-			char path[255];
 			sprintf(path, "%s/%s", worlddir, ent->d_name);
 
 			unsigned char* regionimage = render_region_blockmap(path, colours, alpha);
-			for (int bz = 0; bz < REGION_BLOCK_WIDTH; bz++)
+
+			int rxoffset = (rx == rxmin ? margins[3] : 0);
+			int rwidth = REGION_BLOCK_WIDTH - rxoffset - (rx == rxmax ? margins[1] : 0);
+
+			int rzoffset = (rz == rzmin ? margins[0] : 0);
+			int rheight = REGION_BLOCK_WIDTH - rzoffset - (rz == rzmax ? margins[2] : 0);
+
+			for (int z = 0; z < rheight; z++)
 			{
 				// copy a line of pixel data from the region image to the world image
-				int offset = ((rz - rzmin) * REGION_BLOCK_WIDTH + bz) * w
-						+ (rx - rxmin) * REGION_BLOCK_WIDTH;
-				memcpy(&worldimage[offset * CHANNELS],
-						&regionimage[bz * REGION_BLOCK_WIDTH * CHANNELS],
-						REGION_BLOCK_WIDTH * CHANNELS);
+				int woffset = ((rz - rzmin) * REGION_BLOCK_WIDTH - margins[0] + rzoffset + z) * w
+						+ (rx - rxmin) * REGION_BLOCK_WIDTH - margins[3] + rxoffset;
+				int roffset = (rzoffset + z) * REGION_BLOCK_WIDTH + rxoffset;
+				memcpy(&worldimage[woffset * CHANNELS],
+						&regionimage[roffset * CHANNELS],
+						rwidth * CHANNELS);
 			}
 			free(regionimage);
 		}

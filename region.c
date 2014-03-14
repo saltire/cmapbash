@@ -5,6 +5,43 @@
 #include "region.h"
 
 
+void get_region_margins(const char* regionfile, int* margins)
+{
+	FILE* region = fopen(regionfile, "r");
+	if (region == NULL)
+	{
+		printf("Error %d reading region file: %s\n", errno, regionfile);
+		return;
+	}
+
+	for (int i = 0; i < 4; i++)
+	{
+		margins[i] = REGION_BLOCK_WIDTH;
+	}
+
+	unsigned char buffer[4];
+	unsigned int offset;
+	for (int z = 0; z < REGION_BLOCK_WIDTH; z += CHUNK_BLOCK_WIDTH)
+	{
+		for (int x = 0; x < REGION_BLOCK_WIDTH; x += CHUNK_BLOCK_WIDTH)
+		{
+			fread(buffer, 1, 4, region);
+			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+			if (offset > 0)
+			{
+				margins[0] = z < margins[0] ? z : margins[0]; // north
+				margins[1] = (REGION_BLOCK_WIDTH - x - CHUNK_BLOCK_WIDTH) < margins[1] ?
+						(REGION_BLOCK_WIDTH - x - CHUNK_BLOCK_WIDTH) : margins[1]; // east
+				margins[2] = (REGION_BLOCK_WIDTH - z - CHUNK_BLOCK_WIDTH) < margins[2] ?
+						(REGION_BLOCK_WIDTH - z - CHUNK_BLOCK_WIDTH) : margins[2]; // south
+				margins[3] = x < margins[3] ? x : margins[3]; // west
+			}
+		}
+	}
+	fclose(region);
+}
+
+
 unsigned char* render_region_blockmap(const char* regionfile, const colour* colours,
 		const char alpha)
 {

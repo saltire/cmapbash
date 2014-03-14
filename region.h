@@ -8,6 +8,7 @@
 #define SECTOR_LENGTH 4096
 
 
+void get_region_margins(const char* regionfile, int* margins);
 unsigned char* render_region_blockmap(const char* regionfile, const colour* colours,
 		const char alpha);
 void save_region_blockmap(const char* regionfile, const char* imagefile, const colour* colours,
