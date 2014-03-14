@@ -62,23 +62,6 @@ void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* 
 }
 
 
-unsigned char* get_chunk_heightmap(nbt_node* chunk)
-{
-	unsigned char* heightmap = (unsigned char*)malloc(CHUNK_BLOCK_AREA);
-
-	nbt_node* hdata = nbt_find_by_name(chunk, "HeightMap");
-	if (hdata->type == TAG_INT_ARRAY)
-	{
-		for (int i = 0; i < CHUNK_BLOCK_AREA; i++)
-		{
-			heightmap[i] = *(hdata->payload.tag_int_array.data + i) & 0xff;
-		}
-	}
-
-	return heightmap;
-}
-
-
 void combine_alpha(unsigned char* top, unsigned char* bottom)
 {
 	if (top[ALPHA] == 255) return;
@@ -151,7 +134,7 @@ void get_block_colour_at_height(unsigned char* pixel, unsigned char* blocks, uns
 
 
 void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char* data,
-		unsigned char* blight, const colour* colours, int b, char alpha)
+		unsigned char* blight, const colour* colours, int b, char night)
 {
 	for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
 	{
@@ -159,20 +142,11 @@ void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char
 		if (blockid >= BLOCK_TYPES) blockid = 0; // unknown block type defaults to air
 		if (blockid != 0)
 		{
-			if (alpha)
+			get_block_colour_at_height(pixel, blocks, data, blight, colours, b, y);
+			adjust_colour_by_height(pixel, y);
+			if (night)
 			{
-				//adjust_colour_by_lum(pixel, blight[y * CHUNK_BLOCK_AREA + b]);
-
-				get_block_colour_at_height(pixel, blocks, data, blight, colours, b, y);
-
-				adjust_colour_by_height(pixel, y);
-			}
-			else
-			{
-				unsigned char type = data[y * CHUNK_BLOCK_AREA + b] % colours[blockid].mask;
-				// copy the block colour into the pixel buffer, setting alpha to full
-				memcpy(pixel, &colours[blockid].types[type * CHANNELS], ALPHA);
-				pixel[ALPHA] = 255;
+				adjust_colour_by_lum(pixel, blight[y * CHUNK_BLOCK_AREA + b]);
 			}
 			break;
 		}
@@ -180,8 +154,7 @@ void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char
 }
 
 
-unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours,
-		const char alpha)
+unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char night)
 {
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
@@ -192,12 +165,38 @@ unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours,
 
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
 	{
-		get_block_colour(&image[b * CHANNELS], blocks, data, blight, colours, b, alpha);
+		get_block_colour(&image[b * CHANNELS], blocks, data, blight, colours, b, night);
 	}
 	free(blocks);
 	free(data);
 	free(blight);
 	return image;
+}
+
+
+void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
+		const char night)
+{
+	unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, night);
+	lodepng_encode32_file(imagefile, chunkimage, CHUNK_BLOCK_WIDTH, CHUNK_BLOCK_WIDTH);
+	free(chunkimage);
+}
+
+
+unsigned char* get_chunk_heightmap(nbt_node* chunk)
+{
+	unsigned char* heightmap = (unsigned char*)malloc(CHUNK_BLOCK_AREA);
+
+	nbt_node* hdata = nbt_find_by_name(chunk, "HeightMap");
+	if (hdata->type == TAG_INT_ARRAY)
+	{
+		for (int i = 0; i < CHUNK_BLOCK_AREA; i++)
+		{
+			heightmap[i] = *(hdata->payload.tag_int_array.data + i) & 0xff;
+		}
+	}
+
+	return heightmap;
 }
 
 
@@ -220,15 +219,6 @@ unsigned char* render_chunk_heightmap(nbt_node* chunk)
 	}
 	free(heightmap);
 	return image;
-}
-
-
-void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
-		const char alpha)
-{
-	unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, alpha);
-	lodepng_encode32_file(imagefile, chunkimage, CHUNK_BLOCK_WIDTH, CHUNK_BLOCK_WIDTH);
-	free(chunkimage);
 }
 
 

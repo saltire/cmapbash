@@ -8,7 +8,7 @@
 
 
 void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
-		const char alpha)
+		const char night)
 {
 	DIR* dir = opendir(worlddir);
 	if (dir == NULL)
@@ -115,7 +115,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 			// FIXME: path/filename joining needs to be more flexible
 			sprintf(path, "%s/%s", worlddir, ent->d_name);
 
-			unsigned char* regionimage = render_region_blockmap(path, colours, alpha);
+			unsigned char* regionimage = render_region_blockmap(path, colours, night);
 
 			int rxoffset = (rx == rxmin ? margins[3] : 0);
 			int rwidth = REGION_BLOCK_WIDTH - rxoffset - (rx == rxmax ? margins[1] : 0);
@@ -138,7 +138,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 	}
 	closedir(dir);
 
-	printf("Encoding image...\n");
+	printf("Encoding image to %s ...\n", imagefile);
 	lodepng_encode32_file(imagefile, worldimage, w, h);
 	free(worldimage);
 }

@@ -43,7 +43,7 @@ void get_region_margins(const char* regionfile, int* margins)
 
 
 unsigned char* render_region_blockmap(const char* regionfile, const colour* colours,
-		const char alpha)
+		const char night)
 {
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
@@ -89,7 +89,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 
 			//puts(nbt_dump_ascii(chunk));
 
-			unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, alpha);
+			unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, night);
 			nbt_free(chunk);
 
 			for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
@@ -110,10 +110,10 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 }
 
 
-void save_region_blockmap(const char* regionfile, const char* imagefile,
-		const colour* colours, const char alpha)
+void save_region_blockmap(const char* regionfile, const char* imagefile, const colour* colours,
+		const char night)
 {
-	unsigned char* regionimage = render_region_blockmap(regionfile, colours, alpha);
+	unsigned char* regionimage = render_region_blockmap(regionfile, colours, night);
 	lodepng_encode32_file(imagefile, regionimage, REGION_BLOCK_WIDTH, REGION_BLOCK_WIDTH);
 	free(regionimage);
 }

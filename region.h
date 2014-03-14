@@ -10,6 +10,6 @@
 
 void get_region_margins(const char* regionfile, int* margins);
 unsigned char* render_region_blockmap(const char* regionfile, const colour* colours,
-		const char alpha);
+		const char night);
 void save_region_blockmap(const char* regionfile, const char* imagefile, const colour* colours,
-		const char alpha);
+		const char night);
