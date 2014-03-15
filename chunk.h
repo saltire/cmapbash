@@ -14,6 +14,9 @@
 #define CHUNK_BLOCK_VOLUME CHUNK_BLOCK_HEIGHT * CHUNK_BLOCK_AREA
 
 
+void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
+		unsigned char* blight);
+
 unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char night);
 void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
 		const char night);
