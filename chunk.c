@@ -7,7 +7,7 @@
 #include "colours.h"
 
 
-void copy_section_byte_data(nbt_node* section, char* name, unsigned char* data, int8_t y)
+static void copy_section_byte_data(nbt_node* section, char* name, unsigned char* data, int8_t y)
 {
 	nbt_node* array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
@@ -20,7 +20,8 @@ void copy_section_byte_data(nbt_node* section, char* name, unsigned char* data, 
 }
 
 
-void copy_section_half_byte_data(nbt_node* section, char* name, unsigned char* data, int8_t y)
+static void copy_section_half_byte_data(nbt_node* section, char* name, unsigned char* data,
+		int8_t y)
 {
 	nbt_node* array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
@@ -37,7 +38,7 @@ void copy_section_half_byte_data(nbt_node* section, char* name, unsigned char* d
 }
 
 
-void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
+static void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
 		unsigned char* blight)
 {
 	nbt_node* sections = nbt_find_by_name(chunk, "Sections");
@@ -68,8 +69,8 @@ void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* 
 }
 
 
-void get_block_colour_at_height(unsigned char* pixel, unsigned char* blocks, unsigned char* data,
-		const colour* colours, int b, int y)
+static void get_block_colour_at_height(unsigned char* pixel, unsigned char* blocks,
+		unsigned char* data, const colour* colours, int b, int y)
 {
 	// copy the block colour into the pixel buffer
 	unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
@@ -89,7 +90,7 @@ void get_block_colour_at_height(unsigned char* pixel, unsigned char* blocks, uns
 }
 
 
-void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char* data,
+static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char* data,
 		unsigned char* blight, const colour* colours, int b)
 {
 	for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
@@ -134,11 +135,69 @@ unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours, con
 }
 
 
-void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
-		const char night)
+unsigned char* render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const char night)
 {
-	unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, night);
-	lodepng_encode32_file(imagefile, chunkimage, CHUNK_BLOCK_WIDTH, CHUNK_BLOCK_WIDTH);
+	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+	unsigned char* blight = NULL;
+	if (night)
+	{
+		blight = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+	}
+	get_chunk_blockdata(chunk, blocks, data, blight);
+
+	//printf("Rendering isometric image, %d x %d\n", ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT);
+	unsigned char* image = (unsigned char*)calloc(
+			ISO_CHUNK_WIDTH * ISO_CHUNK_HEIGHT * CHANNELS, sizeof(char));
+
+	for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
+	{
+		for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
+		{
+			for (int bx = CHUNK_BLOCK_WIDTH - 1; bx >= 0; bx--)
+			{
+				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_WIDTH + bx;
+				unsigned char blockid = blocks[b];
+				unsigned char type = data[b] % colours[blockid].mask;
+
+				unsigned char colour[CHANNELS];
+				memcpy(&colour, &colours[blockid].types[type * CHANNELS], CHANNELS);
+				adjust_colour_by_height(colour, by);
+				if (blight != NULL)
+				{
+					adjust_colour_by_lum(colour, blight[b]);
+				}
+
+				int px = (bx + bz) * ISO_BLOCK_WIDTH / 2;
+				int py = (CHUNK_BLOCK_WIDTH - bx + bz - 1) * ISO_BLOCK_STEP
+						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_HEIGHT;
+				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
+				for (int y = py; y < py + ISO_BLOCK_HEIGHT; y++)
+				{
+					for (int x = px; x < px + ISO_BLOCK_WIDTH; x++)
+					{
+						combine_alpha(colour, &image[(y * ISO_CHUNK_WIDTH + x) * CHANNELS], 1);
+					}
+				}
+			}
+		}
+	}
+	free(blocks);
+	free(data);
+	free(blight);
+	return image;
+}
+
+
+void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
+		const char night, const char isometric)
+{
+	int w = isometric ? ISO_CHUNK_WIDTH : CHUNK_BLOCK_WIDTH;
+	int h = isometric ? ISO_CHUNK_HEIGHT : CHUNK_BLOCK_WIDTH;
+	unsigned char* chunkimage = isometric
+			? render_chunk_iso_blockmap(chunk, colours, night)
+			: render_chunk_blockmap(chunk, colours, night);
+	lodepng_encode32_file(imagefile, chunkimage, w, h);
 	free(chunkimage);
 }
 
