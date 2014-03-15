@@ -5,7 +5,7 @@
 #include "nbt.h"
 
 #include "colours.h"
-#include "region.h"
+#include "world.h"
 
 
 int main(int argc, char **argv)
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
 	colour* colours = read_colours("colours.csv");
 
-	save_region_blockmap(inpath, outpath, colours, night, isometric);
+	save_world_blockmap(inpath, outpath, colours, night, isometric);
 
 	free(colours);
 

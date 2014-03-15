@@ -10,55 +10,59 @@
 #include "region.h"
 
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
-		const char night)
+typedef struct world {
+	int rcount;
+	int rxmin, rxmax, rzmin, rzmax;
+	int margins[4];
+} world;
+
+
+static world measure_world(const char* worlddir)
 {
+	world world;
+	world.rcount = 0;
+
 	DIR* dir = opendir(worlddir);
 	if (dir == NULL)
 	{
 		printf("Error %d reading region directory: %s\n", errno, worlddir);
-		return;
+		return world;
 	}
 
 	// list directory to find the number of region files, and image dimensions
-	int rcount = 0;
-	int rx, rz, rxmin, rxmax, rzmin, rzmax;
 	struct dirent* ent;
+	int rx, rz, length;
 	char ext[4]; // three-char extension + null char
-	int length; // check filename length to prevent matching filenames with trailing characters
+	char path[255];
 	while ((ent = readdir(dir)) != NULL)
 	{
+		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			if (!rcount)
+			sprintf(path, "%s/%s", worlddir, ent->d_name);
+			if (!world.rcount)
 			{
-				rxmin = rxmax = rx;
-				rzmin = rzmax = rz;
+				world.rxmin = world.rxmax = rx;
+				world.rzmin = world.rzmax = rz;
 			}
 			else
 			{
-				rxmin = rx < rxmin ? rx : rxmin;
-				rxmax = rx > rxmax ? rx : rxmax;
-				rzmin = rz < rzmin ? rz : rzmin;
-				rzmax = rz > rzmax ? rz : rzmax;
+				if (rx < world.rxmin) world.rxmin = rx;
+				if (rx > world.rxmax) world.rxmax = rx;
+				if (rz < world.rzmin) world.rzmin = rz;
+				if (rz > world.rzmax) world.rzmax = rz;
 			}
-			rcount++;
+			world.rcount++;
 		}
 	}
-	if (rcount == 0)
-	{
-		printf("No regions found in directory: %s\n", worlddir);
-		return;
-	}
+	if (!world.rcount) return world;
 
-	char path[255];
-
-	int margins[4];
+	// initialize margins to maximum, and decrease them as regions are parsed
 	int rmargins[4];
 	for (int i = 0; i < 4; i++)
 	{
-		margins[i] = REGION_BLOCK_WIDTH;
+		world.margins[i] = REGION_BLOCK_WIDTH;
 	}
 
 	rewinddir(dir);
@@ -68,7 +72,7 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
 			// check margins if this region is on the edge of the map
-			if (rx == rxmin || rx == rxmax || rz == rzmin || rz == rzmax)
+			if (rx == world.rxmin || rx == world.rxmax || rz == world.rzmin || rz == world.rzmax)
 			{
 				sprintf(path, "%s/%s", worlddir, ent->d_name);
 				get_region_margins(path, rmargins);
@@ -76,34 +80,63 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 				//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
 				// use margins for the specific edge(s) that this region touches
-				if (rz == rzmin) // north
+				if (rz == world.rzmin && rmargins[0] < world.margins[0]) // north
 				{
-					margins[0] = rmargins[0] < margins[0] ? rmargins[0] : margins[0];
+					world.margins[0] = rmargins[0];
 				}
-				if (rx == rxmax) // east
+				if (rx == world.rxmax && rmargins[1] < world.margins[1]) // east
 				{
-					margins[1] = rmargins[1] < margins[1] ? rmargins[1] : margins[1];
+					world.margins[1] = rmargins[1];
 				}
-				if (rz == rzmax) // south
+				if (rz == world.rzmax && rmargins[2] < world.margins[2]) // south
 				{
-					margins[2] = rmargins[2] < margins[2] ? rmargins[2] : margins[2];
+					world.margins[2] = rmargins[2];
 				}
-				if (rx == rxmin) // west
+				if (rx == world.rxmin && rmargins[3] < world.margins[3]) // west
 				{
-					margins[3] = rmargins[3] < margins[3] ? rmargins[3] : margins[3];
+					world.margins[3] = rmargins[3];
 				}
 			}
 		}
 	}
-	//printf("Margins: N %d, E %d, S %d, W %d\n", margins[0], margins[1], margins[2], margins[3]);
+	//printf("Margins: N %d, E %d, S %d, W %d\n",
+	//		world.margins[0], world.margins[1], world.margins[2], world.margins[3]);
 
-	int w = (rxmax - rxmin + 1) * REGION_BLOCK_WIDTH - margins[1] - margins[3];
-	int h = (rzmax - rzmin + 1) * REGION_BLOCK_WIDTH - margins[0] - margins[2];
-	printf("Read %d regions. Image dimensions: %d x %d\n", rcount, w, h);
+	closedir(dir);
+
+	return world;
+}
+
+
+void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
+		const char night, const char isometric)
+{
+	world world = measure_world(worlddir);
+	if (!world.rcount)
+	{
+		printf("No regions found in directory: %s\n", worlddir);
+		return;
+	}
+
+	int w = (world.rxmax - world.rxmin + 1) * REGION_BLOCK_WIDTH
+			- world.margins[1] - world.margins[3];
+	int h = (world.rzmax - world.rzmin + 1) * REGION_BLOCK_WIDTH
+			- world.margins[0] - world.margins[2];
+	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, w, h);
 	unsigned char* worldimage = (unsigned char*)malloc(w * h * CHANNELS);
 
+	DIR* dir = opendir(worlddir);
+	if (dir == NULL)
+	{
+		printf("Error %d reading region directory: %s\n", errno, worlddir);
+		return;
+	}
 	// create an array of region files and
+	struct dirent* ent;
+	int rx, rz, length;
+	char ext[4]; // three-char extension + null char
 	rewinddir(dir);
+	char path[255];
 	int rc = 0;
 	while ((ent = readdir(dir)) != NULL)
 	{
@@ -113,35 +146,34 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 			// TODO: add support for .mcr files
 
 			rc++;
-			printf("Rendering region %d/%d at %d, %d\n", rc, rcount, rx, rz);
+			printf("Rendering region %d/%d at %d, %d\n", rc, world.rcount, rx, rz);
 
 			// FIXME: path/filename joining needs to be more flexible
 			sprintf(path, "%s/%s", worlddir, ent->d_name);
 
 			unsigned char* regionimage = render_region_blockmap(path, colours, night);
 
-			int rxoffset = (rx == rxmin ? margins[3] : 0);
-			int rwidth = REGION_BLOCK_WIDTH - rxoffset - (rx == rxmax ? margins[1] : 0);
+			int rxoffset = (rx == world.rxmin ? world.margins[3] : 0);
+			int rpx = (rx - world.rxmin) * REGION_BLOCK_WIDTH - world.margins[3] + rxoffset;
+			int rw = REGION_BLOCK_WIDTH - rxoffset - (rx == world.rxmax ? world.margins[1] : 0);
 
-			int rzoffset = (rz == rzmin ? margins[0] : 0);
-			int rheight = REGION_BLOCK_WIDTH - rzoffset - (rz == rzmax ? margins[2] : 0);
+			int rzoffset = (rz == world.rzmin ? world.margins[0] : 0);
+			int rpz = (rz - world.rzmin) * REGION_BLOCK_WIDTH - world.margins[0] + rzoffset;
+			int rh = REGION_BLOCK_WIDTH - rzoffset - (rz == world.rzmax ? world.margins[2] : 0);
 
-			for (int z = 0; z < rheight; z++)
+			for (int z = 0; z < rh; z++)
 			{
 				// copy a line of pixel data from the region image to the world image
-				int woffset = ((rz - rzmin) * REGION_BLOCK_WIDTH - margins[0] + rzoffset + z) * w
-						+ (rx - rxmin) * REGION_BLOCK_WIDTH - margins[3] + rxoffset;
-				int roffset = (rzoffset + z) * REGION_BLOCK_WIDTH + rxoffset;
-				memcpy(&worldimage[woffset * CHANNELS],
-						&regionimage[roffset * CHANNELS],
-						rwidth * CHANNELS);
+				memcpy(&worldimage[((rpz + z) * w + rpx) * CHANNELS],
+						&regionimage[((rzoffset + z) * REGION_BLOCK_WIDTH + rxoffset) * CHANNELS],
+						rw * CHANNELS);
 			}
 			free(regionimage);
 		}
 	}
 	closedir(dir);
 
-	printf("Encoding image to %s ...\n", imagefile);
+	printf("Saving image to %s ...\n", imagefile);
 	lodepng_encode32_file(imagefile, worldimage, w, h);
 	free(worldimage);
 }
