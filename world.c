@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "world.h"
+#include "lodepng.h"
+
+#include "colours.h"
+#include "region.h"
 
 
 void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,

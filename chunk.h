@@ -1,6 +1,8 @@
-#include "nbt.h"
+#ifndef CHUNK_H
+#define CHUNK_H
 
-#include "lodepng.h"
+
+#include "nbt.h"
 
 #include "colours.h"
 
@@ -24,3 +26,6 @@ void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* c
 unsigned char* get_chunk_heightmap(nbt_node* chunk);
 unsigned char* render_chunk_heightmap(nbt_node* chunk);
 void save_chunk_heightmap(nbt_node* chunk, const char* imagefile);
+
+
+#endif

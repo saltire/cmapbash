@@ -59,7 +59,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 		offset[c] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 	}
 
-	unsigned char* regionimage = (unsigned char*)calloc(REGION_BLOCK_AREA * 4, sizeof(char));
+	unsigned char* regionimage = (unsigned char*)calloc(REGION_BLOCK_AREA * CHANNELS, sizeof(char));
 
 	for (int cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
 	{
@@ -86,8 +86,6 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 				return 0;
 			}
 			free(cdata);
-
-			//puts(nbt_dump_ascii(chunk));
 
 			unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, night);
 			nbt_free(chunk);

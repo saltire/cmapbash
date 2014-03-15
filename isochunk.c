@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "colours.h"
 #include "isochunk.h"
 
 
@@ -14,9 +15,9 @@ unsigned char* render_iso_chunk_blockmap(nbt_node* chunk, const colour* colours,
 	}
 	get_chunk_blockdata(chunk, blocks, data, blight);
 
-	printf("Rendering isometric image, %d x %d\n", ISO_IMAGE_WIDTH, ISO_IMAGE_HEIGHT);
+	//printf("Rendering isometric image, %d x %d\n", ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT);
 	unsigned char* image = (unsigned char*)calloc(
-			ISO_IMAGE_WIDTH * ISO_IMAGE_HEIGHT * CHANNELS, sizeof(char));
+			ISO_CHUNK_WIDTH * ISO_CHUNK_HEIGHT * CHANNELS, sizeof(char));
 
 	for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
 	{
@@ -27,8 +28,9 @@ unsigned char* render_iso_chunk_blockmap(nbt_node* chunk, const colour* colours,
 				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_WIDTH + bx;
 				unsigned char blockid = blocks[b];
 				unsigned char type = data[b] % colours[blockid].mask;
-				unsigned char* colour = (unsigned char*)malloc(CHANNELS);
-				memcpy(colour, &colours[blockid].types[type * CHANNELS], CHANNELS);
+
+				unsigned char colour[CHANNELS];
+				memcpy(&colour, &colours[blockid].types[type * CHANNELS], CHANNELS);
 				adjust_colour_by_height(colour, by);
 				if (blight != NULL)
 				{
@@ -43,7 +45,7 @@ unsigned char* render_iso_chunk_blockmap(nbt_node* chunk, const colour* colours,
 				{
 					for (int x = px; x < px + ISO_BLOCK_WIDTH; x++)
 					{
-						combine_alpha(colour, &image[(y * ISO_IMAGE_WIDTH + x) * CHANNELS], 1);
+						combine_alpha(colour, &image[(y * ISO_CHUNK_WIDTH + x) * CHANNELS], 1);
 					}
 				}
 			}
@@ -60,7 +62,7 @@ void save_iso_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colou
 		const char night)
 {
 	unsigned char* chunkimage = render_iso_chunk_blockmap(chunk, colours, night);
-	printf("Saving to %s\n", imagefile);
-	lodepng_encode32_file(imagefile, chunkimage, ISO_IMAGE_WIDTH, ISO_IMAGE_HEIGHT);
+	printf("Saving image to %s...\n", imagefile);
+	lodepng_encode32_file(imagefile, chunkimage, ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT);
 	free(chunkimage);
 }

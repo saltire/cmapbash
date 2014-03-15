@@ -3,8 +3,7 @@
 
 #include "nbt.h"
 
-//#include "world.h"
-#include "isochunk.h"
+#include "isoregion.h"
 
 
 int main(int argc, char **argv)
@@ -39,16 +38,7 @@ int main(int argc, char **argv)
 
 	colour* colours = read_colours("colours.csv");
 
-	//save_world_blockmap(regiondir, outfile, colours, night);
-
-	nbt_node* chunk = nbt_parse_path(inpath);
-	if (errno != NBT_OK)
-	{
-		printf("Error %d reading NBT file: %s\n", errno, inpath);
-		return 0;
-	}
-	save_iso_chunk_blockmap(chunk, outpath, colours, night);
-	nbt_free(chunk);
+	save_iso_region_blockmap(inpath, outpath, colours, night);
 
 	free(colours);
 

@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "lodepng.h"
+
 #include "chunk.h"
+#include "colours.h"
 
 
 void copy_section_byte_data(nbt_node* section, char* name, unsigned char* data, int8_t y)

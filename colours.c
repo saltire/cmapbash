@@ -90,8 +90,22 @@ void adjust_colour_by_height(unsigned char* pixel, int y)
 
 void combine_alpha(unsigned char* top, unsigned char* bottom, int down)
 {
-	if (!down && (top[ALPHA] == 255 || bottom[ALPHA] == 0)) return;
-	if (down && top[ALPHA] == 0) return;
+	if (top[ALPHA] == 255 || bottom[ALPHA] == 0)
+	{
+		if (down && top[ALPHA] > 0)
+		{
+			memcpy(bottom, top, CHANNELS);
+		}
+		return;
+	}
+	if (top[ALPHA] == 0)
+	{
+		if (!down && bottom[ALPHA] > 0)
+		{
+			memcpy(top, bottom, CHANNELS);
+		}
+		return;
+	}
 
 	float bmod = (float)(255 - top[ALPHA]) / 255;
 	unsigned char alpha = top[ALPHA] + bottom[ALPHA] * bmod;
