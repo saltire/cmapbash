@@ -26,19 +26,24 @@ unsigned char* render_iso_chunk_blockmap(nbt_node* chunk, const colour* colours,
 			{
 				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_WIDTH + bx;
 				unsigned char blockid = blocks[b];
-				//unsigned char type = data[b] % colours[blockid].mask;
-				unsigned char type = 0;
+				unsigned char type = data[b] % colours[blockid].mask;
+				unsigned char* colour = (unsigned char*)malloc(CHANNELS);
+				memcpy(colour, &colours[blockid].types[type * CHANNELS], CHANNELS);
+				adjust_colour_by_height(colour, by);
+				if (blight != NULL)
+				{
+					adjust_colour_by_lum(colour, blight[b]);
+				}
 
 				int px = (bx + bz) * ISO_BLOCK_WIDTH / 2;
 				int py = (CHUNK_BLOCK_WIDTH - bx + bz - 1) * ISO_BLOCK_STEP
-						+ (CHUNK_BLOCK_HEIGHT - by) * ISO_BLOCK_HEIGHT;
+						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_HEIGHT;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
 				for (int y = py; y < py + ISO_BLOCK_HEIGHT; y++)
 				{
 					for (int x = px; x < px + ISO_BLOCK_WIDTH; x++)
 					{
-						memcpy(&image[(y * ISO_IMAGE_WIDTH + x) * CHANNELS],
-								&colours[blockid].types[type * CHANNELS], CHANNELS);
+						combine_alpha(colour, &image[(y * ISO_IMAGE_WIDTH + x) * CHANNELS], 1);
 					}
 				}
 			}
@@ -50,10 +55,12 @@ unsigned char* render_iso_chunk_blockmap(nbt_node* chunk, const colour* colours,
 	return image;
 }
 
+
 void save_iso_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
 		const char night)
 {
 	unsigned char* chunkimage = render_iso_chunk_blockmap(chunk, colours, night);
+	printf("Saving to %s\n", imagefile);
 	lodepng_encode32_file(imagefile, chunkimage, ISO_IMAGE_WIDTH, ISO_IMAGE_HEIGHT);
 	free(chunkimage);
 }

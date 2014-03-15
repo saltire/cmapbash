@@ -10,3 +10,7 @@ typedef struct colour {
 
 
 colour* read_colours(const char* filename);
+
+void adjust_colour_by_lum(unsigned char* pixel, unsigned char light);
+void adjust_colour_by_height(unsigned char* pixel, int y);
+void combine_alpha(unsigned char* top, unsigned char* bottom, int down);
