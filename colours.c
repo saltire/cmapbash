@@ -56,6 +56,7 @@ colour* read_colours(const char* colourfile)
 
 void adjust_colour_by_lum(unsigned char* pixel, unsigned char light)
 {
+	if (pixel[ALPHA] == 0) return;
 	for (int c = 0; c < ALPHA; c++)
 	{
 		float darkness = 0.2;
@@ -69,6 +70,7 @@ void adjust_colour_by_lum(unsigned char* pixel, unsigned char light)
 
 void adjust_colour_by_height(unsigned char* pixel, int y)
 {
+	if (pixel[ALPHA] == 0) return;
 	for (int c = 0; c < ALPHA; c++)
 	{
 		// linear height shader

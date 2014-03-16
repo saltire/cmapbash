@@ -158,6 +158,8 @@ unsigned char* render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours,
 			{
 				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_WIDTH + bx;
 				unsigned char blockid = blocks[b];
+				if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
+
 				unsigned char type = data[b] % colours[blockid].mask;
 
 				unsigned char colour[CHANNELS];
@@ -197,6 +199,8 @@ void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* c
 	unsigned char* chunkimage = isometric
 			? render_chunk_iso_blockmap(chunk, colours, night)
 			: render_chunk_blockmap(chunk, colours, night);
+
+	printf("Saving image to %s ...\n", imagefile);
 	lodepng_encode32_file(imagefile, chunkimage, w, h);
 	free(chunkimage);
 }

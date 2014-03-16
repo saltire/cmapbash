@@ -11,15 +11,17 @@
 
 
 typedef struct world {
-	int rcount;
-	int rxmin, rxmax, rzmin, rzmax;
+	const char* dir;
+	int rcount, rxmin, rxmax, rzmin, rzmax, rxsize, rzsize;
 	int margins[4];
+	int* regions;
 } world;
 
 
 static world measure_world(const char* worlddir)
 {
 	world world;
+	world.dir = worlddir;
 	world.rcount = 0;
 
 	DIR* dir = opendir(worlddir);
@@ -40,6 +42,7 @@ static world measure_world(const char* worlddir)
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
+			// FIXME: path/filename joining needs to be more flexible
 			sprintf(path, "%s/%s", worlddir, ent->d_name);
 			if (!world.rcount)
 			{
@@ -58,6 +61,12 @@ static world measure_world(const char* worlddir)
 	}
 	if (!world.rcount) return world;
 
+	world.rxsize = (world.rxmax - world.rxmin + 1);
+	world.rzsize = (world.rzmax - world.rzmin + 1);
+
+	// be sure to free this pointer later
+	world.regions = (int*)malloc(world.rcount * sizeof(int) * 2);
+
 	// initialize margins to maximum, and decrease them as regions are parsed
 	int rmargins[4];
 	for (int i = 0; i < 4; i++)
@@ -66,11 +75,16 @@ static world measure_world(const char* worlddir)
 	}
 
 	rewinddir(dir);
+	int rc = 0;
 	while ((ent = readdir(dir)) != NULL)
 	{
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
+			world.regions[rc * 2] = rx;
+			world.regions[rc * 2 + 1] = rz;
+			rc++;
+
 			// check margins if this region is on the edge of the map
 			if (rx == world.rxmin || rx == world.rxmax || rz == world.rzmin || rz == world.rzmax)
 			{
@@ -108,28 +122,19 @@ static world measure_world(const char* worlddir)
 }
 
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
-		const char night, const char isometric)
+unsigned char* render_world_blockmap(world world, const colour* colours,
+		const char night)
 {
-	world world = measure_world(worlddir);
-	if (!world.rcount)
-	{
-		printf("No regions found in directory: %s\n", worlddir);
-		return;
-	}
-
-	int w = (world.rxmax - world.rxmin + 1) * REGION_BLOCK_WIDTH
-			- world.margins[1] - world.margins[3];
-	int h = (world.rzmax - world.rzmin + 1) * REGION_BLOCK_WIDTH
-			- world.margins[0] - world.margins[2];
+	int w = world.rxsize * REGION_BLOCK_WIDTH - world.margins[1] - world.margins[3];
+	int h = world.rzsize * REGION_BLOCK_WIDTH - world.margins[0] - world.margins[2];
 	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, w, h);
-	unsigned char* worldimage = (unsigned char*)malloc(w * h * CHANNELS);
+	unsigned char* worldimage = (unsigned char*)calloc(w * h * CHANNELS, sizeof(char));
 
-	DIR* dir = opendir(worlddir);
+	DIR* dir = opendir(world.dir);
 	if (dir == NULL)
 	{
-		printf("Error %d reading region directory: %s\n", errno, worlddir);
-		return;
+		printf("Error %d reading region directory: %s\n", errno, world.dir);
+		return NULL;
 	}
 	// create an array of region files and
 	struct dirent* ent;
@@ -143,14 +148,10 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			// TODO: add support for .mcr files
-
 			rc++;
 			printf("Rendering region %d/%d at %d, %d\n", rc, world.rcount, rx, rz);
 
-			// FIXME: path/filename joining needs to be more flexible
-			sprintf(path, "%s/%s", worlddir, ent->d_name);
-
+			sprintf(path, "%s/%s", world.dir, ent->d_name);
 			unsigned char* regionimage = render_region_blockmap(path, colours, night);
 
 			int rxoffset = (rx == world.rxmin ? world.margins[3] : 0);
@@ -171,7 +172,109 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 			free(regionimage);
 		}
 	}
+
 	closedir(dir);
+	return worldimage;
+}
+
+
+unsigned char* render_world_iso_blockmap(world world, const colour* colours,
+		const char night)
+{
+	unsigned int side = (world.rxmax - world.rxmin + world.rzmax - world.rzmin + 2) / 2;
+	unsigned int w = side * ISO_REGION_WIDTH;
+	unsigned int h = side * (REGION_BLOCK_WIDTH - 1) * 2 * ISO_BLOCK_STEP
+			+ ISO_BLOCK_HEIGHT * CHUNK_BLOCK_HEIGHT;
+
+	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, w, h);
+	unsigned char* worldimage = (unsigned char*)calloc(w * h * CHANNELS, sizeof(char));
+
+	DIR* dir = opendir(world.dir);
+	if (dir == NULL)
+	{
+		printf("Error %d reading region directory: %s\n", errno, world.dir);
+		return NULL;
+	}
+	// create an array of region files and
+	struct dirent* ent;
+	int rx, rz, length;
+	char ext[4]; // three-char extension + null char
+	rewinddir(dir);
+	char path[255];
+	int rc = 0;
+
+	// we need to render the regions in a certain order
+	for (rz = world.rzmin; rz <= world.rzmax; rz++)
+	{
+		for (rx = world.rxmax; rx >= world.rxmin; rx--)
+		{
+			// only read the region if we know it exists
+			int exists = 0;
+			for (int i = 0; i < world.rcount; i++)
+			{
+				if (world.regions[i * 2] == rx && world.regions[i * 2 + 1] == rz)
+				{
+					exists = 1;
+					break;
+				}
+			}
+			if (!exists) continue;
+
+			rc++;
+
+			int rwx = (rx - world.rxmin);
+			int rwz = (rz - world.rzmin);
+			int rpx = (rwx + rwz) * ISO_REGION_WIDTH / 2;
+			int rpy = (world.rxsize - rwx + rwz - 1) * REGION_BLOCK_WIDTH * ISO_BLOCK_STEP;
+			printf("Rendering region %d/%d (%d,%d) at pixel %d,%d\n",
+					rc, world.rcount, rx, rz, rpx, rpy);
+
+			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
+			unsigned char* regionimage = render_region_iso_blockmap(path, colours, night);
+
+			for (int py = 0; py < ISO_REGION_HEIGHT; py++)
+			{
+				for (int px = 0; px < ISO_REGION_WIDTH; px++)
+				{
+					combine_alpha(&regionimage[(py * ISO_REGION_WIDTH + px) * CHANNELS],
+							&worldimage[((rpy + py) * w + rpx + px) * CHANNELS], 1);
+				}
+			}
+			free(regionimage);
+		}
+	}
+
+	closedir(dir);
+	return worldimage;
+}
+
+
+void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
+		const char night, const char isometric)
+{
+	world world = measure_world(worlddir);
+	if (!world.rcount)
+	{
+		printf("No regions found in directory: %s\n", worlddir);
+		return;
+	}
+
+	unsigned int w, h;
+	unsigned char* worldimage;
+	if (isometric)
+	{
+		unsigned int side = (world.rxmax - world.rxmin + world.rzmax - world.rzmin + 2) / 2;
+		w = side * ISO_REGION_WIDTH;
+		h = side * (REGION_BLOCK_WIDTH - 1) * 2 * ISO_BLOCK_STEP
+				+ ISO_BLOCK_HEIGHT * CHUNK_BLOCK_HEIGHT;
+		worldimage = render_world_iso_blockmap(world, colours, night);
+	}
+	else
+	{
+		w = h = REGION_BLOCK_WIDTH;
+		worldimage = render_world_blockmap(world, colours, night);
+	}
+	if (worldimage == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);
 	lodepng_encode32_file(imagefile, worldimage, w, h);

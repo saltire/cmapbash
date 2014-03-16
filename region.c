@@ -85,6 +85,7 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 	if (region == NULL)
 	{
 		printf("Error %d reading region file: %s\n", errno, regionfile);
+		return NULL;
 	}
 
 	unsigned int offsets[REGION_CHUNK_AREA];
@@ -131,12 +132,13 @@ unsigned char* render_region_iso_blockmap(const char* regionfile, const colour* 
 	if (region == NULL)
 	{
 		printf("Error %d reading region file: %s\n", errno, regionfile);
+		return NULL;
 	}
 
 	unsigned int offsets[REGION_CHUNK_AREA];
 	read_offsets(region, offsets);
 
-	printf("Rendering isometric image, %d x %d\n", ISO_REGION_WIDTH, ISO_REGION_HEIGHT);
+	//printf("Rendering isometric image, %d x %d\n", ISO_REGION_WIDTH, ISO_REGION_HEIGHT);
 	unsigned char* regionimage = (unsigned char*)calloc(
 			ISO_REGION_WIDTH * ISO_REGION_HEIGHT * CHANNELS, sizeof(char));
 
@@ -183,6 +185,9 @@ void save_region_blockmap(const char* regionfile, const char* imagefile, const c
 	unsigned char* regionimage = isometric
 			? render_region_iso_blockmap(regionfile, colours, night)
 			: render_region_blockmap(regionfile, colours, night);
+	if (regionimage == NULL) return;
+
+	printf("Saving image to %s ...\n", imagefile);
 	lodepng_encode32_file(imagefile, regionimage, w, h);
 	free(regionimage);
 }
