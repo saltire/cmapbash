@@ -18,24 +18,24 @@ void get_region_margins(const char* regionfile, int* margins)
 
 	for (int i = 0; i < 4; i++)
 	{
-		margins[i] = REGION_BLOCK_WIDTH;
+		margins[i] = REGION_BLOCK_LENGTH;
 	}
 
 	unsigned char buffer[4];
 	unsigned int offset;
-	for (int z = 0; z < REGION_BLOCK_WIDTH; z += CHUNK_BLOCK_WIDTH)
+	for (int z = 0; z < REGION_BLOCK_LENGTH; z += CHUNK_BLOCK_LENGTH)
 	{
-		for (int x = 0; x < REGION_BLOCK_WIDTH; x += CHUNK_BLOCK_WIDTH)
+		for (int x = 0; x < REGION_BLOCK_LENGTH; x += CHUNK_BLOCK_LENGTH)
 		{
 			fread(buffer, 1, 4, region);
 			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 			if (offset > 0)
 			{
 				margins[0] = z < margins[0] ? z : margins[0]; // north
-				margins[1] = (REGION_BLOCK_WIDTH - x - CHUNK_BLOCK_WIDTH) < margins[1] ?
-						(REGION_BLOCK_WIDTH - x - CHUNK_BLOCK_WIDTH) : margins[1]; // east
-				margins[2] = (REGION_BLOCK_WIDTH - z - CHUNK_BLOCK_WIDTH) < margins[2] ?
-						(REGION_BLOCK_WIDTH - z - CHUNK_BLOCK_WIDTH) : margins[2]; // south
+				margins[1] = (REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH) < margins[1] ?
+						(REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH) : margins[1]; // east
+				margins[2] = (REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH) < margins[2] ?
+						(REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH) : margins[2]; // south
 				margins[3] = x < margins[3] ? x : margins[3]; // west
 			}
 		}
@@ -90,20 +90,18 @@ image render_region_blockmap(const char* regionfile, const colour* colours,
 		return rimage;
 	}
 
-	rimage.width = REGION_BLOCK_WIDTH;
-	rimage.height = REGION_BLOCK_WIDTH;
+	rimage.width = REGION_BLOCK_LENGTH;
+	rimage.height = REGION_BLOCK_LENGTH;
 	rimage.data = (unsigned char*)calloc(REGION_BLOCK_AREA * CHANNELS, sizeof(char));
-	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
-
 
 	unsigned int offsets[REGION_CHUNK_AREA];
 	read_chunk_offsets(region, offsets);
 
-	for (int cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
+	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
-		for (int cx = 0; cx < REGION_CHUNK_WIDTH; cx++)
+		for (int cx = 0; cx < REGION_CHUNK_LENGTH; cx++)
 		{
-			int c = cz * REGION_CHUNK_WIDTH + cx;
+			int c = cz * REGION_CHUNK_LENGTH + cx;
 			if (offsets[c] == 0) continue;
 
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
@@ -114,14 +112,14 @@ image render_region_blockmap(const char* regionfile, const colour* colours,
 			image cimage = render_chunk_blockmap(chunk, colours, night);
 			nbt_free(chunk);
 
-			for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
+			for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
 			{
 				// copy a line of pixel data from the chunk image to the region image
-				int offset = (cz * CHUNK_BLOCK_WIDTH + bz) * rimage.width
-						+ cx * CHUNK_BLOCK_WIDTH;
+				int offset = (cz * CHUNK_BLOCK_LENGTH + bz) * rimage.width
+						+ cx * CHUNK_BLOCK_LENGTH;
 				memcpy(&rimage.data[offset * CHANNELS],
-						&cimage.data[bz * CHUNK_BLOCK_WIDTH * CHANNELS],
-						CHUNK_BLOCK_WIDTH * CHANNELS);
+						&cimage.data[bz * CHUNK_BLOCK_LENGTH * CHANNELS],
+						CHUNK_BLOCK_LENGTH * CHANNELS);
 			}
 			free(cimage.data);
 		}
@@ -150,15 +148,14 @@ image render_region_iso_blockmap(const char* regionfile, const colour* colours,
 
 	rimage.width = ISO_REGION_WIDTH;
 	rimage.height = ISO_REGION_HEIGHT;
-	rimage.data = (unsigned char*)calloc(
-			ISO_REGION_WIDTH * ISO_REGION_HEIGHT * CHANNELS, sizeof(char));
+	rimage.data = (unsigned char*)calloc(rimage.width * rimage.height * CHANNELS, sizeof(char));
 	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
 
-	for (int cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
+	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
-		for (int cx = REGION_CHUNK_WIDTH - 1; cx >= 0; cx--)
+		for (int cx = REGION_CHUNK_LENGTH - 1; cx >= 0; cx--)
 		{
-			int c = cz * REGION_CHUNK_WIDTH + cx;
+			int c = cz * REGION_CHUNK_LENGTH + cx;
 			if (offsets[c] == 0) continue;
 
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
@@ -170,7 +167,7 @@ image render_region_iso_blockmap(const char* regionfile, const colour* colours,
 			nbt_free(chunk);
 
 			int cpx = (cx + cz) * ISO_CHUNK_WIDTH / 2;
-			int cpy = (REGION_CHUNK_WIDTH - cx + cz - 1) * CHUNK_BLOCK_WIDTH * ISO_BLOCK_STEP;
+			int cpy = (REGION_CHUNK_LENGTH - cx + cz - 1) * CHUNK_BLOCK_LENGTH * ISO_BLOCK_STEP;
 			//printf("Writing chunk %d,%d to pixel %d,%d\n", cx, cz, cpx, cpy);
 
 			for (int py = 0; py < ISO_CHUNK_HEIGHT; py++)

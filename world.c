@@ -16,7 +16,7 @@ static void get_world_margins(world world, int* margins)
 	// initialize margins to maximum, and decrease them as regions are parsed
 	for (int i = 0; i < 4; i++)
 	{
-		margins[i] = REGION_BLOCK_WIDTH;
+		margins[i] = REGION_BLOCK_LENGTH;
 	}
 
 	for (int r = 0; r < world.rcount; r++)
@@ -37,22 +37,10 @@ static void get_world_margins(world world, int* margins)
 			//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
 			// use margins for the specific edge(s) that this region touches
-			if (rz == world.rzmin && rmargins[0] < margins[0]) // north
-			{
-				margins[0] = rmargins[0];
-			}
-			if (rx == world.rxmax && rmargins[1] < margins[1]) // east
-			{
-				margins[1] = rmargins[1];
-			}
-			if (rz == world.rzmax && rmargins[2] < margins[2]) // south
-			{
-				margins[2] = rmargins[2];
-			}
-			if (rx == world.rxmin && rmargins[3] < margins[3]) // west
-			{
-				margins[3] = rmargins[3];
-			}
+			if (rz == world.rzmin && rmargins[0] < margins[0]) margins[0] = rmargins[0]; // north
+			if (rx == world.rxmax && rmargins[1] < margins[1]) margins[1] = rmargins[1]; // east
+			if (rz == world.rzmax && rmargins[2] < margins[2]) margins[2] = rmargins[2]; // south
+			if (rx == world.rxmin && rmargins[3] < margins[3]) margins[3] = rmargins[3]; // west
 		}
 	}
 	//printf("Margins: N %d, E %d, S %d, W %d\n",
@@ -133,8 +121,8 @@ image render_world_blockmap(world world, const colour* colours, const char night
 	get_world_margins(world, margins);
 
 	image wimage;
-	wimage.width = world.rxsize * REGION_BLOCK_WIDTH - margins[1] - margins[3];
-	wimage.height = world.rzsize * REGION_BLOCK_WIDTH - margins[0] - margins[2];
+	wimage.width = world.rxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3];
+	wimage.height = world.rzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2];
 	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
@@ -151,18 +139,18 @@ image render_world_blockmap(world world, const colour* colours, const char night
 		image rimage = render_region_blockmap(path, colours, night);
 
 		int rxoffset = (rx == world.rxmin ? margins[3] : 0);
-		int rpx = (rx - world.rxmin) * REGION_BLOCK_WIDTH - margins[3] + rxoffset;
-		int rw = REGION_BLOCK_WIDTH - rxoffset - (rx == world.rxmax ? margins[1] : 0);
+		int rpx = (rx - world.rxmin) * REGION_BLOCK_LENGTH - margins[3] + rxoffset;
+		int rw = REGION_BLOCK_LENGTH - rxoffset - (rx == world.rxmax ? margins[1] : 0);
 
 		int rzoffset = (rz == world.rzmin ? margins[0] : 0);
-		int rpz = (rz - world.rzmin) * REGION_BLOCK_WIDTH - margins[0] + rzoffset;
-		int rh = REGION_BLOCK_WIDTH - rzoffset - (rz == world.rzmax ? margins[2] : 0);
+		int rpz = (rz - world.rzmin) * REGION_BLOCK_LENGTH - margins[0] + rzoffset;
+		int rh = REGION_BLOCK_LENGTH - rzoffset - (rz == world.rzmax ? margins[2] : 0);
 
 		for (int z = 0; z < rh; z++)
 		{
 			// copy a line of pixel data from the region image to the world image
 			memcpy(&wimage.data[((rpz + z) * wimage.width + rpx) * CHANNELS],
-					&rimage.data[((rzoffset + z) * REGION_BLOCK_WIDTH + rxoffset) * CHANNELS],
+					&rimage.data[((rzoffset + z) * REGION_BLOCK_LENGTH + rxoffset) * CHANNELS],
 					rw * CHANNELS);
 		}
 		free(rimage.data);
@@ -178,10 +166,9 @@ image render_world_iso_blockmap(world world, const colour* colours, const char n
 	get_world_margins(world, margins);
 
 	image wimage;
-	unsigned int side = (world.rxmax - world.rxmin + world.rzmax - world.rzmin + 2) / 2;
-	wimage.width = side * ISO_REGION_WIDTH;
-	wimage.height = side * (REGION_BLOCK_WIDTH - 1) * 2 * ISO_BLOCK_STEP
-			+ ISO_BLOCK_HEIGHT * CHUNK_BLOCK_HEIGHT;
+	wimage.width = (world.rxsize + world.rzsize) * ISO_REGION_WIDTH / 2;
+	wimage.height = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP
+			+ ISO_CHUNK_DEPTH;
 	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
@@ -208,7 +195,7 @@ image render_world_iso_blockmap(world world, const colour* colours, const char n
 			int rwx = (rx - world.rxmin);
 			int rwz = (rz - world.rzmin);
 			int rpx = (rwx + rwz) * ISO_REGION_WIDTH / 2;
-			int rpy = (world.rxsize - rwx + rwz - 1) * REGION_BLOCK_WIDTH * ISO_BLOCK_STEP;
+			int rpy = (world.rxsize - rwx + rwz - 1) * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP;
 			printf("Rendering region %d/%d (%d,%d) at pixel %d,%d\n",
 					rc, world.rcount, rx, rz, rpx, rpy);
 

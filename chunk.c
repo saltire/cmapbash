@@ -114,10 +114,9 @@ static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsign
 image render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char night)
 {
 	image cimage;
-	cimage.width = CHUNK_BLOCK_WIDTH;
+	cimage.width = CHUNK_BLOCK_LENGTH;
 	cimage.height = CHUNK_BLOCK_HEIGHT;
 	cimage.data = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
-	//printf("Rendering isometric image, %d x %d\n", cimage.width, cimage.height);
 
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
@@ -144,8 +143,7 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const ch
 	image cimage;
 	cimage.width = ISO_CHUNK_WIDTH;
 	cimage.height = ISO_CHUNK_HEIGHT;
-	cimage.data = (unsigned char*)calloc(
-			ISO_CHUNK_WIDTH * ISO_CHUNK_HEIGHT * CHANNELS, sizeof(char));
+	cimage.data = (unsigned char*)calloc(cimage.width * cimage.height * CHANNELS, sizeof(char));
 	//printf("Rendering isometric image, %d x %d\n", cimage.width, cimage.height);
 
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
@@ -159,11 +157,11 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const ch
 
 	for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
 	{
-		for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
+		for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
 		{
-			for (int bx = CHUNK_BLOCK_WIDTH - 1; bx >= 0; bx--)
+			for (int bx = CHUNK_BLOCK_LENGTH - 1; bx >= 0; bx--)
 			{
-				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_WIDTH + bx;
+				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_LENGTH + bx;
 				unsigned char blockid = blocks[b];
 				if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
@@ -178,7 +176,7 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const ch
 				}
 
 				int px = (bx + bz) * ISO_BLOCK_WIDTH / 2;
-				int py = (CHUNK_BLOCK_WIDTH - bx + bz - 1) * ISO_BLOCK_STEP
+				int py = (CHUNK_BLOCK_LENGTH - bx + bz - 1) * ISO_BLOCK_STEP
 						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_HEIGHT;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
 				for (int y = py; y < py + ISO_BLOCK_HEIGHT; y++)
@@ -231,8 +229,8 @@ unsigned char* get_chunk_heightmap(nbt_node* chunk)
 image render_chunk_heightmap(nbt_node* chunk)
 {
 	image cimage;
-	cimage.width = CHUNK_BLOCK_WIDTH;
-	cimage.height = CHUNK_BLOCK_WIDTH;
+	cimage.width = CHUNK_BLOCK_LENGTH;
+	cimage.height = CHUNK_BLOCK_LENGTH;
 	cimage.data = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
 
 	unsigned char* heightmap = get_chunk_heightmap(chunk);
