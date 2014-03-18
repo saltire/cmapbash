@@ -48,6 +48,73 @@ static void get_world_margins(world world, int* margins)
 }
 
 
+static void get_world_iso_margins(world world, int* margins)
+{
+	int wrm[4];
+	// initialize margins to maximum, and decrease them as regions are parsed
+	for (int i = 0; i < 4; i++)
+	{
+		wrm[i] = world.rxsize + world.rzsize;
+	}
+	margins[0] = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP;
+	margins[1] = (world.rxsize + world.rzsize + 1) * ISO_REGION_WIDTH / 2;
+	margins[2] = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP;
+	margins[3] = (world.rxsize + world.rzsize + 1) * ISO_REGION_WIDTH / 2;
+
+	for (int r = 0; r < world.rcount; r++)
+	{
+		int rx = world.regions[r * 2];
+		int rz = world.regions[r * 2 + 1];
+
+		int rtop = (world.rxmax - rx + rz - world.rzmin);
+		int rright = (world.rxmax - rx + world.rzmax - rz);
+		int rbottom = (rx - world.rxmin + world.rzmax - rz);
+		int rleft = rx - world.rxmin + rz - world.rzmin;
+
+		if (rtop < wrm[0] || rright < wrm[1] || rbottom < wrm[2] || rleft < wrm[3])
+		{
+			char path[255];
+			// FIXME: path/filename joining needs to be more flexible
+			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
+
+			int rmargins[4];
+			get_region_iso_margins(path, rmargins);
+			//printf("Margins for region %d, %d: top %d, right %d, bottom %d, left %d\n",
+			//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
+
+			if (rtop <= wrm[0])
+			{
+				wrm[0] = rtop;
+				int top = rtop * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[0];
+				if (top < margins[0]) margins[0] = top;
+			}
+			if (rright <= wrm[1])
+			{
+				wrm[1] = rright;
+				int right = rright * ISO_REGION_WIDTH / 2 + rmargins[1];
+				if (right < margins[1]) margins[1] = right;
+			}
+			if (rbottom <= wrm[2])
+			{
+				wrm[2] = rbottom;
+				int bottom = rbottom * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[2];
+				if (bottom < margins[2]) margins[2] = bottom;
+			}
+			if (rleft <= wrm[3])
+			{
+				wrm[3] = rleft;
+				int left = rleft * ISO_REGION_WIDTH / 2 + rmargins[3];
+				if (left < margins[3]) margins[3] = left;
+			}
+		}
+	}
+	//printf("Region margins: top %d, right %d, bottom %d, left %d\n",
+	//		wrm[0], wrm[1], wrm[2], wrm[3]);
+	//printf("Margins: top %d, right %d, bottom %d, left %d\n",
+	//		margins[0], margins[1], margins[2], margins[3]);
+}
+
+
 static world measure_world(const char* worlddir)
 {
 	world world;
@@ -138,19 +205,19 @@ image render_world_blockmap(world world, const colour* colours, const char night
 		sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 		image rimage = render_region_blockmap(path, colours, night);
 
-		int rxoffset = (rx == world.rxmin ? margins[3] : 0);
-		int rpx = (rx - world.rxmin) * REGION_BLOCK_LENGTH - margins[3] + rxoffset;
-		int rw = REGION_BLOCK_LENGTH - rxoffset - (rx == world.rxmax ? margins[1] : 0);
+		int rxo = (rx == world.rxmin ? margins[3] : 0);
+		int rpx = (rx - world.rxmin) * REGION_BLOCK_LENGTH - margins[3] + rxo;
+		int rw = REGION_BLOCK_LENGTH - rxo - (rx == world.rxmax ? margins[1] : 0);
 
-		int rzoffset = (rz == world.rzmin ? margins[0] : 0);
-		int rpz = (rz - world.rzmin) * REGION_BLOCK_LENGTH - margins[0] + rzoffset;
-		int rh = REGION_BLOCK_LENGTH - rzoffset - (rz == world.rzmax ? margins[2] : 0);
+		int rzo = (rz == world.rzmin ? margins[0] : 0);
+		int rpz = (rz - world.rzmin) * REGION_BLOCK_LENGTH - margins[0] + rzo;
+		int rh = REGION_BLOCK_LENGTH - rzo - (rz == world.rzmax ? margins[2] : 0);
 
 		for (int z = 0; z < rh; z++)
 		{
 			// copy a line of pixel data from the region image to the world image
 			memcpy(&wimage.data[((rpz + z) * wimage.width + rpx) * CHANNELS],
-					&rimage.data[((rzoffset + z) * REGION_BLOCK_LENGTH + rxoffset) * CHANNELS],
+					&rimage.data[((z + rzo) * REGION_BLOCK_LENGTH + rxo) * CHANNELS],
 					rw * CHANNELS);
 		}
 		free(rimage.data);
@@ -163,12 +230,12 @@ image render_world_blockmap(world world, const colour* colours, const char night
 image render_world_iso_blockmap(world world, const colour* colours, const char night)
 {
 	int margins[4];
-	get_world_margins(world, margins);
+	get_world_iso_margins(world, margins);
 
 	image wimage;
-	wimage.width = (world.rxsize + world.rzsize) * ISO_REGION_WIDTH / 2;
+	wimage.width = (world.rxsize + world.rzsize) * ISO_REGION_WIDTH / 2 - margins[1] - margins[3];
 	wimage.height = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP
-			+ ISO_CHUNK_DEPTH;
+			+ ISO_CHUNK_DEPTH - margins[0] - margins[2];
 	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
@@ -194,8 +261,20 @@ image render_world_iso_blockmap(world world, const colour* colours, const char n
 			rc++;
 			int rwx = (rx - world.rxmin);
 			int rwz = (rz - world.rzmin);
-			int rpx = (rwx + rwz) * ISO_REGION_WIDTH / 2;
-			int rpy = (world.rxsize - rwx + rwz - 1) * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP;
+
+			int rpx = (rwx + rwz) * ISO_REGION_WIDTH / 2 - margins[3];
+			int rxo = rpx < 0 ? -rpx : 0;
+			int rw = ISO_REGION_WIDTH - rxo - (rpx + ISO_REGION_WIDTH > wimage.width
+					? rpx + ISO_REGION_WIDTH - wimage.width : 0);
+			rpx += rxo;
+
+			int rpy = (world.rxsize - rwx + rwz - 1) * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP
+					- margins[0];
+			int ryo = rpy < 0 ? -rpy : 0;
+			int rh = ISO_REGION_HEIGHT - ryo - (rpy + ISO_REGION_HEIGHT > wimage.height
+					? rpy + ISO_REGION_HEIGHT - wimage.height : 0);
+			rpy += ryo;
+
 			printf("Rendering region %d/%d (%d,%d) at pixel %d,%d\n",
 					rc, world.rcount, rx, rz, rpx, rpy);
 
@@ -203,11 +282,12 @@ image render_world_iso_blockmap(world world, const colour* colours, const char n
 			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 			image rimage = render_region_iso_blockmap(path, colours, night);
 
-			for (int py = 0; py < ISO_REGION_HEIGHT; py++)
+			for (int py = 0; py < rh; py++)
 			{
-				for (int px = 0; px < ISO_REGION_WIDTH; px++)
+				for (int px = 0; px < rw; px++)
 				{
-					combine_alpha(&rimage.data[(py * ISO_REGION_WIDTH + px) * CHANNELS],
+					combine_alpha(
+							&rimage.data[((py + ryo) * ISO_REGION_WIDTH + px + rxo) * CHANNELS],
 							&wimage.data[((rpy + py) * wimage.width + rpx + px) * CHANNELS], 1);
 				}
 			}

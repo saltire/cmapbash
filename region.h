@@ -12,6 +12,7 @@
 
 
 void get_region_margins(const char* regionfile, int* margins);
+void get_region_iso_margins(const char* regionfile, int* margins);
 
 image render_region_blockmap(const char* regionfile, const colour* colours,
 		const char night);

@@ -16,10 +16,7 @@ void get_region_margins(const char* regionfile, int* margins)
 		return;
 	}
 
-	for (int i = 0; i < 4; i++)
-	{
-		margins[i] = REGION_BLOCK_LENGTH;
-	}
+	for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
 
 	unsigned char buffer[4];
 	unsigned int offset;
@@ -31,12 +28,54 @@ void get_region_margins(const char* regionfile, int* margins)
 			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 			if (offset > 0)
 			{
-				margins[0] = z < margins[0] ? z : margins[0]; // north
-				margins[1] = (REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH) < margins[1] ?
-						(REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH) : margins[1]; // east
-				margins[2] = (REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH) < margins[2] ?
-						(REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH) : margins[2]; // south
-				margins[3] = x < margins[3] ? x : margins[3]; // west
+				if (z < margins[0]) margins[0] = z; // north
+				if (REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH < margins[1])
+					margins[1] = REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH; // east
+				if (REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH < margins[2])
+					margins[2] = REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH; // south
+				if (x < margins[3]) margins[3] = x; // west;
+			}
+		}
+	}
+	fclose(region);
+}
+
+
+void get_region_iso_margins(const char* regionfile, int* margins)
+{
+	FILE* region = fopen(regionfile, "r");
+	if (region == NULL)
+	{
+		printf("Error %d reading region file: %s\n", errno, regionfile);
+		return;
+	}
+
+	margins[0] = ISO_REGION_SURFACE_HEIGHT;
+	margins[1] = ISO_REGION_WIDTH;
+	margins[2] = ISO_REGION_SURFACE_HEIGHT;
+	margins[3] = ISO_REGION_WIDTH;
+
+	unsigned char buffer[4];
+	unsigned int offset;
+	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
+	{
+		for (int cx = 0; cx < REGION_CHUNK_LENGTH; cx++)
+		{
+			fread(buffer, 1, 4, region);
+			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+			if (offset > 0)
+			{
+				int top = (REGION_CHUNK_LENGTH - cx - 1 + cz) * CHUNK_BLOCK_LENGTH
+						* ISO_BLOCK_STEP;
+				int right = (REGION_CHUNK_LENGTH * 2 - cx - cz - 2) * ISO_CHUNK_WIDTH / 2;
+				int bottom = (cx + REGION_CHUNK_LENGTH - cz - 1) * CHUNK_BLOCK_LENGTH
+						* ISO_BLOCK_STEP;
+				int left = (cx + cz) * ISO_CHUNK_WIDTH / 2;
+
+				if (top < margins[0]) margins[0] = top;
+				if (right < margins[1]) margins[1] = right;
+				if (bottom < margins[2]) margins[2] = bottom;
+				if (left < margins[3]) margins[3] = left;
 			}
 		}
 	}
