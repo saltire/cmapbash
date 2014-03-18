@@ -38,7 +38,7 @@ static void copy_section_half_byte_data(nbt_node* section, char* name, unsigned 
 }
 
 
-static void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
+void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
 		unsigned char* blight)
 {
 	nbt_node* sections = nbt_find_by_name(chunk, "Sections");
@@ -111,8 +111,14 @@ static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsign
 }
 
 
-unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char night)
+image render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char night)
 {
+	image cimage;
+	cimage.width = CHUNK_BLOCK_WIDTH;
+	cimage.height = CHUNK_BLOCK_HEIGHT;
+	cimage.data = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
+	//printf("Rendering isometric image, %d x %d\n", cimage.width, cimage.height);
+
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* blight = NULL;
@@ -122,21 +128,26 @@ unsigned char* render_chunk_blockmap(nbt_node* chunk, const colour* colours, con
 	}
 	get_chunk_blockdata(chunk, blocks, data, blight);
 
-	unsigned char* image = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
-
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
 	{
-		get_block_colour(&image[b * CHANNELS], blocks, data, blight, colours, b);
+		get_block_colour(&cimage.data[b * CHANNELS], blocks, data, blight, colours, b);
 	}
 	free(blocks);
 	free(data);
 	free(blight);
-	return image;
+	return cimage;
 }
 
 
-unsigned char* render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const char night)
+image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const char night)
 {
+	image cimage;
+	cimage.width = ISO_CHUNK_WIDTH;
+	cimage.height = ISO_CHUNK_HEIGHT;
+	cimage.data = (unsigned char*)calloc(
+			ISO_CHUNK_WIDTH * ISO_CHUNK_HEIGHT * CHANNELS, sizeof(char));
+	//printf("Rendering isometric image, %d x %d\n", cimage.width, cimage.height);
+
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* blight = NULL;
@@ -145,10 +156,6 @@ unsigned char* render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours,
 		blight = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	}
 	get_chunk_blockdata(chunk, blocks, data, blight);
-
-	//printf("Rendering isometric image, %d x %d\n", ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT);
-	unsigned char* image = (unsigned char*)calloc(
-			ISO_CHUNK_WIDTH * ISO_CHUNK_HEIGHT * CHANNELS, sizeof(char));
 
 	for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
 	{
@@ -178,7 +185,7 @@ unsigned char* render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours,
 				{
 					for (int x = px; x < px + ISO_BLOCK_WIDTH; x++)
 					{
-						combine_alpha(colour, &image[(y * ISO_CHUNK_WIDTH + x) * CHANNELS], 1);
+						combine_alpha(colour, &cimage.data[(y * cimage.width + x) * CHANNELS], 1);
 					}
 				}
 			}
@@ -187,22 +194,20 @@ unsigned char* render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours,
 	free(blocks);
 	free(data);
 	free(blight);
-	return image;
+	return cimage;
 }
 
 
 void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
 		const char night, const char isometric)
 {
-	int w = isometric ? ISO_CHUNK_WIDTH : CHUNK_BLOCK_WIDTH;
-	int h = isometric ? ISO_CHUNK_HEIGHT : CHUNK_BLOCK_WIDTH;
-	unsigned char* chunkimage = isometric
+	image cimage = isometric
 			? render_chunk_iso_blockmap(chunk, colours, night)
 			: render_chunk_blockmap(chunk, colours, night);
 
 	printf("Saving image to %s ...\n", imagefile);
-	lodepng_encode32_file(imagefile, chunkimage, w, h);
-	free(chunkimage);
+	lodepng_encode32_file(imagefile, cimage.data, cimage.width, cimage.height);
+	free(cimage.data);
 }
 
 
@@ -223,13 +228,18 @@ unsigned char* get_chunk_heightmap(nbt_node* chunk)
 }
 
 
-unsigned char* render_chunk_heightmap(nbt_node* chunk)
+image render_chunk_heightmap(nbt_node* chunk)
 {
+	image cimage;
+	cimage.width = CHUNK_BLOCK_WIDTH;
+	cimage.height = CHUNK_BLOCK_WIDTH;
+	cimage.data = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
+
 	unsigned char* heightmap = get_chunk_heightmap(chunk);
-	unsigned char* image = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
+
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
 	{
-		unsigned char* pixel = &image[b * CHANNELS];
+		unsigned char* pixel = &cimage.data[b * CHANNELS];
 		//printf("Rendering height %d at (%d, %d)\n",
 		//		(int)heightmap[b], b % CHUNKWIDTH, b / CHUNKWIDTH);
 
@@ -241,13 +251,15 @@ unsigned char* render_chunk_heightmap(nbt_node* chunk)
 		pixel[ALPHA] = 255;
 	}
 	free(heightmap);
-	return image;
+	return cimage;
 }
 
 
 void save_chunk_heightmap(nbt_node* chunk, const char* imagefile)
 {
-	unsigned char* chunkimage = render_chunk_heightmap(chunk);
-	lodepng_encode32_file(imagefile, chunkimage, CHUNK_BLOCK_WIDTH, CHUNK_BLOCK_WIDTH);
-	free(chunkimage);
+	image cimage = render_chunk_heightmap(chunk);
+
+	printf("Saving image to %s ...\n", imagefile);
+	lodepng_encode32_file(imagefile, cimage.data, cimage.width, cimage.height);
+	free(cimage.data);
 }

@@ -44,7 +44,7 @@ void get_region_margins(const char* regionfile, int* margins)
 }
 
 
-static void read_offsets(FILE* region, unsigned int* offsets)
+static void read_chunk_offsets(FILE* region, unsigned int* offsets)
 {
 	for (int c = 0; c < REGION_CHUNK_AREA; c++)
 	{
@@ -70,7 +70,7 @@ static nbt_node* get_chunk_at_offset(FILE* region, unsigned int offset)
 	if (errno != NBT_OK)
 	{
 		printf("Parsing error: %d\n", errno);
-		return 0;
+		return NULL;
 	}
 	free(cdata);
 
@@ -78,20 +78,26 @@ static nbt_node* get_chunk_at_offset(FILE* region, unsigned int offset)
 }
 
 
-unsigned char* render_region_blockmap(const char* regionfile, const colour* colours,
+image render_region_blockmap(const char* regionfile, const colour* colours,
 		const char night)
 {
+	image rimage;
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
 	{
 		printf("Error %d reading region file: %s\n", errno, regionfile);
-		return NULL;
+		rimage.data = NULL;
+		return rimage;
 	}
 
-	unsigned int offsets[REGION_CHUNK_AREA];
-	read_offsets(region, offsets);
+	rimage.width = REGION_BLOCK_WIDTH;
+	rimage.height = REGION_BLOCK_WIDTH;
+	rimage.data = (unsigned char*)calloc(REGION_BLOCK_AREA * CHANNELS, sizeof(char));
+	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
 
-	unsigned char* regionimage = (unsigned char*)calloc(REGION_BLOCK_AREA * CHANNELS, sizeof(char));
+
+	unsigned int offsets[REGION_CHUNK_AREA];
+	read_chunk_offsets(region, offsets);
 
 	for (int cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
 	{
@@ -103,44 +109,50 @@ unsigned char* render_region_blockmap(const char* regionfile, const colour* colo
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
 			//		offsets[c], offsets[c] * SECTOR_LENGTH);
 			nbt_node* chunk = get_chunk_at_offset(region, offsets[c]);
+			if (chunk == NULL) continue;
 
-			unsigned char* chunkimage = render_chunk_blockmap(chunk, colours, night);
+			image cimage = render_chunk_blockmap(chunk, colours, night);
 			nbt_free(chunk);
 
 			for (int bz = 0; bz < CHUNK_BLOCK_WIDTH; bz++)
 			{
 				// copy a line of pixel data from the chunk image to the region image
-				int offset = (cz * CHUNK_BLOCK_WIDTH + bz) * REGION_BLOCK_WIDTH
+				int offset = (cz * CHUNK_BLOCK_WIDTH + bz) * rimage.width
 						+ cx * CHUNK_BLOCK_WIDTH;
-				memcpy(&regionimage[offset * CHANNELS],
-						&chunkimage[bz * CHUNK_BLOCK_WIDTH * CHANNELS],
+				memcpy(&rimage.data[offset * CHANNELS],
+						&cimage.data[bz * CHUNK_BLOCK_WIDTH * CHANNELS],
 						CHUNK_BLOCK_WIDTH * CHANNELS);
 			}
-			free(chunkimage);
+			free(cimage.data);
 		}
 	}
 
 	fclose(region);
-	return regionimage;
+	return rimage;
 }
 
 
-unsigned char* render_region_iso_blockmap(const char* regionfile, const colour* colours,
+image render_region_iso_blockmap(const char* regionfile, const colour* colours,
 		const char night)
 {
+	image rimage;
+
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
 	{
 		printf("Error %d reading region file: %s\n", errno, regionfile);
-		return NULL;
+		rimage.data = NULL;
+		return rimage;
 	}
 
 	unsigned int offsets[REGION_CHUNK_AREA];
-	read_offsets(region, offsets);
+	read_chunk_offsets(region, offsets);
 
-	//printf("Rendering isometric image, %d x %d\n", ISO_REGION_WIDTH, ISO_REGION_HEIGHT);
-	unsigned char* regionimage = (unsigned char*)calloc(
+	rimage.width = ISO_REGION_WIDTH;
+	rimage.height = ISO_REGION_HEIGHT;
+	rimage.data = (unsigned char*)calloc(
 			ISO_REGION_WIDTH * ISO_REGION_HEIGHT * CHANNELS, sizeof(char));
+	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
 
 	for (int cz = 0; cz < REGION_CHUNK_WIDTH; cz++)
 	{
@@ -152,8 +164,9 @@ unsigned char* render_region_iso_blockmap(const char* regionfile, const colour* 
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
 			//		offsets[c], offsets[c] * SECTOR_LENGTH);
 			nbt_node* chunk = get_chunk_at_offset(region, offsets[c]);
+			if (chunk == NULL) continue;
 
-			unsigned char* chunkimage = render_chunk_iso_blockmap(chunk, colours, night);
+			image cimage = render_chunk_iso_blockmap(chunk, colours, night);
 			nbt_free(chunk);
 
 			int cpx = (cx + cz) * ISO_CHUNK_WIDTH / 2;
@@ -164,30 +177,28 @@ unsigned char* render_region_iso_blockmap(const char* regionfile, const colour* 
 			{
 				for (int px = 0; px < ISO_CHUNK_WIDTH; px++)
 				{
-					combine_alpha(&chunkimage[(py * ISO_CHUNK_WIDTH + px) * CHANNELS],
-							&regionimage[((cpy + py) * ISO_REGION_WIDTH + cpx + px) * CHANNELS], 1);
+					combine_alpha(&cimage.data[(py * ISO_CHUNK_WIDTH + px) * CHANNELS],
+							&rimage.data[((cpy + py) * rimage.width + cpx + px) * CHANNELS], 1);
 				}
 			}
-			free(chunkimage);
+			free(cimage.data);
 		}
 	}
 
 	fclose(region);
-	return regionimage;
+	return rimage;
 }
 
 
 void save_region_blockmap(const char* regionfile, const char* imagefile, const colour* colours,
 		const char night, const char isometric)
 {
-	int w = isometric ? ISO_REGION_WIDTH : REGION_BLOCK_WIDTH;
-	int h = isometric ? ISO_REGION_HEIGHT : REGION_BLOCK_WIDTH;
-	unsigned char* regionimage = isometric
+	image rimage = isometric
 			? render_region_iso_blockmap(regionfile, colours, night)
 			: render_region_blockmap(regionfile, colours, night);
-	if (regionimage == NULL) return;
+	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);
-	lodepng_encode32_file(imagefile, regionimage, w, h);
-	free(regionimage);
+	lodepng_encode32_file(imagefile, rimage.data, rimage.width, rimage.height);
+	free(rimage.data);
 }
