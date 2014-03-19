@@ -110,11 +110,37 @@ static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsign
 }
 
 
-image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night)
+int get_rotated_index(const int x, const int z, const int length, const unsigned char rotate)
+{
+	int bx, bz;
+	switch(rotate) {
+	case 0:
+		bx = x;
+		bz = z;
+		break;
+	case 1:
+		bx = z;
+		bz = length - x - 1;
+		break;
+	case 2:
+		bx = length - x - 1;
+		bz = length - z - 1;
+		break;
+	case 3:
+		bx = length - z - 1;
+		bz = x;
+		break;
+	}
+	return (bz * length + bx);
+}
+
+
+image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night,
+		const char rotate)
 {
 	image cimage;
 	cimage.width = CHUNK_BLOCK_LENGTH;
-	cimage.height = CHUNK_BLOCK_HEIGHT;
+	cimage.height = CHUNK_BLOCK_LENGTH;
 	cimage.data = (unsigned char*)calloc(CHUNK_BLOCK_AREA * CHANNELS, sizeof(char));
 
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
@@ -126,9 +152,14 @@ image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char
 	}
 	get_chunk_blockdata(chunk, blocks, data, blight);
 
-	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
+	for (int z = 0; z < CHUNK_BLOCK_LENGTH; z++)
 	{
-		get_block_colour(&cimage.data[b * CHANNELS], blocks, data, blight, textures, b);
+		for (int x = 0; x < CHUNK_BLOCK_LENGTH; x++)
+		{
+			int b = get_rotated_index(x, z, CHUNK_BLOCK_LENGTH, rotate);
+			get_block_colour(&cimage.data[(z * CHUNK_BLOCK_LENGTH + x) * CHANNELS],
+					blocks, data, blight, textures, b);
+		}
 	}
 	free(blocks);
 	free(data);
@@ -137,7 +168,8 @@ image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char
 }
 
 
-image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night)
+image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night,
+		const char rotate)
 {
 	image cimage;
 	cimage.width = ISO_CHUNK_WIDTH;
@@ -154,13 +186,15 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 	}
 	get_chunk_blockdata(chunk, blocks, data, blight);
 
-	for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
+	for (int z = 0; z < CHUNK_BLOCK_LENGTH; z++)
 	{
-		for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
+		for (int x = CHUNK_BLOCK_LENGTH - 1; x >= 0; x--)
 		{
-			for (int bx = CHUNK_BLOCK_LENGTH - 1; bx >= 0; bx--)
+			int bh = get_rotated_index(x, z, CHUNK_BLOCK_LENGTH, rotate);
+
+			for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
 			{
-				int b = by * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_LENGTH + bx;
+				int b = by * CHUNK_BLOCK_AREA + bh;
 				unsigned char blockid = blocks[b];
 				if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
@@ -174,18 +208,20 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 					adjust_colour_by_lum(colour, blight[b]);
 				}
 
-				int px = (bx + bz) * ISO_BLOCK_WIDTH / 2;
-				int py = (CHUNK_BLOCK_LENGTH - bx + bz - 1) * ISO_BLOCK_STEP
+				int px = (x + z) * ISO_BLOCK_WIDTH / 2;
+				int py = (CHUNK_BLOCK_LENGTH - x + z - 1) * ISO_BLOCK_STEP
 						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_HEIGHT;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
-				for (int y = 0; y < ISO_BLOCK_HEIGHT; y++)
+
+				for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 				{
-					for (int x = 0; x < ISO_BLOCK_WIDTH; x++)
+					for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 					{
-						if (textures[blockid].types[type].shape[y * ISO_BLOCK_WIDTH + x])
+						if (textures[blockid].types[type].shape[sy * ISO_BLOCK_WIDTH + sx])
 						{
 							combine_alpha(colour,
-									&cimage.data[((py + y) * cimage.width + px + x) * CHANNELS], 1);
+									&cimage.data[((py + sy) * cimage.width + px + sx) * CHANNELS],
+									1);
 						}
 					}
 				}
@@ -200,11 +236,11 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 
 
 void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* textures,
-		const char night, const char isometric)
+		const char night, const char isometric, const char rotate)
 {
 	image cimage = isometric
-			? render_chunk_iso_blockmap(chunk, textures, night)
-			: render_chunk_blockmap(chunk, textures, night);
+			? render_chunk_iso_blockmap(chunk, textures, night, rotate)
+			: render_chunk_blockmap(chunk, textures, night, rotate);
 
 	printf("Saving image to %s ...\n", imagefile);
 	SAVE_IMAGE(cimage, imagefile);

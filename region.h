@@ -15,8 +15,10 @@
 void get_region_margins(const char* regionfile, int* margins);
 void get_region_iso_margins(const char* regionfile, int* margins);
 
-image render_region_blockmap(const char* regionfile, const texture* textures, const char night);
-image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night);
+image render_region_blockmap(const char* regionfile, const texture* textures, const char night,
+		const char rotate);
+image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night,
+		const char rotate);
 
 void save_region_blockmap(const char* regionfile, const char* imagefile, const texture* textures,
-		const char night, const char isometric);
+		const char night, const char isometric, const char rotate);

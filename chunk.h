@@ -25,11 +25,15 @@
 void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
 		unsigned char* blight);
 
-image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night);
-image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night);
+int get_rotated_index(const int x, const int z, const int length, const unsigned char rotate);
+
+image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night,
+		const char rotate);
+image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night,
+		const char rotate);
 
 void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* textures,
-		const char night, const char isometric);
+		const char night, const char isometric, const char rotate);
 
 unsigned char* get_chunk_heightmap(nbt_node* chunk);
 

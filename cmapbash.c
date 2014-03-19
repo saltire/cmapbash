@@ -1,36 +1,59 @@
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "textures.h"
-#include "world.h"
+#include "chunk.h"
 
 
 int main(int argc, char **argv)
 {
-	int isometric = 0;
-	int night = 0;
+	unsigned char isometric = 0;
+	unsigned char night = 0;
+	unsigned char rotate = 0;
 	char *outpath = "map.png";
 	char *inpath = NULL;
 
+	unsigned int rotateint;
+
 	for (int i = 1; i < argc; i++)
 	{
+		// isometric mode
 		if (!strcmp(argv[i], "-i"))
 		{
 			printf("Isometric mode is on\n");
 			isometric = 1;
 		}
+		// night mode
 		else if (!strcmp(argv[i], "-n"))
 		{
 			printf("Night mode is on\n");
 			night = 1;
 		}
+		// rotation
+		else if (!strcmp(argv[i], "-r") && i + 1 < argc)
+		{
+			unsigned int rotateint;
+			if (sscanf(argv[i + 1], "%d", &rotateint))
+			{
+				rotate = (unsigned char)rotateint % 4;
+				printf("Rotation is %d\n", rotate);
+			}
+			else
+			{
+				printf("Invalid rotate value: %s\n", argv[i + 1]);
+			}
+			i++;
+		}
+		// image save path
 		else if (!strcmp(argv[i], "-o") && i + 1 < argc)
 		{
 			outpath = argv[i + 1];
 			i++;
 		}
+		// source data path
 		else if (inpath == NULL)
 		{
 			inpath = argv[i];
@@ -45,7 +68,17 @@ int main(int argc, char **argv)
 
 	texture* textures = read_textures("textures.csv");
 
-	save_world_blockmap(inpath, outpath, textures, night, isometric);
+//	nbt_node* chunk = nbt_parse_path(inpath);
+//	if (chunk == NULL)
+//	{
+//		printf("Error reading chunk file\n");
+//		return 0;
+//	}
+//	save_chunk_blockmap(chunk, outpath, textures, night, isometric, rotate);
+
+	save_region_blockmap(inpath, outpath, textures, night, isometric, rotate);
+
+	//save_world_blockmap(inpath, outpath, textures, night, isometric, rotate);
 
 	free(textures);
 

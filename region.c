@@ -116,7 +116,8 @@ static nbt_node* get_chunk_at_offset(FILE* region, unsigned int offset)
 }
 
 
-image render_region_blockmap(const char* regionfile, const texture* textures, const char night)
+image render_region_blockmap(const char* regionfile, const texture* textures, const char night,
+		const char rotate)
 {
 	image rimage;
 	FILE* region = fopen(regionfile, "r");
@@ -138,7 +139,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 	{
 		for (int cx = 0; cx < REGION_CHUNK_LENGTH; cx++)
 		{
-			int c = cz * REGION_CHUNK_LENGTH + cx;
+			int c = get_rotated_index(cx, cz, REGION_CHUNK_LENGTH, rotate);
 			if (offsets[c] == 0) continue;
 
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
@@ -146,7 +147,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 			nbt_node* chunk = get_chunk_at_offset(region, offsets[c]);
 			if (chunk == NULL) continue;
 
-			image cimage = render_chunk_blockmap(chunk, textures, night);
+			image cimage = render_chunk_blockmap(chunk, textures, night, rotate);
 			nbt_free(chunk);
 
 			for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
@@ -167,7 +168,8 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 }
 
 
-image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night)
+image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night,
+		const char rotate)
 {
 	image rimage;
 
@@ -191,7 +193,7 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 	{
 		for (int cx = REGION_CHUNK_LENGTH - 1; cx >= 0; cx--)
 		{
-			int c = cz * REGION_CHUNK_LENGTH + cx;
+			int c = get_rotated_index(cx, cz, REGION_CHUNK_LENGTH, rotate);
 			if (offsets[c] == 0) continue;
 
 			//printf("Reading chunk %d (%d, %d) from offset %d (at %#x).\n", c, cx, cz,
@@ -199,7 +201,7 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 			nbt_node* chunk = get_chunk_at_offset(region, offsets[c]);
 			if (chunk == NULL) continue;
 
-			image cimage = render_chunk_iso_blockmap(chunk, textures, night);
+			image cimage = render_chunk_iso_blockmap(chunk, textures, night, rotate);
 			nbt_free(chunk);
 
 			int cpx = (cx + cz) * ISO_CHUNK_WIDTH / 2;
@@ -224,11 +226,11 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 
 
 void save_region_blockmap(const char* regionfile, const char* imagefile, const texture* textures,
-		const char night, const char isometric)
+		const char night, const char isometric, const char rotate)
 {
 	image rimage = isometric
-			? render_region_iso_blockmap(regionfile, textures, night)
-			: render_region_blockmap(regionfile, textures, night);
+			? render_region_iso_blockmap(regionfile, textures, night, rotate)
+			: render_region_blockmap(regionfile, textures, night, rotate);
 	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);
