@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lodepng.h"
-
+#include "image.h"
 #include "region.h"
 
 
@@ -117,8 +116,7 @@ static nbt_node* get_chunk_at_offset(FILE* region, unsigned int offset)
 }
 
 
-image render_region_blockmap(const char* regionfile, const colour* colours,
-		const char night)
+image render_region_blockmap(const char* regionfile, const texture* textures, const char night)
 {
 	image rimage;
 	FILE* region = fopen(regionfile, "r");
@@ -148,7 +146,7 @@ image render_region_blockmap(const char* regionfile, const colour* colours,
 			nbt_node* chunk = get_chunk_at_offset(region, offsets[c]);
 			if (chunk == NULL) continue;
 
-			image cimage = render_chunk_blockmap(chunk, colours, night);
+			image cimage = render_chunk_blockmap(chunk, textures, night);
 			nbt_free(chunk);
 
 			for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
@@ -169,8 +167,7 @@ image render_region_blockmap(const char* regionfile, const colour* colours,
 }
 
 
-image render_region_iso_blockmap(const char* regionfile, const colour* colours,
-		const char night)
+image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night)
 {
 	image rimage;
 
@@ -202,7 +199,7 @@ image render_region_iso_blockmap(const char* regionfile, const colour* colours,
 			nbt_node* chunk = get_chunk_at_offset(region, offsets[c]);
 			if (chunk == NULL) continue;
 
-			image cimage = render_chunk_iso_blockmap(chunk, colours, night);
+			image cimage = render_chunk_iso_blockmap(chunk, textures, night);
 			nbt_free(chunk);
 
 			int cpx = (cx + cz) * ISO_CHUNK_WIDTH / 2;
@@ -226,15 +223,15 @@ image render_region_iso_blockmap(const char* regionfile, const colour* colours,
 }
 
 
-void save_region_blockmap(const char* regionfile, const char* imagefile, const colour* colours,
+void save_region_blockmap(const char* regionfile, const char* imagefile, const texture* textures,
 		const char night, const char isometric)
 {
 	image rimage = isometric
-			? render_region_iso_blockmap(regionfile, colours, night)
-			: render_region_blockmap(regionfile, colours, night);
+			? render_region_iso_blockmap(regionfile, textures, night)
+			: render_region_blockmap(regionfile, textures, night);
 	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);
-	lodepng_encode32_file(imagefile, rimage.data, rimage.width, rimage.height);
+	SAVE_IMAGE(rimage, imagefile);
 	free(rimage.data);
 }

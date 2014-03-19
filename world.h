@@ -1,4 +1,5 @@
 #include "image.h"
+#include "textures.h"
 
 
 typedef struct world {
@@ -8,8 +9,8 @@ typedef struct world {
 } world;
 
 
-image render_world_blockmap(world world, const colour* colours, const char night);
-image render_world_iso_blockmap(world world, const colour* colours, const char night);
+image render_world_blockmap(world world, const texture* textures, const char night);
+image render_world_iso_blockmap(world world, const texture* textures, const char night);
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
+void save_world_blockmap(const char* worlddir, const char* imagefile, const texture* textures,
 		const char night, const char isometric);

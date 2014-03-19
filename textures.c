@@ -3,24 +3,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "colours.h"
+#include "shapes.h"
+#include "textures.h"
 
 
-colour* read_colours(const char* colourfile)
+texture* read_textures(const char* texturefile)
 {
-	FILE* csv = fopen(colourfile, "r");
+	FILE* csv = fopen(texturefile, "r");
 	if (csv == NULL)
 	{
-		printf("Error %d reading colour file: %s\n", errno, colourfile);
+		printf("Error %d reading colour file: %s\n", errno, texturefile);
 	}
 
-	colour* colours = (colour*)calloc(BLOCK_TYPES, sizeof(colour));
+	texture* textures = (texture*)calloc(BLOCK_TYPES, sizeof(texture));
 
 	char* line = (char*)malloc(60);
 	while (fgets(line, 60, csv))
 	{
 		unsigned char id, mask, type;
-		for (int i = 0; i < 3 + CHANNELS; i++)
+		for (int i = 0; i < 9; i++)
 		{
 			char* value = strtok(i == 0 ? line : NULL, ",");
 			unsigned char num = (value == NULL ? 0 : (char)strtol(value, NULL, 0));
@@ -38,19 +39,24 @@ colour* read_colours(const char* colourfile)
 				type = num;
 				if (type == 0)
 				{
-					colours[id].mask = mask;
+					textures[id].mask = mask;
 				}
 			}
-			else if (i > 2)
+			else if (i >= 3 && i <= 6)
 			{
-				colours[id].types[type * CHANNELS + i - 3] = num;
+				textures[id].types[type].colour[i - 3] = num;
+			}
+			else if (i == 8)
+			{
+				memcpy(&textures[id].types[type].shape, &shapes[num],
+						ISO_BLOCK_WIDTH * ISO_BLOCK_HEIGHT);
 			}
 		}
 	}
 	free(line);
 
 	fclose(csv);
-	return colours;
+	return textures;
 }
 
 

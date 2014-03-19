@@ -1,4 +1,5 @@
 #include "chunk.h"
+#include "textures.h"
 
 
 #define REGION_CHUNK_LENGTH 32
@@ -14,10 +15,8 @@
 void get_region_margins(const char* regionfile, int* margins);
 void get_region_iso_margins(const char* regionfile, int* margins);
 
-image render_region_blockmap(const char* regionfile, const colour* colours,
-		const char night);
-image render_region_iso_blockmap(const char* regionfile, const colour* colours,
-		const char night);
+image render_region_blockmap(const char* regionfile, const texture* textures, const char night);
+image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night);
 
-void save_region_blockmap(const char* regionfile, const char* imagefile, const colour* colours,
+void save_region_blockmap(const char* regionfile, const char* imagefile, const texture* textures,
 		const char night, const char isometric);

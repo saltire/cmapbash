@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lodepng.h"
-
 #include "chunk.h"
-#include "colours.h"
+#include "image.h"
+#include "textures.h"
 
 
 static void copy_section_byte_data(nbt_node* section, char* name, unsigned char* data, int8_t y)
@@ -70,12 +69,12 @@ void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* 
 
 
 static void get_block_colour_at_height(unsigned char* pixel, unsigned char* blocks,
-		unsigned char* data, const colour* colours, int b, int y)
+		unsigned char* data, const texture* textures, int b, int y)
 {
 	// copy the block colour into the pixel buffer
 	unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
-	unsigned char type = data[y * CHUNK_BLOCK_AREA + b] % colours[blockid].mask;
-	memcpy(pixel, &colours[blockid].types[type * CHANNELS], CHANNELS);
+	unsigned char type = data[y * CHUNK_BLOCK_AREA + b] % textures[blockid].mask;
+	memcpy(pixel, &textures[blockid].types[type].colour, CHANNELS);
 
 	// if block colour is not fully opaque, get the next block and combine with this one
 	if (pixel[ALPHA] < 255)
@@ -83,7 +82,7 @@ static void get_block_colour_at_height(unsigned char* pixel, unsigned char* bloc
 		unsigned char next[CHANNELS] = {0};
 		if (y > 0)
 		{
-			get_block_colour_at_height(next, blocks, data, colours, b, y - 1);
+			get_block_colour_at_height(next, blocks, data, textures, b, y - 1);
 		}
 		combine_alpha(pixel, next, 0);
 	}
@@ -91,7 +90,7 @@ static void get_block_colour_at_height(unsigned char* pixel, unsigned char* bloc
 
 
 static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char* data,
-		unsigned char* blight, const colour* colours, int b)
+		unsigned char* blight, const texture* textures, int b)
 {
 	for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
 	{
@@ -99,7 +98,7 @@ static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsign
 		if (blockid >= BLOCK_TYPES) blockid = 0; // unknown block type defaults to air
 		if (blockid != 0)
 		{
-			get_block_colour_at_height(pixel, blocks, data, colours, b, y);
+			get_block_colour_at_height(pixel, blocks, data, textures, b, y);
 			adjust_colour_by_height(pixel, y);
 			if (blight != NULL)
 			{
@@ -111,7 +110,7 @@ static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsign
 }
 
 
-image render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char night)
+image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night)
 {
 	image cimage;
 	cimage.width = CHUNK_BLOCK_LENGTH;
@@ -129,7 +128,7 @@ image render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char n
 
 	for (int b = 0; b < CHUNK_BLOCK_AREA; b++)
 	{
-		get_block_colour(&cimage.data[b * CHANNELS], blocks, data, blight, colours, b);
+		get_block_colour(&cimage.data[b * CHANNELS], blocks, data, blight, textures, b);
 	}
 	free(blocks);
 	free(data);
@@ -138,7 +137,7 @@ image render_chunk_blockmap(nbt_node* chunk, const colour* colours, const char n
 }
 
 
-image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const char night)
+image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night)
 {
 	image cimage;
 	cimage.width = ISO_CHUNK_WIDTH;
@@ -165,10 +164,10 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const ch
 				unsigned char blockid = blocks[b];
 				if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
-				unsigned char type = data[b] % colours[blockid].mask;
+				unsigned char type = data[b] % textures[blockid].mask;
 
 				unsigned char colour[CHANNELS];
-				memcpy(&colour, &colours[blockid].types[type * CHANNELS], CHANNELS);
+				memcpy(&colour, &textures[blockid].types[type].colour, CHANNELS);
 				adjust_colour_by_height(colour, by);
 				if (blight != NULL)
 				{
@@ -179,11 +178,15 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const ch
 				int py = (CHUNK_BLOCK_LENGTH - bx + bz - 1) * ISO_BLOCK_STEP
 						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_HEIGHT;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
-				for (int y = py; y < py + ISO_BLOCK_HEIGHT; y++)
+				for (int y = 0; y < ISO_BLOCK_HEIGHT; y++)
 				{
-					for (int x = px; x < px + ISO_BLOCK_WIDTH; x++)
+					for (int x = 0; x < ISO_BLOCK_WIDTH; x++)
 					{
-						combine_alpha(colour, &cimage.data[(y * cimage.width + x) * CHANNELS], 1);
+						if (textures[blockid].types[type].shape[y * ISO_BLOCK_WIDTH + x])
+						{
+							combine_alpha(colour,
+									&cimage.data[((py + y) * cimage.width + px + x) * CHANNELS], 1);
+						}
 					}
 				}
 			}
@@ -196,15 +199,15 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const colour* colours, const ch
 }
 
 
-void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const colour* colours,
+void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* textures,
 		const char night, const char isometric)
 {
 	image cimage = isometric
-			? render_chunk_iso_blockmap(chunk, colours, night)
-			: render_chunk_blockmap(chunk, colours, night);
+			? render_chunk_iso_blockmap(chunk, textures, night)
+			: render_chunk_blockmap(chunk, textures, night);
 
 	printf("Saving image to %s ...\n", imagefile);
-	lodepng_encode32_file(imagefile, cimage.data, cimage.width, cimage.height);
+	SAVE_IMAGE(cimage, imagefile);
 	free(cimage.data);
 }
 
@@ -258,6 +261,6 @@ void save_chunk_heightmap(nbt_node* chunk, const char* imagefile)
 	image cimage = render_chunk_heightmap(chunk);
 
 	printf("Saving image to %s ...\n", imagefile);
-	lodepng_encode32_file(imagefile, cimage.data, cimage.width, cimage.height);
+	SAVE_IMAGE(cimage, imagefile);
 	free(cimage.data);
 }

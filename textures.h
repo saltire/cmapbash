@@ -1,19 +1,24 @@
-#ifndef COLOURS_H
-#define COLOURS_H
+#ifndef TEXTURES_H
+#define TEXTURES_H
 
 
+#define ISO_BLOCK_WIDTH 4
+#define ISO_BLOCK_HEIGHT 4
 #define BLOCK_TYPES 176
 #define CHANNELS 4
 #define ALPHA CHANNELS - 1
 
 
-typedef struct colour {
+typedef struct texture {
 	unsigned char mask;
-	unsigned char types[16 * CHANNELS];
-} colour;
+	struct blocktype {
+		unsigned char colour[CHANNELS];
+		unsigned char shape[ISO_BLOCK_WIDTH * ISO_BLOCK_HEIGHT];
+	} types[16];
+} texture;
 
 
-colour* read_colours(const char* filename);
+texture* read_textures(const char* texturefile);
 
 void adjust_colour_by_lum(unsigned char* pixel, unsigned char light);
 void adjust_colour_by_height(unsigned char* pixel, int y);

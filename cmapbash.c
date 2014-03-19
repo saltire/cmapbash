@@ -1,10 +1,9 @@
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "nbt.h"
-
-#include "colours.h"
+#include "textures.h"
 #include "world.h"
 
 
@@ -44,11 +43,11 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	colour* colours = read_colours("colours.csv");
+	texture* textures = read_textures("textures.csv");
 
-	save_world_blockmap(inpath, outpath, colours, night, isometric);
+	save_world_blockmap(inpath, outpath, textures, night, isometric);
 
-	free(colours);
+	free(textures);
 
 	return 0;
 }

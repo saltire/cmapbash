@@ -4,10 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lodepng.h"
-
-#include "colours.h"
+#include "image.h"
 #include "region.h"
+#include "textures.h"
 #include "world.h"
 
 
@@ -50,12 +49,14 @@ static void get_world_margins(world world, int* margins)
 
 static void get_world_iso_margins(world world, int* margins)
 {
-	int wrm[4];
 	// initialize margins to maximum, and decrease them as regions are parsed
+
+	int wrm[4]; // world margins measured in regions
 	for (int i = 0; i < 4; i++)
 	{
 		wrm[i] = world.rxsize + world.rzsize;
 	}
+	// world margins measured in pixels
 	margins[0] = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP;
 	margins[1] = (world.rxsize + world.rzsize + 1) * ISO_REGION_WIDTH / 2;
 	margins[2] = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP;
@@ -66,12 +67,13 @@ static void get_world_iso_margins(world world, int* margins)
 		int rx = world.regions[r * 2];
 		int rz = world.regions[r * 2 + 1];
 
-		int rtop = (world.rxmax - rx + rz - world.rzmin);
-		int rright = (world.rxmax - rx + world.rzmax - rz);
-		int rbottom = (rx - world.rxmin + world.rzmax - rz);
-		int rleft = rx - world.rxmin + rz - world.rzmin;
+		// world margins for this region, measured in regions
+		int wrtop = (world.rxmax - rx + rz - world.rzmin);
+		int wrright = (world.rxmax - rx + world.rzmax - rz);
+		int wrbottom = (rx - world.rxmin + world.rzmax - rz);
+		int wrleft = rx - world.rxmin + rz - world.rzmin;
 
-		if (rtop < wrm[0] || rright < wrm[1] || rbottom < wrm[2] || rleft < wrm[3])
+		if (wrtop < wrm[0] || wrright < wrm[1] || wrbottom < wrm[2] || wrleft < wrm[3])
 		{
 			char path[255];
 			// FIXME: path/filename joining needs to be more flexible
@@ -82,35 +84,35 @@ static void get_world_iso_margins(world world, int* margins)
 			//printf("Margins for region %d, %d: top %d, right %d, bottom %d, left %d\n",
 			//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
-			if (rtop <= wrm[0])
+			if (wrtop <= wrm[0])
 			{
-				wrm[0] = rtop;
-				int top = rtop * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[0];
+				wrm[0] = wrtop;
+				int top = wrtop * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[0];
 				if (top < margins[0]) margins[0] = top;
 			}
-			if (rright <= wrm[1])
+			if (wrright <= wrm[1])
 			{
-				wrm[1] = rright;
-				int right = rright * ISO_REGION_WIDTH / 2 + rmargins[1];
+				wrm[1] = wrright;
+				int right = wrright * ISO_REGION_WIDTH / 2 + rmargins[1];
 				if (right < margins[1]) margins[1] = right;
 			}
-			if (rbottom <= wrm[2])
+			if (wrbottom <= wrm[2])
 			{
-				wrm[2] = rbottom;
-				int bottom = rbottom * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[2];
+				wrm[2] = wrbottom;
+				int bottom = wrbottom * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[2];
 				if (bottom < margins[2]) margins[2] = bottom;
 			}
-			if (rleft <= wrm[3])
+			if (wrleft <= wrm[3])
 			{
-				wrm[3] = rleft;
-				int left = rleft * ISO_REGION_WIDTH / 2 + rmargins[3];
+				wrm[3] = wrleft;
+				int left = wrleft * ISO_REGION_WIDTH / 2 + rmargins[3];
 				if (left < margins[3]) margins[3] = left;
 			}
 		}
 	}
-	//printf("Region margins: top %d, right %d, bottom %d, left %d\n",
+	//printf("World margins in regions: top %d, right %d, bottom %d, left %d\n",
 	//		wrm[0], wrm[1], wrm[2], wrm[3]);
-	//printf("Margins: top %d, right %d, bottom %d, left %d\n",
+	//printf("World margins in pixels: top %d, right %d, bottom %d, left %d\n",
 	//		margins[0], margins[1], margins[2], margins[3]);
 }
 
@@ -182,7 +184,7 @@ static world measure_world(const char* worlddir)
 }
 
 
-image render_world_blockmap(world world, const colour* colours, const char night)
+image render_world_blockmap(world world, const texture* textures, const char night)
 {
 	int margins[4];
 	get_world_margins(world, margins);
@@ -203,7 +205,7 @@ image render_world_blockmap(world world, const colour* colours, const char night
 		char path[255];
 		// FIXME: path/filename joining needs to be more flexible
 		sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
-		image rimage = render_region_blockmap(path, colours, night);
+		image rimage = render_region_blockmap(path, textures, night);
 
 		int rxo = (rx == world.rxmin ? margins[3] : 0);
 		int rpx = (rx - world.rxmin) * REGION_BLOCK_LENGTH - margins[3] + rxo;
@@ -227,7 +229,7 @@ image render_world_blockmap(world world, const colour* colours, const char night
 }
 
 
-image render_world_iso_blockmap(world world, const colour* colours, const char night)
+image render_world_iso_blockmap(world world, const texture* textures, const char night)
 {
 	int margins[4];
 	get_world_iso_margins(world, margins);
@@ -280,7 +282,7 @@ image render_world_iso_blockmap(world world, const colour* colours, const char n
 
 			char path[255];
 			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
-			image rimage = render_region_iso_blockmap(path, colours, night);
+			image rimage = render_region_iso_blockmap(path, textures, night);
 
 			for (int py = 0; py < rh; py++)
 			{
@@ -299,7 +301,7 @@ image render_world_iso_blockmap(world world, const colour* colours, const char n
 }
 
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const colour* colours,
+void save_world_blockmap(const char* worlddir, const char* imagefile, const texture* textures,
 		const char night, const char isometric)
 {
 	world world = measure_world(worlddir);
@@ -310,11 +312,11 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const colo
 	}
 
 	image wimage = isometric
-			? render_world_iso_blockmap(world, colours, night)
-			: render_world_blockmap(world, colours, night);
+			? render_world_iso_blockmap(world, textures, night)
+			: render_world_blockmap(world, textures, night);
 	free(world.regions);
 
 	printf("Saving image to %s ...\n", imagefile);
-	lodepng_encode32_file(imagefile, wimage.data, wimage.width, wimage.height);
+	SAVE_IMAGE(wimage, imagefile);
 	free(wimage.data);
 }
