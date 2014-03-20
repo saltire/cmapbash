@@ -58,12 +58,8 @@ void get_region_iso_margins(const char* regionfile, int* margins, const char rot
 
 	// region margins measured in pixels
 	// start at maximum and decrease as chunks are found
-	margins[0] = margins[2] = ISO_REGION_SURFACE_HEIGHT; // top, bottom
+	margins[0] = margins[2] = ISO_REGION_TOP_HEIGHT; // top, bottom
 	margins[1] = margins[3] = ISO_REGION_WIDTH; // right, left
-
-	// the pixel size of vertical and horizontal chunk margins
-	int hmargin = ISO_CHUNK_WIDTH / 2;
-	int vmargin = CHUNK_BLOCK_LENGTH * ISO_BLOCK_STEP;
 
 	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
@@ -82,15 +78,15 @@ void get_region_iso_margins(const char* regionfile, int* margins, const char rot
 						cx + cz // NW
 				};
 
-				int cpm[4];
 				for (int i = 0; i < 4; i++)
 				{
 					// margins for this chunk, measured in pixels
 					// odd ones are multiplied by the horizontal margin, even ones by vertical
-					cpm[i] = ccm[i] * (i % 2 == rotate % 2 ? vmargin : hmargin);
+					int cmargin = ccm[i] *
+							(i % 2 == rotate % 2 ? ISO_CHUNK_Y_MARGIN : ISO_CHUNK_X_MARGIN);
 
 					// assign to rotated region margins if lower
-					if (cpm[i] < margins[(i + rotate) % 4]) margins[(i + rotate) % 4] = cpm[i];
+					if (cmargin < margins[(i + rotate) % 4]) margins[(i + rotate) % 4] = cmargin;
 				}
 			}
 		}
@@ -221,8 +217,8 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 			image cimage = render_chunk_iso_blockmap(chunk, textures, night, rotate);
 			nbt_free(chunk);
 
-			int cpx = (cx + cz) * ISO_CHUNK_WIDTH / 2;
-			int cpy = (REGION_CHUNK_LENGTH - cx + cz - 1) * CHUNK_BLOCK_LENGTH * ISO_BLOCK_STEP;
+			int cpx = (cx + cz) * ISO_CHUNK_X_MARGIN;
+			int cpy = (REGION_CHUNK_LENGTH - cx + cz - 1) * ISO_CHUNK_Y_MARGIN;
 			//printf("Writing chunk %d,%d to pixel %d,%d\n", cx, cz, cpx, cpy);
 
 			for (int py = 0; py < ISO_CHUNK_HEIGHT; py++)

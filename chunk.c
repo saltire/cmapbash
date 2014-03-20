@@ -209,12 +209,24 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 				}
 
 				int px = (x + z) * ISO_BLOCK_WIDTH / 2;
-				int py = (CHUNK_BLOCK_LENGTH - x + z - 1) * ISO_BLOCK_STEP
-						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_HEIGHT;
+				int py = (CHUNK_BLOCK_LENGTH - x + z - 1) * ISO_BLOCK_TOP_HEIGHT
+						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_DEPTH;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
 
 				for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 				{
+					// before drawing the top of this block, check the block above
+					if (sy < ISO_BLOCK_TOP_HEIGHT && by < CHUNK_BLOCK_HEIGHT - 1)
+					{
+						// if the block above is the same type, don't draw the top of this one
+						unsigned char tblockid = blocks[b + CHUNK_BLOCK_AREA];
+						if (tblockid == blockid) continue;
+
+						// if the block above is opaque, don't draw the top of this one
+						unsigned char ttype = data[b + CHUNK_BLOCK_AREA] % textures[tblockid].mask;
+						if (textures[tblockid].types[ttype].colour[ALPHA] == 255) continue;
+					}
+
 					for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 					{
 						if (textures[blockid].types[type].shape[sy * ISO_BLOCK_WIDTH + sx])

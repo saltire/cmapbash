@@ -139,14 +139,11 @@ static void get_world_margins(world world, int* margins, const char rotate)
 
 static void get_world_iso_margins(world world, int* margins, const char rotate)
 {
-	// the size of vertical and horizontal region margins
-	int vmargin = REGION_BLOCK_LENGTH * ISO_BLOCK_STEP;
-	int hmargin = ISO_REGION_WIDTH / 2;
-
 	// world margins measured in pixels
 	// start at maximum and decrease as regions are found
-	margins[0] = margins[2] = (world.rxsize + world.rzsize) * vmargin - ISO_BLOCK_STEP;
-	margins[1] = margins[3] = (world.rxsize + world.rzsize + 1) * hmargin;
+	margins[0] = margins[2] = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
+			- ISO_BLOCK_TOP_HEIGHT;
+	margins[1] = margins[3] = (world.rxsize + world.rzsize + 1) * ISO_REGION_X_MARGIN;
 
 	// world margins measured in regions - used only so we can skip irrelevant regions
 	int wrm[4];
@@ -179,7 +176,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 			//printf("Margins for region %d,%d at %d,%d: top %d, right %d, bottom %d, left %d\n",
 			//		rx, rz, rwx, rwz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
-			int rpmargin;
+			int rmargin;
 			for (int i = 0; i < 4; i++)
 			{
 				// skip this corner unless it's one of the ones that's close to a world corner
@@ -188,8 +185,9 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 					wrm[i] = rrm[i];
 					// margin for this corner of this region in pixels
 					// assign to world margin if lower
-					rpmargin = rrm[i] * (i % 2 ? hmargin : vmargin) + rmargins[i];
-					if (rpmargin < margins[i]) margins[i] = rpmargin;
+					rmargin = rrm[i] * (i % 2 ? ISO_REGION_X_MARGIN : ISO_REGION_Y_MARGIN)
+							+ rmargins[i];
+					if (rmargin < margins[i]) margins[i] = rmargin;
 				}
 			}
 		}
@@ -257,8 +255,8 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 	get_world_iso_margins(world, margins, rotate);
 
 	image wimage;
-	wimage.width = (world.rxsize + world.rzsize) * ISO_REGION_WIDTH / 2 - margins[1] - margins[3];
-	wimage.height = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP
+	wimage.width = (world.rxsize + world.rzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3];
+	wimage.height = ((world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
 			+ ISO_CHUNK_DEPTH - margins[0] - margins[2];
 	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
 	printf("Read %d regions. Image dimensions: %d x %d\n",
@@ -285,14 +283,13 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 			}
 			if (!exists) continue;
 
-			int rpx = (rwx + rwz) * ISO_REGION_WIDTH / 2 - margins[3];
+			int rpx = (rwx + rwz) * ISO_REGION_X_MARGIN - margins[3];
 			int rxo = rpx < 0 ? -rpx : 0;
 			int rw = ISO_REGION_WIDTH - rxo - (rpx + ISO_REGION_WIDTH > wimage.width
 					? rpx + ISO_REGION_WIDTH - wimage.width : 0);
 			rpx += rxo;
 
-			int rpy = (world.rxsize - rwx + rwz - 1) * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP
-					- margins[0];
+			int rpy = (world.rxsize - rwx + rwz - 1) * ISO_REGION_Y_MARGIN - margins[0];
 			int ryo = rpy < 0 ? -rpy : 0;
 			int rh = ISO_REGION_HEIGHT - ryo - (rpy + ISO_REGION_HEIGHT > wimage.height
 					? rpy + ISO_REGION_HEIGHT - wimage.height : 0);

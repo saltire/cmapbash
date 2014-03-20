@@ -2,11 +2,15 @@
 #define TEXTURES_H
 
 
-#define ISO_BLOCK_WIDTH 4
-#define ISO_BLOCK_HEIGHT 4
 #define BLOCK_TYPES 176
 #define CHANNELS 4
 #define ALPHA CHANNELS - 1
+
+// isometric pixel dimensions
+#define ISO_BLOCK_WIDTH 4
+#define ISO_BLOCK_TOP_HEIGHT 1
+#define ISO_BLOCK_DEPTH 3
+#define ISO_BLOCK_HEIGHT (ISO_BLOCK_TOP_HEIGHT + ISO_BLOCK_DEPTH)
 
 
 typedef struct texture {
