@@ -12,8 +12,8 @@
 #define ISO_REGION_HEIGHT (ISO_REGION_SURFACE_HEIGHT + ISO_CHUNK_DEPTH)
 
 
-void get_region_margins(const char* regionfile, int* margins);
-void get_region_iso_margins(const char* regionfile, int* margins);
+void get_region_margins(const char* regionfile, int* margins, const char rotate);
+void get_region_iso_margins(const char* regionfile, int* margins, const char rotate);
 
 image render_region_blockmap(const char* regionfile, const texture* textures, const char night,
 		const char rotate);

@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "textures.h"
-#include "chunk.h"
+#include "world.h"
 
 
 int main(int argc, char **argv)
@@ -76,9 +76,9 @@ int main(int argc, char **argv)
 //	}
 //	save_chunk_blockmap(chunk, outpath, textures, night, isometric, rotate);
 
-	save_region_blockmap(inpath, outpath, textures, night, isometric, rotate);
+	//save_region_blockmap(inpath, outpath, textures, night, isometric, rotate);
 
-	//save_world_blockmap(inpath, outpath, textures, night, isometric, rotate);
+	save_world_blockmap(inpath, outpath, textures, night, isometric, rotate);
 
 	free(textures);
 

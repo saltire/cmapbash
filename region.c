@@ -6,7 +6,7 @@
 #include "region.h"
 
 
-void get_region_margins(const char* regionfile, int* margins)
+void get_region_margins(const char* regionfile, int* margins, const char rotate)
 {
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
@@ -27,12 +27,12 @@ void get_region_margins(const char* regionfile, int* margins)
 			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 			if (offset > 0)
 			{
-				if (z < margins[0]) margins[0] = z; // north
-				if (REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH < margins[1])
-					margins[1] = REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH; // east
-				if (REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH < margins[2])
-					margins[2] = REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH; // south
-				if (x < margins[3]) margins[3] = x; // west;
+				if (z < margins[rotate]) margins[rotate] = z;
+				if (REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH < margins[(1 + rotate) % 4])
+					margins[(1 + rotate) % 4] = REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH;
+				if (REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH < margins[(2 + rotate) % 4])
+					margins[(2 + rotate) % 4] = REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH;
+				if (x < margins[(3 + rotate) % 4]) margins[(3 + rotate) % 4] = x;
 			}
 		}
 	}
@@ -40,7 +40,7 @@ void get_region_margins(const char* regionfile, int* margins)
 }
 
 
-void get_region_iso_margins(const char* regionfile, int* margins)
+void get_region_iso_margins(const char* regionfile, int* margins, const char rotate)
 {
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
@@ -71,10 +71,10 @@ void get_region_iso_margins(const char* regionfile, int* margins)
 						* ISO_BLOCK_STEP;
 				int left = (cx + cz) * ISO_CHUNK_WIDTH / 2;
 
-				if (top < margins[0]) margins[0] = top;
-				if (right < margins[1]) margins[1] = right;
-				if (bottom < margins[2]) margins[2] = bottom;
-				if (left < margins[3]) margins[3] = left;
+				if (top < margins[rotate]) margins[rotate] = top;
+				if (right < margins[(1 + rotate) % 4]) margins[(1 + rotate) % 4] = right;
+				if (bottom < margins[(2 + rotate) % 4]) margins[(2 + rotate) % 4] = bottom;
+				if (left < margins[(3 + rotate) % 4]) margins[(3 + rotate) % 4] = left;
 			}
 		}
 	}
