@@ -113,7 +113,7 @@ static void get_world_margins(world world, int* margins, const char rotate)
 		int rwx = world.regions[r * 4 + 2];
 		int rwz = world.regions[r * 4 + 3];
 
-		// check margins if this region is on the edge of the map
+		// skip this region unless it's on the edge of the map
 		if (rwx == 0 || rwx == world.rxsize - 1 || rwz == 0 || rwz == world.rzsize - 1)
 		{
 			char path[255];
@@ -139,18 +139,18 @@ static void get_world_margins(world world, int* margins, const char rotate)
 
 static void get_world_iso_margins(world world, int* margins, const char rotate)
 {
-	// initialize margins to maximum, and decrease them as regions are parsed
+	// the size of vertical and horizontal region margins
+	int vmargin = REGION_BLOCK_LENGTH * ISO_BLOCK_STEP;
+	int hmargin = ISO_REGION_WIDTH / 2;
 
-	int wrm[4]; // world margins measured in regions
-	for (int i = 0; i < 4; i++)
-	{
-		wrm[i] = world.rxsize + world.rzsize;
-	}
 	// world margins measured in pixels
-	margins[0] = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP;
-	margins[1] = (world.rxsize + world.rzsize + 1) * ISO_REGION_WIDTH / 2;
-	margins[2] = ((world.rxsize + world.rzsize) * REGION_BLOCK_LENGTH - 1) * ISO_BLOCK_STEP;
-	margins[3] = (world.rxsize + world.rzsize + 1) * ISO_REGION_WIDTH / 2;
+	// start at maximum and decrease as regions are found
+	margins[0] = margins[2] = (world.rxsize + world.rzsize) * vmargin - ISO_BLOCK_STEP;
+	margins[1] = margins[3] = (world.rxsize + world.rzsize + 1) * hmargin;
+
+	// world margins measured in regions - used only so we can skip irrelevant regions
+	int wrm[4];
+	for (int i = 0; i < 4; i++) wrm[i] = world.rxsize + world.rzsize;
 
 	for (int r = 0; r < world.rcount; r++)
 	{
@@ -159,13 +159,16 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 		int rwx = world.regions[r * 4 + 2];
 		int rwz = world.regions[r * 4 + 3];
 
-		// world margins for this region, measured in regions
-		int wrtop = world.rxsize - rwx - 1 + rwz;
-		int wrright = world.rxsize - rwx - 1 + world.rzsize - rwz - 1;
-		int wrbottom = rwx + world.rzsize - rwz - 1;
-		int wrleft = rwx + rwz;
+		// margins for this region, measured in regions - compare to wrm
+		int rrm[] = {
+				world.rxsize - rwx - 1 + rwz, // top
+				world.rxsize - rwx - 1 + world.rzsize - rwz - 1, // right
+				rwx + world.rzsize - rwz - 1, // bottom
+				rwx + rwz // left
+		};
 
-		if (wrtop < wrm[0] || wrright < wrm[1] || wrbottom < wrm[2] || wrleft < wrm[3])
+		// skip reading this region unless it's the closest yet to one or more of the corners
+		if (rrm[0] < wrm[0] || rrm[1] < wrm[1] || rrm[2] < wrm[2] || rrm[3] < wrm[3])
 		{
 			char path[255];
 			// FIXME: path/filename joining needs to be more flexible
@@ -173,32 +176,21 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 
 			int rmargins[4];
 			get_region_iso_margins(path, rmargins, rotate);
-			//printf("Margins for region %d, %d: top %d, right %d, bottom %d, left %d\n",
-			//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
+			//printf("Margins for region %d,%d at %d,%d: top %d, right %d, bottom %d, left %d\n",
+			//		rx, rz, rwx, rwz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
-			if (wrtop <= wrm[0])
+			int rpmargin;
+			for (int i = 0; i < 4; i++)
 			{
-				wrm[0] = wrtop;
-				int top = wrtop * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[0];
-				if (top < margins[0]) margins[0] = top;
-			}
-			if (wrright <= wrm[1])
-			{
-				wrm[1] = wrright;
-				int right = wrright * ISO_REGION_WIDTH / 2 + rmargins[1];
-				if (right < margins[1]) margins[1] = right;
-			}
-			if (wrbottom <= wrm[2])
-			{
-				wrm[2] = wrbottom;
-				int bottom = wrbottom * REGION_BLOCK_LENGTH * ISO_BLOCK_STEP + rmargins[2];
-				if (bottom < margins[2]) margins[2] = bottom;
-			}
-			if (wrleft <= wrm[3])
-			{
-				wrm[3] = wrleft;
-				int left = wrleft * ISO_REGION_WIDTH / 2 + rmargins[3];
-				if (left < margins[3]) margins[3] = left;
+				// skip this corner unless it's one of the ones that's close to a world corner
+				if (rrm[i] <= wrm[i])
+				{
+					wrm[i] = rrm[i];
+					// margin for this corner of this region in pixels
+					// assign to world margin if lower
+					rpmargin = rrm[i] * (i % 2 ? hmargin : vmargin) + rmargins[i];
+					if (rpmargin < margins[i]) margins[i] = rpmargin;
+				}
 			}
 		}
 	}

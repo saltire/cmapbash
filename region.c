@@ -27,12 +27,19 @@ void get_region_margins(const char* regionfile, int* margins, const char rotate)
 			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 			if (offset > 0)
 			{
-				if (z < margins[rotate]) margins[rotate] = z;
-				if (REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH < margins[(1 + rotate) % 4])
-					margins[(1 + rotate) % 4] = REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH;
-				if (REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH < margins[(2 + rotate) % 4])
-					margins[(2 + rotate) % 4] = REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH;
-				if (x < margins[(3 + rotate) % 4]) margins[(3 + rotate) % 4] = x;
+				// margins for this chunk, measured in pixels
+				int cm[] = {
+						z,
+						REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH,
+						REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH,
+						x
+				};
+
+				// assign to rotated region margins if lower
+				for (int i = 0; i < 4; i++)
+				{
+					if (cm[i] < margins[(i + rotate) % 4]) margins[(i + rotate) % 4] = cm[i];
+				}
 			}
 		}
 	}
@@ -49,32 +56,42 @@ void get_region_iso_margins(const char* regionfile, int* margins, const char rot
 		return;
 	}
 
-	margins[0] = ISO_REGION_SURFACE_HEIGHT;
-	margins[1] = ISO_REGION_WIDTH;
-	margins[2] = ISO_REGION_SURFACE_HEIGHT;
-	margins[3] = ISO_REGION_WIDTH;
+	// region margins measured in pixels
+	// start at maximum and decrease as chunks are found
+	margins[0] = margins[2] = ISO_REGION_SURFACE_HEIGHT; // top, bottom
+	margins[1] = margins[3] = ISO_REGION_WIDTH; // right, left
 
-	unsigned char buffer[4];
-	unsigned int offset;
+	// the pixel size of vertical and horizontal chunk margins
+	int hmargin = ISO_CHUNK_WIDTH / 2;
+	int vmargin = CHUNK_BLOCK_LENGTH * ISO_BLOCK_STEP;
+
 	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
 		for (int cx = 0; cx < REGION_CHUNK_LENGTH; cx++)
 		{
+			unsigned char buffer[4];
 			fread(buffer, 1, 4, region);
-			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+			unsigned int offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 			if (offset > 0)
 			{
-				int top = (REGION_CHUNK_LENGTH - cx - 1 + cz) * CHUNK_BLOCK_LENGTH
-						* ISO_BLOCK_STEP;
-				int right = (REGION_CHUNK_LENGTH * 2 - cx - cz - 2) * ISO_CHUNK_WIDTH / 2;
-				int bottom = (cx + REGION_CHUNK_LENGTH - cz - 1) * CHUNK_BLOCK_LENGTH
-						* ISO_BLOCK_STEP;
-				int left = (cx + cz) * ISO_CHUNK_WIDTH / 2;
+				// margins for this chunk, measured in chunks
+				int ccm[] = {
+						REGION_CHUNK_LENGTH - cx - 1 + cz, // NE
+						REGION_CHUNK_LENGTH - cx - 1 + REGION_CHUNK_LENGTH - cz - 1, // SE
+						cx + REGION_CHUNK_LENGTH - cz - 1, // SW
+						cx + cz // NW
+				};
 
-				if (top < margins[rotate]) margins[rotate] = top;
-				if (right < margins[(1 + rotate) % 4]) margins[(1 + rotate) % 4] = right;
-				if (bottom < margins[(2 + rotate) % 4]) margins[(2 + rotate) % 4] = bottom;
-				if (left < margins[(3 + rotate) % 4]) margins[(3 + rotate) % 4] = left;
+				int cpm[4];
+				for (int i = 0; i < 4; i++)
+				{
+					// margins for this chunk, measured in pixels
+					// odd ones are multiplied by the horizontal margin, even ones by vertical
+					cpm[i] = ccm[i] * (i % 2 == rotate % 2 ? vmargin : hmargin);
+
+					// assign to rotated region margins if lower
+					if (cpm[i] < margins[(i + rotate) % 4]) margins[(i + rotate) % 4] = cpm[i];
+				}
 			}
 		}
 	}
