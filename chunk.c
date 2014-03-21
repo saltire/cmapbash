@@ -200,13 +200,18 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 
 				unsigned char type = data[b] % textures[blockid].mask;
 
-				unsigned char colour[CHANNELS];
+				unsigned char colour[CHANNELS], lshadow[CHANNELS], rshadow[CHANNELS];
 				memcpy(&colour, &textures[blockid].types[type].colour, CHANNELS);
 				adjust_colour_by_height(colour, by);
 				if (blight != NULL)
 				{
 					adjust_colour_by_lum(colour, blight[b]);
 				}
+
+				memcpy(&lshadow, &colour, CHANNELS);
+				memcpy(&rshadow, &colour, CHANNELS);
+				adjust_colour_by_lum(lshadow, 8);
+				adjust_colour_by_lum(rshadow, 12);
 
 				int px = (x + z) * ISO_BLOCK_WIDTH / 2;
 				int py = (CHUNK_BLOCK_LENGTH - x + z - 1) * ISO_BLOCK_TOP_HEIGHT
@@ -231,7 +236,13 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 					{
 						if (textures[blockid].types[type].shape[sy * ISO_BLOCK_WIDTH + sx])
 						{
-							combine_alpha(colour,
+							unsigned char* shade = colour;
+							if (sy >= ISO_BLOCK_TOP_HEIGHT)
+							{
+								shade = sx < ISO_BLOCK_WIDTH / 2 ? lshadow : rshadow;
+							}
+
+							combine_alpha(shade,
 									&cimage.data[((py + sy) * cimage.width + px + sx) * CHANNELS],
 									1);
 						}
