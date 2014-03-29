@@ -10,6 +10,30 @@
 #include "world.h"
 
 
+static void get_rel_coords_from_abs_coords(const world world, const int rotate,
+		const int rx, const int rz, int *rwx, int *rwz)
+{
+	switch(rotate) {
+	case 0:
+		*rwx = rx - world.rxmin;
+		*rwz = rz - world.rzmin;
+		break;
+	case 1:
+		*rwx = world.rzsize - (rz - world.rzmin) - 1;
+		*rwz = rx - world.rxmin;
+		break;
+	case 2:
+		*rwx = world.rxsize - (rx - world.rxmin) - 1;
+		*rwz = world.rzsize - (rz - world.rzmin) - 1;
+		break;
+	case 3:
+		*rwx = rz - world.rzmin;
+		*rwz = world.rxsize - (rx - world.rxmin) - 1;
+		break;
+	}
+}
+
+
 static world measure_world(const char* worlddir, const char rotate)
 {
 	world world;
@@ -58,32 +82,14 @@ static world measure_world(const char* worlddir, const char rotate)
 
 	rewinddir(dir);
 	int r = 0;
-	int rwx, rwz;
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			// region coordinates relative to the rotated world
-			switch(rotate) {
-			case 0:
-				rwx = rx - world.rxmin;
-				rwz = rz - world.rzmin;
-				break;
-			case 1:
-				rwx = world.rxsize - (rz - world.rzmin) - 1;
-				rwz = rx - world.rxmin;
-				break;
-			case 2:
-				rwx = world.rxsize - (rx - world.rxmin) - 1;
-				rwz = world.rzsize - (rz - world.rzmin) - 1;
-				break;
-			case 3:
-				rwx = rz - world.rzmin;
-				rwz = world.rzsize - (rx - world.rxmin) - 1;
-				break;
-			}
+			int rwx, rwz;
+			get_rel_coords_from_abs_coords(world, rotate, rx, rz, &rwx, &rwz);
 
 			world.regions[r * 4] = rx;
 			world.regions[r * 4 + 1] = rz;
@@ -100,11 +106,11 @@ static world measure_world(const char* worlddir, const char rotate)
 
 static void get_world_margins(world world, int* margins, const char rotate)
 {
+	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+
 	// initialize margins to maximum, and decrease them as regions are parsed
-	for (int i = 0; i < 4; i++)
-	{
-		margins[i] = REGION_BLOCK_LENGTH;
-	}
+	for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
 
 	for (int r = 0; r < world.rcount; r++)
 	{
@@ -114,7 +120,7 @@ static void get_world_margins(world world, int* margins, const char rotate)
 		int rwz = world.regions[r * 4 + 3];
 
 		// skip this region unless it's on the edge of the map
-		if (rwx == 0 || rwx == world.rxsize - 1 || rwz == 0 || rwz == world.rzsize - 1)
+		if (rwx == 0 || rwx == rwxsize - 1 || rwz == 0 || rwz == rwzsize - 1)
 		{
 			char path[255];
 			// FIXME: path/filename joining needs to be more flexible
@@ -127,8 +133,8 @@ static void get_world_margins(world world, int* margins, const char rotate)
 
 			// use margins for the specific edge(s) that this region touches
 			if (rwz == 0 && rmargins[0] < margins[0]) margins[0] = rmargins[0];
-			if (rwx == world.rxsize - 1 && rmargins[1] < margins[1]) margins[1] = rmargins[1];
-			if (rwz == world.rzsize - 1 && rmargins[2] < margins[2]) margins[2] = rmargins[2];
+			if (rwx == rwxsize - 1 && rmargins[1] < margins[1]) margins[1] = rmargins[1];
+			if (rwz == rwzsize - 1 && rmargins[2] < margins[2]) margins[2] = rmargins[2];
 			if (rwx == 0 && rmargins[3] < margins[3]) margins[3] = rmargins[3];
 		}
 	}
@@ -139,6 +145,9 @@ static void get_world_margins(world world, int* margins, const char rotate)
 
 static void get_world_iso_margins(world world, int* margins, const char rotate)
 {
+	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+
 	// world margins measured in pixels
 	// start at maximum and decrease as regions are found
 	margins[0] = margins[2] = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
@@ -147,7 +156,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 
 	// world margins measured in regions - used only so we can skip irrelevant regions
 	int wrm[4];
-	for (int i = 0; i < 4; i++) wrm[i] = world.rxsize + world.rzsize;
+	for (int i = 0; i < 4; i++) wrm[i] = rwxsize + rwzsize;
 
 	for (int r = 0; r < world.rcount; r++)
 	{
@@ -158,9 +167,9 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 
 		// margins for this region, measured in regions - compare to wrm
 		int rrm[] = {
-				world.rxsize - rwx - 1 + rwz, // top
-				world.rxsize - rwx - 1 + world.rzsize - rwz - 1, // right
-				rwx + world.rzsize - rwz - 1, // bottom
+				rwxsize - rwx - 1 + rwz, // top
+				rwxsize - rwx - 1 + rwzsize - rwz - 1, // right
+				rwx + rwzsize - rwz - 1, // bottom
 				rwx + rwz // left
 		};
 
@@ -205,9 +214,12 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 	int margins[4];
 	get_world_margins(world, margins, rotate);
 
+	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+
 	image wimage;
-	wimage.width = world.rxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3];
-	wimage.height = world.rzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2];
+	wimage.width = rwxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3];
+	wimage.height = rwzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2];
 	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
@@ -226,11 +238,11 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 
 		int rxo = (rwx == 0 ? margins[3] : 0);
 		int rpx = rwx * REGION_BLOCK_LENGTH - margins[3] + rxo;
-		int rw = REGION_BLOCK_LENGTH - rxo - (rwx == world.rxsize - 1 ? margins[1] : 0);
+		int rw = REGION_BLOCK_LENGTH - rxo - (rwx == rwxsize - 1 ? margins[1] : 0);
 
 		int ryo = (rwz == 0 ? margins[0] : 0);
 		int rpy = rwz * REGION_BLOCK_LENGTH - margins[0] + ryo;
-		int rh = REGION_BLOCK_LENGTH - ryo - (rwz == world.rzsize - 1 ? margins[2] : 0);
+		int rh = REGION_BLOCK_LENGTH - ryo - (rwz == rwzsize - 1 ? margins[2] : 0);
 
 		printf("Rendering region %d/%d (%d,%d) at pos %d,%d pixel %d,%d\n",
 				r + 1, world.rcount, rx, rz, rwx, rwz, rpx, rpy);
@@ -254,9 +266,12 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 	int margins[4];
 	get_world_iso_margins(world, margins, rotate);
 
+	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+
 	image wimage;
-	wimage.width = (world.rxsize + world.rzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3];
-	wimage.height = ((world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
+	wimage.width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3];
+	wimage.height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
 			+ ISO_CHUNK_DEPTH - margins[0] - margins[2];
 	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
 	printf("Read %d regions. Image dimensions: %d x %d\n",
@@ -265,18 +280,18 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 	int rc = 0;
 	int rx, rz;
 	// we need to render the regions in a certain order
-	for (int rwz = 0; rwz < world.rzsize; rwz++)
+	for (int rwz = 0; rwz < rwzsize; rwz++)
 	{
-		for (int rwx = world.rxsize - 1; rwx >= 0; rwx--)
+		for (int rwx = rwxsize - 1; rwx >= 0; rwx--)
 		{
 			// only read the region if we know it exists
 			int exists = 0;
-			for (int i = 0; i < world.rcount; i++)
+			for (int r = 0; r < world.rcount; r++)
 			{
-				if (world.regions[i * 4 + 2] == rwx && world.regions[i * 4 + 3] == rwz)
+				if (world.regions[r * 4 + 2] == rwx && world.regions[r * 4 + 3] == rwz)
 				{
-					rx = world.regions[i * 4];
-					rz = world.regions[i * 4 + 1];
+					rx = world.regions[r * 4];
+					rz = world.regions[r * 4 + 1];
 					exists = 1;
 					break;
 				}
@@ -289,7 +304,7 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 					? rpx + ISO_REGION_WIDTH - wimage.width : 0);
 			rpx += rxo;
 
-			int rpy = (world.rxsize - rwx + rwz - 1) * ISO_REGION_Y_MARGIN - margins[0];
+			int rpy = (rwxsize - rwx + rwz - 1) * ISO_REGION_Y_MARGIN - margins[0];
 			int ryo = rpy < 0 ? -rpy : 0;
 			int rh = ISO_REGION_HEIGHT - ryo - (rpy + ISO_REGION_HEIGHT > wimage.height
 					? rpy + ISO_REGION_HEIGHT - wimage.height : 0);
