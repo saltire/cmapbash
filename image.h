@@ -14,5 +14,7 @@ typedef struct image {
 #define SAVE_IMAGE(image, outfile) \
 	lodepng_encode32_file((outfile), (image).data, (image).width, (image).height)
 
+#define FREE_IMAGE(image) free(image.data)
+
 
 #endif

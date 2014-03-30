@@ -172,7 +172,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 						&cimage.data[bz * CHUNK_BLOCK_LENGTH * CHANNELS],
 						CHUNK_BLOCK_LENGTH * CHANNELS);
 			}
-			free(cimage.data);
+			FREE_IMAGE(cimage);
 		}
 	}
 
@@ -229,7 +229,7 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 							&rimage.data[((cpy + py) * rimage.width + cpx + px) * CHANNELS], 1);
 				}
 			}
-			free(cimage.data);
+			FREE_IMAGE(cimage);
 		}
 	}
 
@@ -248,5 +248,5 @@ void save_region_blockmap(const char* regionfile, const char* imagefile, const t
 
 	printf("Saving image to %s ...\n", imagefile);
 	SAVE_IMAGE(rimage, imagefile);
-	free(rimage.data);
+	FREE_IMAGE(rimage);
 }

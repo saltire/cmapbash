@@ -267,7 +267,7 @@ void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* 
 
 	printf("Saving image to %s ...\n", imagefile);
 	SAVE_IMAGE(cimage, imagefile);
-	free(cimage.data);
+	FREE_IMAGE(cimage);
 }
 
 
@@ -321,5 +321,5 @@ void save_chunk_heightmap(nbt_node* chunk, const char* imagefile)
 
 	printf("Saving image to %s ...\n", imagefile);
 	SAVE_IMAGE(cimage, imagefile);
-	free(cimage.data);
+	FREE_IMAGE(cimage);
 }
