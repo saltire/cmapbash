@@ -122,6 +122,12 @@ static world measure_world(const char* worlddir, const char rotate)
 }
 
 
+static void free_world(world world)
+{
+	free(world.regionmap);
+}
+
+
 static void get_world_margins(world world, int* margins, const char rotate)
 {
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
@@ -240,10 +246,9 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
 
-	image wimage;
-	wimage.width = rwxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3];
-	wimage.height = rwzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2];
-	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
+	image wimage = create_image(
+			rwxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3],
+			rwzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2]);
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
 
@@ -260,6 +265,11 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 			// FIXME: path/filename joining needs to be more flexible
 			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 			image rimage = render_region_blockmap(path, textures, night, rotate);
+			if (rimage.data == NULL)
+			{
+				wimage.data = NULL;
+				return wimage;
+			}
 
 			int rxo = (rwx == 0 ? margins[3] : 0);
 			int rpx = rwx * REGION_BLOCK_LENGTH - margins[3] + rxo;
@@ -279,7 +289,7 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 						&rimage.data[((ryo + y) * REGION_BLOCK_LENGTH + rxo) * CHANNELS],
 						rw * CHANNELS);
 			}
-			FREE_IMAGE(rimage);
+			free_image(rimage);
 		}
 	}
 
@@ -296,11 +306,10 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
 
-	image wimage;
-	wimage.width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3];
-	wimage.height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
-			+ ISO_CHUNK_DEPTH - margins[0] - margins[2];
-	wimage.data = (unsigned char*)calloc(wimage.width * wimage.height * CHANNELS, sizeof(char));
+	image wimage = create_image(
+			(rwxsize + rwzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3],
+			((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
+						+ ISO_CHUNK_DEPTH - margins[0] - margins[2]);
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
 
@@ -333,6 +342,11 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 			char path[255];
 			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 			image rimage = render_region_iso_blockmap(path, textures, night, rotate);
+			if (rimage.data == NULL)
+			{
+				wimage.data = NULL;
+				return wimage;
+			}
 
 			for (int py = 0; py < rh; py++)
 			{
@@ -343,7 +357,7 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 							&wimage.data[((rpy + py) * wimage.width + rpx + px) * CHANNELS], 1);
 				}
 			}
-			FREE_IMAGE(rimage);
+			free_image(rimage);
 		}
 	}
 
@@ -364,9 +378,9 @@ void save_world_blockmap(const char* worlddir, const char* imagefile, const text
 	image wimage = isometric
 			? render_world_iso_blockmap(world, textures, night, rotate)
 			: render_world_blockmap(world, textures, night, rotate);
-	FREE_WORLD(world);
+	free_world(world);
 
 	printf("Saving image to %s ...\n", imagefile);
-	SAVE_IMAGE(wimage, imagefile);
-	FREE_IMAGE(wimage);
+	save_image(wimage, imagefile);
+	free_image(wimage);
 }

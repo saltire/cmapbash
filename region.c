@@ -1,9 +1,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "image.h"
 #include "region.h"
+
+
+#define SECTOR_LENGTH 4096
 
 
 void get_region_margins(const char* regionfile, int* margins, const char rotate)
@@ -132,7 +136,7 @@ static nbt_node* get_chunk_at_offset(FILE* region, unsigned int offset)
 image render_region_blockmap(const char* regionfile, const texture* textures, const char night,
 		const char rotate)
 {
-	image rimage;
+	image rimage = create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
 	{
@@ -140,10 +144,6 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 		rimage.data = NULL;
 		return rimage;
 	}
-
-	rimage.width = REGION_BLOCK_LENGTH;
-	rimage.height = REGION_BLOCK_LENGTH;
-	rimage.data = (unsigned char*)calloc(REGION_BLOCK_AREA * CHANNELS, sizeof(char));
 
 	unsigned int offsets[REGION_CHUNK_AREA];
 	read_chunk_offsets(region, offsets);
@@ -172,7 +172,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 						&cimage.data[bz * CHUNK_BLOCK_LENGTH * CHANNELS],
 						CHUNK_BLOCK_LENGTH * CHANNELS);
 			}
-			FREE_IMAGE(cimage);
+			free_image(cimage);
 		}
 	}
 
@@ -184,8 +184,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night,
 		const char rotate)
 {
-	image rimage;
-
+	image rimage = create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT);
 	FILE* region = fopen(regionfile, "r");
 	if (region == NULL)
 	{
@@ -193,14 +192,10 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 		rimage.data = NULL;
 		return rimage;
 	}
+	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
 
 	unsigned int offsets[REGION_CHUNK_AREA];
 	read_chunk_offsets(region, offsets);
-
-	rimage.width = ISO_REGION_WIDTH;
-	rimage.height = ISO_REGION_HEIGHT;
-	rimage.data = (unsigned char*)calloc(rimage.width * rimage.height * CHANNELS, sizeof(char));
-	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
 
 	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
@@ -229,7 +224,7 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 							&rimage.data[((cpy + py) * rimage.width + cpx + px) * CHANNELS], 1);
 				}
 			}
-			FREE_IMAGE(cimage);
+			free_image(cimage);
 		}
 	}
 
@@ -247,6 +242,6 @@ void save_region_blockmap(const char* regionfile, const char* imagefile, const t
 	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);
-	SAVE_IMAGE(rimage, imagefile);
-	FREE_IMAGE(rimage);
+	save_image(rimage, imagefile);
+	free_image(rimage);
 }

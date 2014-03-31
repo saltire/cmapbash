@@ -2,15 +2,10 @@
 #define TEXTURES_H
 
 
-#define BLOCK_TYPES 176
-#define MAX_LIGHT 16
-#define CHANNELS 4
-#define ALPHA CHANNELS - 1
+#include "image.h"
 
-// configurable render options
-#define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
-#define HEIGHT_CONTRAST 0.7 // amount of contrast for height shading
-#define NIGHT_AMBIENCE 0.2 // base light level for night renders
+
+#define BLOCK_TYPES 176
 
 // isometric pixel dimensions
 #define ISO_BLOCK_WIDTH 4

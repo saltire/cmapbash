@@ -2,8 +2,6 @@
 #include "textures.h"
 
 
-#define SECTOR_LENGTH 4096
-
 // world dimensions
 #define REGION_CHUNK_LENGTH 32
 #define REGION_BLOCK_LENGTH REGION_CHUNK_LENGTH * CHUNK_BLOCK_LENGTH

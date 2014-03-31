@@ -8,8 +8,6 @@ typedef struct world {
 	unsigned char* regionmap;
 } world;
 
-#define FREE_WORLD(world) free(world.regionmap)
-
 
 image render_world_blockmap(world world, const texture* textures, const char night,
 		const char rotate);

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "image.h"
 #include "shapes.h"
 #include "textures.h"
 
@@ -98,23 +99,10 @@ void combine_alpha(unsigned char* top, unsigned char* bottom, int down)
 
 	float bmod = (float)(255 - top[ALPHA]) / 255;
 	unsigned char alpha = top[ALPHA] + bottom[ALPHA] * bmod;
-
-	if (down)
+	unsigned char* target = down ? bottom : top;
+	for (int ch = 0; ch < ALPHA; ch++)
 	{
-		// store the blended colour in the bottom colour's buffer
-		for (int ch = 0; ch < ALPHA; ch++)
-		{
-			bottom[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
-		}
-		bottom[ALPHA] = alpha;
+		target[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
 	}
-	else
-	{
-		// store the blended colour in the top colour's buffer
-		for (int ch = 0; ch < ALPHA; ch++)
-		{
-			top[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
-		}
-		top[ALPHA] = alpha;
-	}
+	target[ALPHA] = alpha;
 }

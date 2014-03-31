@@ -2,8 +2,8 @@
 #define IMAGE_H
 
 
-#include "lodepng.h"
-
+#define CHANNELS 4
+#define ALPHA CHANNELS - 1
 
 typedef struct image {
 	unsigned int width, height;
@@ -11,10 +11,9 @@ typedef struct image {
 } image;
 
 
-#define SAVE_IMAGE(image, outfile) \
-	lodepng_encode32_file((outfile), (image).data, (image).width, (image).height)
-
-#define FREE_IMAGE(image) free(image.data)
+image create_image(const unsigned int width, const unsigned int height);
+void save_image(const image image, const char* outfile);
+void free_image(image image);
 
 
 #endif
