@@ -3,8 +3,14 @@
 
 
 #define BLOCK_TYPES 176
+#define MAX_LIGHT 16
 #define CHANNELS 4
 #define ALPHA CHANNELS - 1
+
+// configurable render options
+#define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
+#define HEIGHT_CONTRAST 0.7 // amount of contrast for height shading
+#define NIGHT_AMBIENCE 0.2 // base light level for night renders
 
 // isometric pixel dimensions
 #define ISO_BLOCK_WIDTH 4
@@ -24,8 +30,8 @@ typedef struct texture {
 
 texture* read_textures(const char* texturefile);
 
-void adjust_colour_by_lum(unsigned char* pixel, unsigned char light);
-void adjust_colour_by_height(unsigned char* pixel, int y);
+void set_colour_brightness(unsigned char* pixel, float brightness, float ambience);
+void adjust_colour_brightness(unsigned char* pixel, float mod);
 void combine_alpha(unsigned char* top, unsigned char* bottom, int down);
 
 

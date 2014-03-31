@@ -60,38 +60,25 @@ texture* read_textures(const char* texturefile)
 }
 
 
-void adjust_colour_by_lum(unsigned char* pixel, unsigned char light)
+void set_colour_brightness(unsigned char* pixel, float brightness, float ambience)
 {
 	if (pixel[ALPHA] == 0) return;
+
 	for (int c = 0; c < ALPHA; c++)
 	{
-		float darkness = 0.2;
-		float lightness = (float)light / 15;
-		//printf("Rendering pixel with lightness %d (%f): %d -> ", light, lightness, pixel[c]);
-		pixel[c] = pixel[c] * (darkness + (1 - darkness) * lightness);
-		//printf("%d\n", pixel[c]);
+		pixel[c] *= (ambience + (1 - ambience) * brightness);
 	}
 }
 
 
-void adjust_colour_by_height(unsigned char* pixel, int y)
+void adjust_colour_brightness(unsigned char* pixel, float mod)
 {
 	if (pixel[ALPHA] == 0) return;
+
 	for (int c = 0; c < ALPHA; c++)
 	{
-		// linear height shader
-		//float contrast = 0.8;
-		//pixel[c] = pixel[c] * contrast + y * (1 - contrast);
-
-		// curved, higher contrast height shader
-		float contrast = 0.7; // amount of contrast
-		float center = 0.3; // gamma correction
-
-		int alt = y - (center * 255); // +/- distance from center
-		unsigned char limit = alt < 0 ? pixel[c] : 255 - pixel[c]; // room to adjust
-		int mod = limit * (float)alt /
-				(alt < 0 ? center * 255 : (1 - center) * 255); // amount to adjust
-		pixel[c] = pixel[c] + mod * contrast;
+		unsigned char limit = mod < 0 ? pixel[c] : 255 - pixel[c]; // room to adjust
+		pixel[c] += limit * mod;
 	}
 }
 
@@ -100,35 +87,34 @@ void combine_alpha(unsigned char* top, unsigned char* bottom, int down)
 {
 	if (top[ALPHA] == 255 || bottom[ALPHA] == 0)
 	{
-		if (down && top[ALPHA] > 0)
-		{
-			memcpy(bottom, top, CHANNELS);
-		}
+		if (down && top[ALPHA] > 0) memcpy(bottom, top, CHANNELS);
 		return;
 	}
-	if (top[ALPHA] == 0)
+	else if (top[ALPHA] == 0)
 	{
-		if (!down && bottom[ALPHA] > 0)
-		{
-			memcpy(top, bottom, CHANNELS);
-		}
+		if (!down && bottom[ALPHA] > 0) memcpy(top, bottom, CHANNELS);
 		return;
 	}
 
 	float bmod = (float)(255 - top[ALPHA]) / 255;
 	unsigned char alpha = top[ALPHA] + bottom[ALPHA] * bmod;
 
-	for (int ch = 0; ch < ALPHA; ch++)
+	if (down)
 	{
-		// if down is true, store in the bottom colour's buffer, otherwise the top
-		if (down)
+		// store the blended colour in the bottom colour's buffer
+		for (int ch = 0; ch < ALPHA; ch++)
 		{
 			bottom[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
 		}
-		else
+		bottom[ALPHA] = alpha;
+	}
+	else
+	{
+		// store the blended colour in the top colour's buffer
+		for (int ch = 0; ch < ALPHA; ch++)
 		{
 			top[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
 		}
+		top[ALPHA] = alpha;
 	}
-	down ? (bottom[ALPHA] = alpha) : (top[ALPHA] = alpha);
 }

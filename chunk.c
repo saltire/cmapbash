@@ -89,6 +89,16 @@ static void get_block_colour_at_height(unsigned char* pixel, unsigned char* bloc
 }
 
 
+static void adjust_colour_by_height(unsigned char* pixel, int y)
+{
+	if (pixel[ALPHA] == 0) return;
+
+	float alt = (float)y / (CHUNK_BLOCK_HEIGHT - 1) - HEIGHT_MIDPOINT; // +/- distance from center
+	float mod = alt / (alt < 0 ? HEIGHT_MIDPOINT : 1 - HEIGHT_MIDPOINT); // amount to adjust
+	adjust_colour_brightness(pixel, mod * HEIGHT_CONTRAST);
+}
+
+
 static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsigned char* data,
 		unsigned char* blight, const texture* textures, int b)
 {
@@ -102,7 +112,8 @@ static void get_block_colour(unsigned char* pixel, unsigned char* blocks, unsign
 			adjust_colour_by_height(pixel, y);
 			if (blight != NULL)
 			{
-				adjust_colour_by_lum(pixel, blight[y * CHUNK_BLOCK_AREA + b]);
+				set_colour_brightness(pixel, (float)blight[y * CHUNK_BLOCK_AREA + b] / MAX_LIGHT,
+						NIGHT_AMBIENCE);
 			}
 			break;
 		}
@@ -205,13 +216,14 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 				adjust_colour_by_height(colour, by);
 				if (blight != NULL)
 				{
-					adjust_colour_by_lum(colour, blight[b]);
+					set_colour_brightness(colour, (float)blight[b] / (CHUNK_BLOCK_HEIGHT - 1),
+							NIGHT_AMBIENCE);
 				}
 
 				memcpy(&lshadow, &colour, CHANNELS);
 				memcpy(&rshadow, &colour, CHANNELS);
-				adjust_colour_by_lum(lshadow, 8);
-				adjust_colour_by_lum(rshadow, 12);
+				set_colour_brightness(lshadow, 0.75, 0);
+				set_colour_brightness(rshadow, 0.5, 0);
 
 				int px = (x + z) * ISO_BLOCK_WIDTH / 2;
 				int py = (CHUNK_BLOCK_LENGTH - x + z - 1) * ISO_BLOCK_TOP_HEIGHT
