@@ -10,54 +10,6 @@
 #include "world.h"
 
 
-static void get_rel_coords_from_abs_coords(const world world, const int rotate,
-		const int rx, const int rz, int *rwx, int *rwz)
-{
-	switch(rotate) {
-	case 0:
-		*rwx = rx - world.rxmin;
-		*rwz = rz - world.rzmin;
-		break;
-	case 1:
-		*rwx = world.rzsize - (rz - world.rzmin) - 1;
-		*rwz = rx - world.rxmin;
-		break;
-	case 2:
-		*rwx = world.rxsize - (rx - world.rxmin) - 1;
-		*rwz = world.rzsize - (rz - world.rzmin) - 1;
-		break;
-	case 3:
-		*rwx = rz - world.rzmin;
-		*rwz = world.rxsize - (rx - world.rxmin) - 1;
-		break;
-	}
-}
-
-
-static void get_abs_coords_from_rel_coords(const world world, const int rotate,
-		const int rwx, const int rwz, int *rx, int *rz)
-{
-	switch(rotate) {
-	case 0:
-		*rx = rwx + world.rxmin;
-		*rz = rwz + world.rzmin;
-		break;
-	case 1:
-		*rx = rwz + world.rxmin;
-		*rz = (world.rzsize - rwx - 1) + world.rzmin;
-		break;
-	case 2:
-		*rx = (world.rxsize - rwx - 1) + world.rxmin;
-		*rz = (world.rzsize - rwz - 1) + world.rzmin;
-		break;
-	case 3:
-		*rx = (world.rxsize - rwz - 1) + world.rxmin;
-		*rz = rwx + world.rzmin;
-		break;
-	}
-}
-
-
 static world measure_world(const char* worlddir, const char rotate)
 {
 	world world;
@@ -111,8 +63,26 @@ static world measure_world(const char* worlddir, const char rotate)
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
+			// get rotated world-relative region coords from absolute region coords
 			int rwx, rwz;
-			get_rel_coords_from_abs_coords(world, rotate, rx, rz, &rwx, &rwz);
+			switch(rotate) {
+			case 0:
+				rwx = rx - world.rxmin;
+				rwz = rz - world.rzmin;
+				break;
+			case 1:
+				rwx = world.rzsize - (rz - world.rzmin) - 1;
+				rwz = rx - world.rxmin;
+				break;
+			case 2:
+				rwx = world.rxsize - (rx - world.rxmin) - 1;
+				rwz = world.rzsize - (rz - world.rzmin) - 1;
+				break;
+			case 3:
+				rwx = rz - world.rzmin;
+				rwz = world.rxsize - (rx - world.rxmin) - 1;
+				break;
+			}
 			world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin] = 1;
 		}
 	}
@@ -125,6 +95,36 @@ static world measure_world(const char* worlddir, const char rotate)
 static void free_world(world world)
 {
 	free(world.regionmap);
+}
+
+
+static void get_path_from_rel_coords(char* path, const world world, const int rwx, const int rwz,
+		const char rotate)
+{
+	// get absolute region coords from rotated world-relative coords
+	int rx, rz;
+	switch(rotate) {
+	case 0:
+		rx = rwx + world.rxmin;
+		rz = rwz + world.rzmin;
+		break;
+	case 1:
+		rx = rwz + world.rxmin;
+		rz = (world.rzsize - rwx - 1) + world.rzmin;
+		break;
+	case 2:
+		rx = (world.rxsize - rwx - 1) + world.rxmin;
+		rz = (world.rzsize - rwz - 1) + world.rzmin;
+		break;
+	case 3:
+		rx = (world.rxsize - rwz - 1) + world.rxmin;
+		rz = rwx + world.rzmin;
+		break;
+	}
+
+	if (!world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin]) return;
+	// FIXME: path/filename joining needs to be more flexible
+	sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 }
 
 
@@ -143,13 +143,9 @@ static void get_world_margins(world world, int* margins, const char rotate)
 			// skip regions not on the edge of the map
 			if (rwx > 0 && rwx < rwxsize - 1 && rwz > 0 && rwz < rwzsize - 1) continue;
 
-			int rx, rz;
-			get_abs_coords_from_rel_coords(world, rotate, rwx, rwz, &rx, &rz);
-			if (!world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin]) continue;
-
-			char path[255];
-			// FIXME: path/filename joining needs to be more flexible
-			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
+			char path[255] = "";
+			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
+			if (!strcmp(path, "")) continue;
 
 			int rmargins[4];
 			get_region_margins(path, rmargins, rotate);
@@ -188,9 +184,9 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 	{
 		for (int rwx = 0; rwx < rwxsize; rwx++)
 		{
-			int rx, rz;
-			get_abs_coords_from_rel_coords(world, rotate, rwx, rwz, &rx, &rz);
-			if (!world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin]) continue;
+			char path[255] = "";
+			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
+			if (!strcmp(path, "")) continue;
 
 			// margins for this region, measured in regions - compare to wrm
 			int rrm[] = {
@@ -203,10 +199,6 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 			// skip reading this region unless it's the closest yet to one or more corners
 			if (rrm[0] < wrm[0] || rrm[1] < wrm[1] || rrm[2] < wrm[2] || rrm[3] < wrm[3])
 			{
-				char path[255];
-				// FIXME: path/filename joining needs to be more flexible
-				sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
-
 				int rmargins[4];
 				get_region_iso_margins(path, rmargins, rotate);
 				//printf("Margins for region %d,%d at %d,%d: T %d, R %d, B %d, L %d\n",
@@ -257,13 +249,10 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 	{
 		for (int rwx = 0; rwx < rwxsize; rwx++)
 		{
-			int rx, rz;
-			get_abs_coords_from_rel_coords(world, rotate, rwx, rwz, &rx, &rz);
-			if (!world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin]) continue;
+			char path[255] = "";
+			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
+			if (!strcmp(path, "")) continue;
 
-			char path[255];
-			// FIXME: path/filename joining needs to be more flexible
-			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 			image rimage = render_region_blockmap(path, textures, night, rotate);
 			if (rimage.data == NULL)
 			{
@@ -280,8 +269,8 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 			int rh = REGION_BLOCK_LENGTH - ryo - (rwz == rwzsize - 1 ? margins[2] : 0);
 
 			r++;
-			printf("Rendering region %d/%d (%d,%d) at pos %d,%d pixel %d,%d\n",
-					r, world.rcount, rx, rz, rwx, rwz, rpx, rpy);
+			printf("Rendering region %d/%d at pos %d,%d pixel %d,%d\n",
+					r, world.rcount, rwx, rwz, rpx, rpy);
 			for (int y = 0; y < rh; y++)
 			{
 				// copy a line of pixel data from the region image to the world image
@@ -319,9 +308,9 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 	{
 		for (int rwx = rwxsize - 1; rwx >= 0; rwx--)
 		{
-			int rx, rz;
-			get_abs_coords_from_rel_coords(world, rotate, rwx, rwz, &rx, &rz);
-			if (!world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin]) continue;
+			char path[255] = "";
+			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
+			if (!strcmp(path, "")) continue;
 
 			int rpx = (rwx + rwz) * ISO_REGION_X_MARGIN - margins[3];
 			int rxo = rpx < 0 ? -rpx : 0;
@@ -336,11 +325,9 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 			rpy += ryo;
 
 			r++;
-			printf("Rendering region %d/%d (%d,%d) at pos %d,%d pixel %d,%d\n",
-					r, world.rcount, rx, rz, rwx, rwz, rpx, rpy);
+			printf("Rendering region %d/%d at pos %d,%d pixel %d,%d\n",
+					r, world.rcount, rwx, rwz, rpx, rpy);
 
-			char path[255];
-			sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
 			image rimage = render_region_iso_blockmap(path, textures, night, rotate);
 			if (rimage.data == NULL)
 			{
