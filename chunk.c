@@ -188,7 +188,7 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 
 	for (int z = 0; z < CHUNK_BLOCK_LENGTH; z++)
 	{
-		for (int x = CHUNK_BLOCK_LENGTH - 1; x >= 0; x--)
+		for (int x = 0; x < CHUNK_BLOCK_LENGTH; x++)
 		{
 			int bh = get_rotated_index(x, z, CHUNK_BLOCK_LENGTH, rotate);
 
@@ -214,8 +214,9 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 				set_colour_brightness(lshadow, 0.75, 0);
 				set_colour_brightness(rshadow, 0.5, 0);
 
-				int px = (x + z) * ISO_BLOCK_WIDTH / 2;
-				int py = (CHUNK_BLOCK_LENGTH - x + z - 1) * ISO_BLOCK_TOP_HEIGHT
+				// translate orthographic to isometric coordinates
+				int px = (x + CHUNK_BLOCK_LENGTH - 1 - z) * ISO_BLOCK_WIDTH / 2;
+				int py = (x + z) * ISO_BLOCK_TOP_HEIGHT
 						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_DEPTH;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
 

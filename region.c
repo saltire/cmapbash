@@ -82,16 +82,16 @@ void get_region_iso_margins(const char* regionfile, int* margins, const char rot
 			{
 				// margins for this chunk, measured in chunks
 				int ccm[] = {
+						cx + cz, // NW
 						REGION_CHUNK_LENGTH - cx - 1 + cz, // NE
 						REGION_CHUNK_LENGTH - cx - 1 + REGION_CHUNK_LENGTH - cz - 1, // SE
 						cx + REGION_CHUNK_LENGTH - cz - 1, // SW
-						cx + cz // NW
 				};
 
 				for (int i = 0; i < 4; i++)
 				{
 					// margins for this chunk, measured in pixels
-					// odd ones are multiplied by the horizontal margin, even ones by vertical
+					// multiplied by the horizontal or vertical margin depending on rotation
 					int cmargin = ccm[i] *
 							(i % 2 == rotate % 2 ? ISO_CHUNK_Y_MARGIN : ISO_CHUNK_X_MARGIN);
 
@@ -206,7 +206,7 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 
 	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
-		for (int cx = REGION_CHUNK_LENGTH - 1; cx >= 0; cx--)
+		for (int cx = 0; cx < REGION_CHUNK_LENGTH; cx++)
 		{
 			nbt_node* chunk = get_chunk(reg, cx, cz, rotate);
 			if (chunk == NULL) continue;
@@ -214,8 +214,9 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 			image cimage = render_chunk_iso_blockmap(chunk, textures, night, rotate);
 			nbt_free(chunk);
 
-			int cpx = (cx + cz) * ISO_CHUNK_X_MARGIN;
-			int cpy = (REGION_CHUNK_LENGTH - cx + cz - 1) * ISO_CHUNK_Y_MARGIN;
+			// translate orthographic to isometric coordinates
+			int cpx = (cx + REGION_CHUNK_LENGTH - 1 - cz) * ISO_CHUNK_X_MARGIN;
+			int cpy = (cx + cz) * ISO_CHUNK_Y_MARGIN;
 			//printf("Writing chunk %d,%d to pixel %d,%d\n", cx, cz, cpx, cpy);
 
 			for (int py = 0; py < ISO_CHUNK_HEIGHT; py++)
