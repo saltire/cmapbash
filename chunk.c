@@ -8,14 +8,18 @@
 
 
 #define MAX_LIGHT 15
+#define MAX_BLOCK (CHUNK_BLOCK_LENGTH - 1)
+#define MAX_HEIGHT (CHUNK_BLOCK_HEIGHT - 1)
+#define BLOCK_OFFSET(x, z, y) (y * CHUNK_BLOCK_AREA + z * CHUNK_BLOCK_LENGTH + x)
 
 // configurable render options
 #define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
 #define HEIGHT_CONTRAST 0.7 // amount of contrast for height shading
 #define NIGHT_AMBIENCE 0.2 // base light level for night renders
+#define EDGE_SHADING 0.125 // amoutn of contrast for topographical highlights and shadows
 
 
-static void copy_section_byte_data(nbt_node* section, char* name, unsigned char* data, int8_t y)
+static void copy_section_bytes(nbt_node* section, char* name, unsigned char* data, int8_t y)
 {
 	nbt_node* array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
@@ -28,7 +32,7 @@ static void copy_section_byte_data(nbt_node* section, char* name, unsigned char*
 }
 
 
-static void copy_section_half_byte_data(nbt_node* section, char* name, unsigned char* data,
+static void copy_section_half_bytes(nbt_node* section, char* name, unsigned char* data,
 		int8_t y)
 {
 	nbt_node* array = nbt_find_by_name(section, name);
@@ -65,31 +69,30 @@ void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* 
 				}
 				int8_t y = ynode->payload.tag_byte;
 
-				copy_section_byte_data(section->data, "Blocks", blocks, y);
-				copy_section_half_byte_data(section->data, "Data", data, y);
-				if (blight != NULL)
-				{
-					copy_section_half_byte_data(section->data, "BlockLight", blight, y);
-				}
+				copy_section_bytes(section->data, "Blocks", blocks, y);
+				if (data != NULL) copy_section_half_bytes(section->data, "Data", data, y);
+				if (blight != NULL) copy_section_half_bytes(section->data, "BlockLight", blight, y);
 			}
 		}
 	}
 }
 
 
-static void get_block_colour_at_height(unsigned char* pixel, unsigned char* blocks,
-		unsigned char* data, const texture* textures, int b, int y)
+static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
+		unsigned char* data, const texture* textures, int offset)
 {
 	// copy the block colour into the pixel buffer
-	unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
-	unsigned char type = data[y * CHUNK_BLOCK_AREA + b] % textures[blockid].mask;
+	unsigned char blockid = blocks[offset];
+	unsigned char type = data[offset] % textures[blockid].mask;
 	memcpy(pixel, &textures[blockid].types[type].colour, CHANNELS);
 
-	// if block colour is not fully opaque, get the next block and combine with this one
+	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
 	{
+		// get the next block down, or use black if this is the bottom block
 		unsigned char next[CHANNELS] = {0};
-		if (y > 0) get_block_colour_at_height(next, blocks, data, textures, b, y - 1);
+		if (offset > CHUNK_BLOCK_AREA)
+			get_block_alpha_colour(next, blocks, data, textures, offset - CHUNK_BLOCK_AREA);
 		combine_alpha(pixel, next, 0);
 	}
 }
@@ -99,13 +102,13 @@ static void adjust_colour_by_height(unsigned char* pixel, int y)
 {
 	if (pixel[ALPHA] == 0) return;
 
-	float alt = (float)y / (CHUNK_BLOCK_HEIGHT - 1) - HEIGHT_MIDPOINT; // +/- distance from center
+	float alt = (float)y / MAX_HEIGHT - HEIGHT_MIDPOINT; // +/- distance from center
 	float mod = alt / (alt < 0 ? HEIGHT_MIDPOINT : 1 - HEIGHT_MIDPOINT); // amount to adjust
 	adjust_colour_brightness(pixel, mod * HEIGHT_CONTRAST);
 }
 
 
-int get_rotated_index(const int x, const int z, const int length, const unsigned char rotate)
+int get_offset(const int y, const int x, const int z, const unsigned char rotate)
 {
 	int bx, bz;
 	switch(rotate) {
@@ -115,23 +118,23 @@ int get_rotated_index(const int x, const int z, const int length, const unsigned
 		break;
 	case 1:
 		bx = z;
-		bz = length - x - 1;
+		bz = MAX_BLOCK - x;
 		break;
 	case 2:
-		bx = length - x - 1;
-		bz = length - z - 1;
+		bx = MAX_BLOCK - x;
+		bz = MAX_BLOCK - z;
 		break;
 	case 3:
-		bx = length - z - 1;
+		bx = MAX_BLOCK - z;
 		bz = x;
 		break;
 	}
-	return (bz * length + bx);
+	return y * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_LENGTH + bx;
 }
 
 
 image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night,
-		const char rotate)
+		const char rotate, nbt_node* neighbours[4])
 {
 	image cimage = create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
@@ -141,25 +144,70 @@ image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char
 	if (night) blight = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	get_chunk_blockdata(chunk, blocks, data, blight);
 
-	for (int z = 0; z < CHUNK_BLOCK_LENGTH; z++)
+	// get block data for neighbouring chunks, if they exist
+	unsigned char* nblocks[4];
+	for (int i = 0; i < 4; i++)
 	{
-		for (int x = 0; x < CHUNK_BLOCK_LENGTH; x++)
+		if (neighbours == NULL || neighbours[i] == NULL)
 		{
-			int b = get_rotated_index(x, z, CHUNK_BLOCK_LENGTH, rotate);
+			nblocks[i] = NULL;
+			continue;
+		}
+		nblocks[i] = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+		get_chunk_blockdata(neighbours[i], nblocks[i], NULL, NULL);
+	}
+
+	// loop through rotated chunk's blocks
+	for (int z = 0; z <= MAX_BLOCK; z++)
+	{
+		for (int x = 0; x <= MAX_BLOCK; x++)
+		{
+			// get pixel buffer for this block's rotated position
 			unsigned char* pixel = &cimage.data[(z * CHUNK_BLOCK_LENGTH + x) * CHANNELS];
 
-			for (int y = CHUNK_BLOCK_HEIGHT - 1; y >= 0; y--)
+			// get unrotated 2d block offset from rotated coordinates
+			int hoffset = get_offset(0, x, z, rotate);
+			for (int y = MAX_HEIGHT; y >= 0; y--)
 			{
-				unsigned char blockid = blocks[y * CHUNK_BLOCK_AREA + b];
+				// get unrotated 3d block offset
+				int offset = y * CHUNK_BLOCK_AREA + hoffset;
+
+				unsigned char blockid = blocks[offset];
 				if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
-				get_block_colour_at_height(pixel, blocks, data, textures, b, y);
+				get_block_alpha_colour(pixel, blocks, data, textures, offset);
 				adjust_colour_by_height(pixel, y);
+
+				// highlights and shadows
+				unsigned char nb[4] = {
+						z > 0 ? blocks[get_offset(y, x, z - 1, rotate)] :
+								(nblocks[0] == NULL ? 0 :
+										nblocks[0][get_offset(y, x, MAX_BLOCK, rotate)]),
+
+						x < MAX_BLOCK ? blocks[get_offset(y, x + 1, z, rotate)] :
+								(nblocks[1] == NULL ? 0 :
+										nblocks[1][get_offset(y, 0, z, rotate)]),
+
+						z < MAX_BLOCK ? blocks[get_offset(y, x, z + 1, rotate)] :
+								(nblocks[2] == NULL ? 0 :
+										nblocks[2][get_offset(y, x, 0, rotate)]),
+
+						x > 0 ? blocks[get_offset(y, x - 1, z, rotate)] :
+								(nblocks[3] == NULL ? 0 :
+										nblocks[3][get_offset(y, MAX_BLOCK, z, rotate)]),
+				};
+				char light = (nb[0] == 0 || nb[3] == 0);
+				char dark = (nb[1] == 0 || nb[2] == 0);
+				if (light && !dark) adjust_colour_brightness(pixel, EDGE_SHADING);
+				if (dark && !light) adjust_colour_brightness(pixel, -EDGE_SHADING);
+
+				// night mode
 				if (blight != NULL)
 				{
 					set_colour_brightness(pixel,
-							(float)blight[y * CHUNK_BLOCK_AREA + b] / MAX_LIGHT, NIGHT_AMBIENCE);
+							(float)blight[offset] / MAX_LIGHT, NIGHT_AMBIENCE);
 				}
+
 				break;
 			}
 		}
@@ -167,12 +215,13 @@ image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char
 	free(blocks);
 	free(data);
 	free(blight);
+	for (int i = 0; i < 4; i++) free(nblocks[i]);
 	return cimage;
 }
 
 
 image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night,
-		const char rotate)
+		const char rotate, nbt_node* neighbours[4])
 {
 	image cimage = create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT);
 	//printf("Rendering isometric image, %d x %d\n", cimage.width, cimage.height);
@@ -186,26 +235,41 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 	}
 	get_chunk_blockdata(chunk, blocks, data, blight);
 
-	for (int z = 0; z < CHUNK_BLOCK_LENGTH; z++)
+	// get block data for neighbouring chunks, if they exist
+	unsigned char* nblocks[4];
+	for (int i = 0; i < 4; i++)
 	{
-		for (int x = 0; x < CHUNK_BLOCK_LENGTH; x++)
+		if (neighbours == NULL || neighbours[i] == NULL)
 		{
-			int bh = get_rotated_index(x, z, CHUNK_BLOCK_LENGTH, rotate);
+			nblocks[i] = NULL;
+			continue;
+		}
+		nblocks[i] = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+		get_chunk_blockdata(neighbours[i], nblocks[i], NULL, NULL);
+	}
 
-			for (int by = 0; by < CHUNK_BLOCK_HEIGHT; by++)
+	for (int z = 0; z <= MAX_BLOCK; z++)
+	{
+		for (int x = 0; x <= MAX_BLOCK; x++)
+		{
+			// get unrotated 2d block offset from rotated coordinates
+			int hoffset = get_offset(0, x, z, rotate);
+			for (int y = 0; y <= MAX_HEIGHT; y++)
 			{
-				int b = by * CHUNK_BLOCK_AREA + bh;
-				unsigned char blockid = blocks[b];
+				// get unrotated 3d block offset
+				int offset = y * CHUNK_BLOCK_AREA + hoffset;
+
+				unsigned char blockid = blocks[offset];
 				if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
-				unsigned char type = data[b] % textures[blockid].mask;
+				unsigned char type = data[offset] % textures[blockid].mask;
 
 				unsigned char colour[CHANNELS], lshadow[CHANNELS], rshadow[CHANNELS];
 				memcpy(&colour, &textures[blockid].types[type].colour, CHANNELS);
-				adjust_colour_by_height(colour, by);
+				adjust_colour_by_height(colour, y);
 				if (blight != NULL)
 				{
-					set_colour_brightness(colour, (float)blight[b] / (CHUNK_BLOCK_HEIGHT - 1),
+					set_colour_brightness(colour, (float)blight[offset] / MAX_HEIGHT,
 							NIGHT_AMBIENCE);
 				}
 
@@ -215,22 +279,23 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 				set_colour_brightness(rshadow, 0.5, 0);
 
 				// translate orthographic to isometric coordinates
-				int px = (x + CHUNK_BLOCK_LENGTH - 1 - z) * ISO_BLOCK_WIDTH / 2;
+				int px = (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
 				int py = (x + z) * ISO_BLOCK_TOP_HEIGHT
-						+ (CHUNK_BLOCK_HEIGHT - by - 1) * ISO_BLOCK_DEPTH;
+						+ (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 				//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
 
 				for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 				{
 					// before drawing the top of this block, check the block above
-					if (sy < ISO_BLOCK_TOP_HEIGHT && by < CHUNK_BLOCK_HEIGHT - 1)
+					if (sy < ISO_BLOCK_TOP_HEIGHT && y < MAX_HEIGHT)
 					{
 						// if the block above is the same type, don't draw the top of this one
-						unsigned char tblockid = blocks[b + CHUNK_BLOCK_AREA];
+						unsigned char tblockid = blocks[offset + CHUNK_BLOCK_AREA];
 						if (tblockid == blockid) continue;
 
 						// if the block above is opaque, don't draw the top of this one
-						unsigned char ttype = data[b + CHUNK_BLOCK_AREA] % textures[tblockid].mask;
+						unsigned char ttype = data[offset + CHUNK_BLOCK_AREA] %
+								textures[tblockid].mask;
 						if (textures[tblockid].types[ttype].colour[ALPHA] == 255) continue;
 					}
 
@@ -256,6 +321,7 @@ image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const 
 	free(blocks);
 	free(data);
 	free(blight);
+	for (int i = 0; i < 4; i++) free(nblocks[i]);
 	return cimage;
 }
 
@@ -264,8 +330,8 @@ void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* 
 		const char night, const char isometric, const char rotate)
 {
 	image cimage = isometric
-			? render_chunk_iso_blockmap(chunk, textures, night, rotate)
-			: render_chunk_blockmap(chunk, textures, night, rotate);
+			? render_chunk_iso_blockmap(chunk, textures, night, rotate, NULL)
+			: render_chunk_blockmap(chunk, textures, night, rotate, NULL);
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(cimage, imagefile);

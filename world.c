@@ -253,12 +253,13 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
 			if (!strcmp(path, "")) continue;
 
-			image rimage = render_region_blockmap(path, textures, night, rotate);
-			if (rimage.data == NULL)
-			{
-				free_image(rimage);
-				continue;
-			}
+			// get rotated neighbouring region paths
+			char *npaths[4];
+			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(255, sizeof(char));
+			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, rotate);
+			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, rotate);
+			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, rotate);
+			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, rotate);
 
 			int rxo = (rwx == 0 ? margins[3] : 0);
 			int rpx = rwx * REGION_BLOCK_LENGTH - margins[3] + rxo;
@@ -271,6 +272,15 @@ image render_world_blockmap(world world, const texture* textures, const char nig
 			r++;
 			printf("Rendering region %d/%d at pos %d,%d pixel %d,%d\n",
 					r, world.rcount, rwx, rwz, rpx, rpy);
+
+			image rimage = render_region_blockmap(path, textures, night, rotate, npaths);
+			for (int i = 0; i < 4; i++) free(npaths[i]);
+			if (rimage.data == NULL)
+			{
+				free_image(rimage);
+				continue;
+			}
+
 			for (int y = 0; y < rh; y++)
 			{
 				// copy a line of pixel data from the region image to the world image
@@ -312,6 +322,14 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
 			if (!strcmp(path, "")) continue;
 
+			// get rotated neighbouring region paths
+			char *npaths[4];
+			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(255, sizeof(char));
+			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, rotate);
+			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, rotate);
+			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, rotate);
+			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, rotate);
+
 			// translate orthographic region coordinates to isometric pixel coordinates
 			int rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN - margins[3];
 			int rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN - margins[0];
@@ -333,7 +351,8 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 			printf("Rendering region %d/%d at pos %d,%d pixel %d,%d\n",
 					r, world.rcount, rwx, rwz, rpx, rpy);
 
-			image rimage = render_region_iso_blockmap(path, textures, night, rotate);
+			image rimage = render_region_iso_blockmap(path, textures, night, rotate, npaths);
+			for (int i = 0; i < 4; i++) free(npaths[i]);
 			if (rimage.data == NULL)
 			{
 				free_image(rimage);

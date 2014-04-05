@@ -3,7 +3,7 @@
 
 
 #define CHANNELS 4
-#define ALPHA CHANNELS - 1
+#define ALPHA (CHANNELS - 1)
 
 typedef struct image {
 	unsigned int width, height;

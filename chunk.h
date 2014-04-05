@@ -12,10 +12,10 @@
 #define CHUNK_BLOCK_LENGTH 16
 #define CHUNK_SECTION_HEIGHT 16
 #define SECTION_BLOCK_HEIGHT 16
-#define CHUNK_BLOCK_AREA CHUNK_BLOCK_LENGTH * CHUNK_BLOCK_LENGTH
-#define CHUNK_BLOCK_HEIGHT SECTION_BLOCK_HEIGHT * CHUNK_SECTION_HEIGHT
-#define SECTION_BLOCK_VOLUME SECTION_BLOCK_HEIGHT * CHUNK_BLOCK_AREA
-#define CHUNK_BLOCK_VOLUME CHUNK_BLOCK_HEIGHT * CHUNK_BLOCK_AREA
+#define CHUNK_BLOCK_AREA (CHUNK_BLOCK_LENGTH * CHUNK_BLOCK_LENGTH)
+#define CHUNK_BLOCK_HEIGHT (SECTION_BLOCK_HEIGHT * CHUNK_SECTION_HEIGHT)
+#define SECTION_BLOCK_VOLUME (SECTION_BLOCK_HEIGHT * CHUNK_BLOCK_AREA)
+#define CHUNK_BLOCK_VOLUME (CHUNK_BLOCK_HEIGHT * CHUNK_BLOCK_AREA)
 
 // isometric pixel dimensions
 #define ISO_CHUNK_WIDTH (CHUNK_BLOCK_LENGTH * ISO_BLOCK_WIDTH)
@@ -29,12 +29,10 @@
 void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
 		unsigned char* blight);
 
-int get_rotated_index(const int x, const int z, const int length, const unsigned char rotate);
-
 image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night,
-		const char rotate);
+		const char rotate, nbt_node* neighbours[4]);
 image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night,
-		const char rotate);
+		const char rotate, nbt_node* neighbours[2]);
 
 void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* textures,
 		const char night, const char isometric, const char rotate);
