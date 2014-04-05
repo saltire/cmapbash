@@ -26,9 +26,6 @@
 #define ISO_CHUNK_Y_MARGIN (CHUNK_BLOCK_LENGTH * ISO_BLOCK_TOP_HEIGHT)
 
 
-void get_chunk_blockdata(nbt_node* chunk, unsigned char* blocks, unsigned char* data,
-		unsigned char* blight);
-
 image render_chunk_blockmap(nbt_node* chunk, const texture* textures, const char night,
 		const char rotate, nbt_node* neighbours[4]);
 image render_chunk_iso_blockmap(nbt_node* chunk, const texture* textures, const char night,
@@ -38,9 +35,7 @@ void save_chunk_blockmap(nbt_node* chunk, const char* imagefile, const texture* 
 		const char night, const char isometric, const char rotate);
 
 unsigned char* get_chunk_heightmap(nbt_node* chunk);
-
 image render_chunk_heightmap(nbt_node* chunk);
-
 void save_chunk_heightmap(nbt_node* chunk, const char* imagefile);
 
 
