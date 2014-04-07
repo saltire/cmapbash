@@ -101,6 +101,8 @@ static void free_world(world world)
 static void get_path_from_rel_coords(char* path, const world world, const int rwx, const int rwz,
 		const char rotate)
 {
+	if (rwx < 0 || rwx > world.rxsize - 1 || rwz < 0 || rwz > world.rzsize - 1) return;
+
 	// get absolute region coords from rotated world-relative coords
 	int rx, rz;
 	switch(rotate) {

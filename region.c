@@ -175,7 +175,7 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 
 
 image render_region_blockmap(const char* regionfile, const texture* textures, const char night,
-		const char rotate, char* neighbourfiles[4])
+		const char rotate, char* nfiles[4])
 {
 	image rimage = create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
@@ -190,37 +190,49 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 	region nregions[4];
 	for (int i = 0; i < 4; i++)
 	{
-		nregions[i] = read_region(
-				(neighbourfiles == NULL || neighbourfiles[i] == NULL) ? "" : neighbourfiles[i]);
+		nregions[i] = read_region((nfiles == NULL || nfiles[i] == NULL) ? "" : nfiles[i]);
 	}
 
+	nbt_node *chunk, *prev_chunk, *next_chunk, *nchunks[4];
 	for (int cz = 0; cz <= MAX_CHUNK; cz++)
 	{
 		for (int cx = 0; cx <= MAX_CHUNK; cx++)
 		{
-			nbt_node* chunk = get_chunk(reg, cx, cz, rotate);
-			if (chunk == NULL) continue;
+			chunk = (cx > 0 && prev_chunk != NULL) ? next_chunk : get_chunk(reg, cx, cz, rotate);
+			if (chunk == NULL)
+			{
+				if (cx > 0) nbt_free(prev_chunk);
+				prev_chunk = NULL;
+				continue;
+			}
 
-			nbt_node* nchunks[4] = {
-					cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
-							(!nregions[0].loaded ? NULL :
-									get_chunk(nregions[0], cx, MAX_CHUNK, rotate)),
+			nchunks[0] = cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
+					(!nregions[0].loaded ? NULL : get_chunk(nregions[0], cx, MAX_CHUNK, rotate));
 
-					cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, rotate) :
-							(!nregions[1].loaded ? NULL :
-									get_chunk(nregions[1], 0, cz, rotate)),
+			nchunks[1] = cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, rotate) :
+					(!nregions[1].loaded ? NULL : get_chunk(nregions[1], 0, cz, rotate));
 
-					cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, rotate) :
-							(!nregions[2].loaded ? NULL :
-									get_chunk(nregions[2], cx, 0, rotate)),
+			nchunks[2] = cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, rotate) :
+					(!nregions[2].loaded ? NULL : get_chunk(nregions[2], cx, 0, rotate));
 
-					cx > 0 ? get_chunk(reg, cx - 1, cz, rotate) :
-							(!nregions[3].loaded ? NULL :
-									get_chunk(nregions[3], MAX_CHUNK, cz, rotate))
-			};
+			nchunks[3] = cx > 0 ? prev_chunk :
+					(!nregions[3].loaded ? NULL : get_chunk(nregions[3], MAX_CHUNK, cz, rotate));
 
 			image cimage = render_chunk_blockmap(chunk, textures, night, rotate, nchunks);
-			nbt_free(chunk);
+
+			nbt_free(nchunks[0]);
+			nbt_free(nchunks[2]);
+			nbt_free(nchunks[3]);
+			if (cx == MAX_CHUNK)
+			{
+				nbt_free(chunk);
+				nbt_free(nchunks[1]);
+			}
+			else
+			{
+				prev_chunk = chunk;
+				next_chunk = nchunks[1];
+			}
 
 			for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
 			{
@@ -241,7 +253,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 
 
 image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night,
-		const char rotate, char* neighbourfiles[4])
+		const char rotate, char* nfiles[4])
 {
 	image rimage = create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT);
 
@@ -257,37 +269,49 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 	region nregions[4];
 	for (int i = 0; i < 4; i++)
 	{
-		nregions[i] = read_region(
-				(neighbourfiles == NULL || neighbourfiles[i] == NULL) ? "" : neighbourfiles[i]);
+		nregions[i] = read_region((nfiles == NULL || nfiles[i] == NULL) ? "" : nfiles[i]);
 	}
 
+	nbt_node *chunk, *prev_chunk, *next_chunk, *nchunks[4];
 	for (int cz = 0; cz <= MAX_CHUNK; cz++)
 	{
 		for (int cx = 0; cx <= MAX_CHUNK; cx++)
 		{
-			nbt_node* chunk = get_chunk(reg, cx, cz, rotate);
-			if (chunk == NULL) continue;
+			chunk = cx > 0 && prev_chunk != NULL ? next_chunk : get_chunk(reg, cx, cz, rotate);
+			if (chunk == NULL)
+			{
+				if (cx > 0) nbt_free(prev_chunk);
+				prev_chunk = NULL;
+				continue;
+			}
 
-			nbt_node* nchunks[4] = {
-					cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
-							(!nregions[0].loaded ? NULL :
-									get_chunk(nregions[0], cx, MAX_CHUNK, rotate)),
+			nchunks[0] = cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
+					(!nregions[0].loaded ? NULL : get_chunk(nregions[0], cx, MAX_CHUNK, rotate));
 
-					cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, rotate) :
-							(!nregions[1].loaded ? NULL :
-									get_chunk(nregions[1], 0, cz, rotate)),
+			nchunks[1] = cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, rotate) :
+					(!nregions[1].loaded ? NULL : get_chunk(nregions[1], 0, cz, rotate));
 
-					cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, rotate) :
-							(!nregions[2].loaded ? NULL :
-									get_chunk(nregions[2], cx, 0, rotate)),
+			nchunks[2] = cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, rotate) :
+					(!nregions[2].loaded ? NULL : get_chunk(nregions[2], cx, 0, rotate));
 
-					cx > 0 ? get_chunk(reg, cx - 1, cz, rotate) :
-							(!nregions[3].loaded ? NULL :
-									get_chunk(nregions[3], MAX_CHUNK, cz, rotate))
-			};
+			nchunks[3] = cx > 0 ? prev_chunk :
+					(!nregions[3].loaded ? NULL : get_chunk(nregions[3], MAX_CHUNK, cz, rotate));
 
 			image cimage = render_chunk_iso_blockmap(chunk, textures, night, rotate, nchunks);
-			nbt_free(chunk);
+
+			nbt_free(nchunks[0]);
+			nbt_free(nchunks[2]);
+			nbt_free(nchunks[3]);
+			if (cx < MAX_CHUNK)
+			{
+				prev_chunk = chunk;
+				next_chunk = nchunks[1];
+			}
+			else
+			{
+				nbt_free(chunk);
+				nbt_free(nchunks[1]);
+			}
 
 			// translate orthographic to isometric coordinates
 			int cpx = (cx + MAX_CHUNK - cz) * ISO_CHUNK_X_MARGIN;
