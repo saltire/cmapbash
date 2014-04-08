@@ -9,7 +9,7 @@ typedef struct world {
 } world;
 
 
-image render_world_map(world world, const texture* textures,
+image render_world_map(world world, const textures* textures,
 		const char night, const char isometric, const char rotate);
-void save_world_map(const char* worlddir, const char* imagefile, const texture* textures,
+void save_world_map(const char* worlddir, const char* imagefile, const textures* textures,
 		const char night, const char isometric, const char rotate);

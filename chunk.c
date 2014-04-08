@@ -94,12 +94,10 @@ static void get_neighbour_chunk_data(nbt_node* neighbours[4], unsigned char* nbl
 
 
 static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
-		unsigned char* data, const texture* textures, int offset)
+		unsigned char* data, const textures* textures, int offset)
 {
 	// copy the block colour into the pixel buffer
-	unsigned char blockid = blocks[offset];
-	unsigned char type = data[offset] % textures[blockid].mask;
-	memcpy(pixel, &textures[blockid].types[type].colour, CHANNELS);
+	memcpy(pixel, get_block_colour(textures, blocks[offset], data[offset]), CHANNELS);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -165,7 +163,7 @@ static void get_neighbour_values(unsigned char nvalues[4], unsigned char* data,
 }
 
 
-static void render_iso_column(image* cimage, texture* textures,
+static void render_iso_column(image* cimage, const textures* textures,
 		unsigned char* blocks, unsigned char* data, unsigned char* blight,
 		unsigned char* nblocks[4], unsigned char* ndata[4],
 		const int x, const int z, const char rotate)
@@ -177,26 +175,37 @@ static void render_iso_column(image* cimage, texture* textures,
 		// get unrotated 3d block offset
 		int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
+		// skip air blocks or invalid block ids
 		unsigned char blockid = blocks[offset];
 		if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
-		unsigned char tcolour[CHANNELS], lcolour[CHANNELS], rcolour[CHANNELS];
+		unsigned char dataval = data[offset];
 
-		unsigned char type = data[offset] % textures[blockid].mask;
-		memcpy(&tcolour, &textures[blockid].types[type].colour, CHANNELS);
+		// get neighbour block ids and data values
+		unsigned char nb[4], nd[4];
+		get_neighbour_values(nb, blocks, nblocks, x, y, z, rotate);
+		get_neighbour_values(nd, data, ndata, x, y, z, rotate);
+
+		// get block colour
+		unsigned char tcolour[CHANNELS], lcolour[CHANNELS], rcolour[CHANNELS];
+		memcpy(&tcolour, get_block_colour(textures, blockid, dataval), CHANNELS);
 		adjust_colour_by_height(tcolour, y);
-		if (blight != NULL)
-			set_colour_brightness(tcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
 
 		// copy the top colour to the left and right side colours
 		memcpy(&lcolour, &tcolour, CHANNELS);
 		memcpy(&rcolour, &tcolour, CHANNELS);
 
 		// highlights and shadows on left and right sides
-		unsigned char nb[4];
-		get_neighbour_values(nb, blocks, nblocks, x, y, z, rotate);
 		if (nb[2] == 0) adjust_colour_brightness(lcolour, CONTOUR_SHADING);
 		if (nb[1] == 0) adjust_colour_brightness(rcolour, -CONTOUR_SHADING);
+
+		// night mode
+		if (blight != NULL && blight[offset] < MAX_LIGHT)
+		{
+			set_colour_brightness(tcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
+			set_colour_brightness(lcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
+			set_colour_brightness(rcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
+		}
 
 		// translate orthographic to isometric coordinates
 		int px = (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
@@ -204,30 +213,44 @@ static void render_iso_column(image* cimage, texture* textures,
 				+ (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 		//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
 
+		char draw_top = 1;
+		char draw_left = 1;
+		char draw_right = 1;
+
+		// if the block above is the same type or opaque, don't draw the top of this one
+		// opaque means alpha opacity is 255 and shape id is 0 (a solid square)
+		if (y < MAX_HEIGHT)
+		{
+			unsigned char tblock = blocks[offset + CHUNK_BLOCK_AREA];
+			if (tblock == blockid) draw_top = 0;
+			else
+			{
+				unsigned char tdata = data[offset + CHUNK_BLOCK_AREA];
+				if (get_block_colour(textures, tblock, tdata)[ALPHA] == 255 &&
+						get_block_shapeid(textures, tblock, tdata) == 0) draw_top = 0;
+			}
+		}
+		// if block in front of left or right side is opaque, don't draw that side
+		if (get_block_colour(textures, nb[2], nd[2])[ALPHA] == 255 &&
+				get_block_shapeid(textures, nb[2], nd[2]) == 0) draw_left = 0;
+		if (get_block_colour(textures, nb[1], nd[1])[ALPHA] == 255 &&
+				get_block_shapeid(textures, nb[1], nd[1]) == 0) draw_right = 0;
+
+		const unsigned char shapeid = get_block_shapeid(textures, blockid, dataval);
 		for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 		{
-			// before drawing the top of this block, check the block above
-			if (sy < ISO_BLOCK_TOP_HEIGHT && y < MAX_HEIGHT)
-			{
-				// if the block above is the same type, don't draw the top of this one
-				unsigned char tblockid = blocks[offset + CHUNK_BLOCK_AREA];
-				if (tblockid == blockid) continue;
-
-				// if the block above is opaque, don't draw the top of this one
-				unsigned char ttype = data[offset + CHUNK_BLOCK_AREA] %
-						textures[tblockid].mask;
-				if (textures[tblockid].types[ttype].colour[ALPHA] == 255) continue;
-			}
-
+			if (sy < ISO_BLOCK_TOP_HEIGHT && !draw_top) continue;
 			for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
-				if (textures[blockid].types[type].shape[sy * ISO_BLOCK_WIDTH + sx])
+				if (textures->shapes[shapeid][sy * ISO_BLOCK_WIDTH + sx])
 				{
-					unsigned char* colour = sy < ISO_BLOCK_TOP_HEIGHT ? tcolour :
-							(sx < ISO_BLOCK_WIDTH / 2 ? lcolour : rcolour);
-					combine_alpha(colour,
-							&cimage->data[((py + sy) * cimage->width + px + sx) * CHANNELS],
-							1);
+					int p = (py + sy) * cimage->width + px + sx;
+					if (sy < ISO_BLOCK_TOP_HEIGHT)
+						combine_alpha(tcolour, &cimage->data[p * CHANNELS], 1);
+					else if (sx < ISO_BLOCK_WIDTH / 2 && draw_left)
+						combine_alpha(shapeid ? tcolour : lcolour, &cimage->data[p * CHANNELS], 1);
+					else if (sx >= ISO_BLOCK_WIDTH / 2 && draw_right)
+						combine_alpha(shapeid ? tcolour : rcolour, &cimage->data[p * CHANNELS], 1);
 				}
 			}
 		}
@@ -235,7 +258,7 @@ static void render_iso_column(image* cimage, texture* textures,
 }
 
 
-static void render_ortho_block(image* cimage, texture* textures,
+static void render_ortho_block(image* cimage, const textures* textures,
 		unsigned char* blocks, unsigned char* data, unsigned char* blight,
 		unsigned char* nblocks[4], const int x, const int z, const char rotate)
 {
@@ -265,7 +288,7 @@ static void render_ortho_block(image* cimage, texture* textures,
 		if (dark && !light) adjust_colour_brightness(pixel, -CONTOUR_SHADING);
 
 		// night mode
-		if (blight != NULL)
+		if (blight != NULL && blight[offset] < MAX_LIGHT)
 			set_colour_brightness(pixel, (float)blight[offset] / MAX_LIGHT, NIGHT_AMBIENCE);
 
 		break;
@@ -273,7 +296,7 @@ static void render_ortho_block(image* cimage, texture* textures,
 }
 
 
-image render_chunk_map(nbt_node* chunk, nbt_node* nchunks[4], const texture* textures,
+image render_chunk_map(nbt_node* chunk, nbt_node* nchunks[4], const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
 	image cimage = isometric ?
@@ -312,7 +335,7 @@ image render_chunk_map(nbt_node* chunk, nbt_node* nchunks[4], const texture* tex
 }
 
 
-void save_chunk_map(nbt_node* chunk, const char* imagefile, const texture* textures,
+void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
 	image cimage = render_chunk_map(chunk, NULL, textures, night, isometric, rotate);

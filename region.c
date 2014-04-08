@@ -174,7 +174,7 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 }
 
 
-image render_region_map(const char* regionfile, char* nfiles[4], const texture* textures,
+image render_region_map(const char* regionfile, char* nfiles[4], const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
 	image rimage = isometric ?
@@ -276,7 +276,7 @@ image render_region_map(const char* regionfile, char* nfiles[4], const texture* 
 }
 
 
-void save_region_map(const char* regionfile, const char* imagefile, const texture* textures,
+void save_region_map(const char* regionfile, const char* imagefile, const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
 	image rimage = render_region_map(regionfile, NULL, textures, night, isometric, rotate);

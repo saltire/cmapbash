@@ -4,11 +4,48 @@
 #include <string.h>
 
 #include "image.h"
-#include "shapes.h"
 #include "textures.h"
 
 
-texture* read_textures(const char* texturefile)
+#define COLUMNS 9
+
+
+unsigned char shapes[SHAPE_COUNT][ISO_BLOCK_AREA] = {
+		// 0: solid
+		{
+				1,1,1,1,
+				1,1,1,1,
+				1,1,1,1,
+				1,1,1,1
+		},
+
+		// 1: flat
+		{
+				0,0,0,0,
+				0,0,0,0,
+				0,0,0,0,
+				1,1,1,1
+		},
+
+		// 2: small square
+		{
+				0,0,0,0,
+				0,0,0,0,
+				0,1,1,0,
+				0,1,1,0
+		},
+
+		// 3: grass
+		{
+				0,0,0,0,
+				0,0,1,0,
+				1,0,1,1,
+				0,1,1,0
+		}
+};
+
+
+textures* read_textures(const char* texturefile)
 {
 	FILE* csv = fopen(texturefile, "r");
 	if (csv == NULL)
@@ -16,48 +53,48 @@ texture* read_textures(const char* texturefile)
 		printf("Error %d reading colour file: %s\n", errno, texturefile);
 	}
 
-	texture* textures = (texture*)calloc(BLOCK_TYPES, sizeof(texture));
+	textures* tex = (textures*)calloc(1, sizeof(textures));
+	for (int s = 0; s < SHAPE_COUNT; s++)
+		for (int p = 0; p < ISO_BLOCK_AREA; p++)
+			tex->shapes[s][p] = shapes[s][p];
 
 	char* line = (char*)malloc(60);
 	while (fgets(line, 60, csv))
 	{
-		unsigned char id, mask, type;
-		for (int i = 0; i < 9; i++)
+		unsigned char row[COLUMNS];
+		for (int i = 0; i < COLUMNS; i++)
 		{
 			char* value = strtok(i == 0 ? line : NULL, ",");
-			unsigned char num = (value == NULL ? 0 : (char)strtol(value, NULL, 0));
-
-			if (i == 0)
-			{
-				id = num;
-			}
-			else if (i == 1)
-			{
-				mask = num;
-			}
-			else if (i == 2)
-			{
-				type = num;
-				if (type == 0)
-				{
-					textures[id].mask = mask;
-				}
-			}
-			else if (i >= 3 && i <= 6)
-			{
-				textures[id].types[type].colour[i - 3] = num;
-			}
-			else if (i == 8)
-			{
-				memcpy(&textures[id].types[type].shape, &shapes[num],
-						ISO_BLOCK_WIDTH * ISO_BLOCK_HEIGHT);
-			}
+			row[i] = (value == NULL ? 0 : (char)strtol(value, NULL, 0));
 		}
+		unsigned char blockid = row[0];
+		unsigned char subtype = row[2];
+
+		// subtype mask is specified on subtype 0 of each block type
+		if (subtype == 0) tex->blocktypes[blockid].mask = row[1];
+		memcpy(&tex->blocktypes[blockid].subtypes[subtype].colour, &row[3], CHANNELS);
+		tex->blocktypes[blockid].subtypes[subtype].shapeid = row[8];
 	}
 	free(line);
 
 	fclose(csv);
-	return textures;
+	return tex;
+}
+
+
+const unsigned char* get_block_colour(const textures* textures,
+		const unsigned char blockid, const unsigned char dataval)
+{
+	unsigned char type = dataval % textures->blocktypes[blockid].mask;
+	return textures->blocktypes[blockid].subtypes[type].colour;
+}
+
+
+const unsigned char get_block_shapeid(const textures* textures,
+		const unsigned char blockid, const unsigned char dataval)
+{
+	unsigned char type = dataval % textures->blocktypes[blockid].mask;
+	return textures->blocktypes[blockid].subtypes[type].shapeid;
 }
 
 

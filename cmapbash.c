@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	texture* textures = read_textures("textures.csv");
+	textures* textures = read_textures("textures.csv");
 
 //	nbt_node* chunk = nbt_parse_path(inpath);
 //	if (chunk == NULL)

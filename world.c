@@ -209,7 +209,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 }
 
 
-image render_world_map(world world, const texture* textures,
+image render_world_map(world world, const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
@@ -319,7 +319,7 @@ image render_world_map(world world, const texture* textures,
 }
 
 
-void save_world_map(const char* worlddir, const char* imagefile, const texture* textures,
+void save_world_map(const char* worlddir, const char* imagefile, const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
 	world world = measure_world(worlddir);
