@@ -74,11 +74,11 @@ int main(int argc, char **argv)
 //		printf("Error reading chunk file\n");
 //		return 0;
 //	}
-//	save_chunk_blockmap(chunk, outpath, textures, night, isometric, rotate);
+//	save_chunk_map(chunk, outpath, textures, night, isometric, rotate);
 
-	//save_region_blockmap(inpath, outpath, textures, night, isometric, rotate);
+	//save_region_map(inpath, outpath, textures, night, isometric, rotate);
 
-	save_world_blockmap(inpath, outpath, textures, night, isometric, rotate);
+	save_world_map(inpath, outpath, textures, night, isometric, rotate);
 
 	free(textures);
 

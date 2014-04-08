@@ -174,10 +174,12 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 }
 
 
-image render_region_blockmap(const char* regionfile, const texture* textures, const char night,
-		const char rotate, char* nfiles[4])
+image render_region_map(const char* regionfile, char* nfiles[4], const texture* textures,
+		const char night, const char isometric, const char rotate)
 {
-	image rimage = create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
+	image rimage = isometric ?
+			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
+			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
 	region reg = read_region(regionfile);
 	if (reg.file == NULL)
@@ -189,16 +191,15 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 
 	region nregions[4];
 	for (int i = 0; i < 4; i++)
-	{
 		nregions[i] = read_region((nfiles == NULL || nfiles[i] == NULL) ? "" : nfiles[i]);
-	}
 
 	nbt_node *chunk, *prev_chunk, *next_chunk, *nchunks[4];
 	for (int cz = 0; cz <= MAX_CHUNK; cz++)
 	{
 		for (int cx = 0; cx <= MAX_CHUNK; cx++)
 		{
-			chunk = (cx > 0 && prev_chunk != NULL) ? next_chunk : get_chunk(reg, cx, cz, rotate);
+			// get this chunk
+			chunk = cx > 0 && prev_chunk != NULL ? next_chunk : get_chunk(reg, cx, cz, rotate);
 			if (chunk == NULL)
 			{
 				if (cx > 0) nbt_free(prev_chunk);
@@ -206,6 +207,7 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 				continue;
 			}
 
+			// get neighbouring chunks, either from this region or a neighbouring one
 			nchunks[0] = cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
 					(!nregions[0].loaded ? NULL : get_chunk(nregions[0], cx, MAX_CHUNK, rotate));
 
@@ -218,8 +220,10 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 			nchunks[3] = cx > 0 ? prev_chunk :
 					(!nregions[3].loaded ? NULL : get_chunk(nregions[3], MAX_CHUNK, cz, rotate));
 
-			image cimage = render_chunk_blockmap(chunk, textures, night, rotate, nchunks);
+			// render chunk map
+			image cimage = render_chunk_map(chunk, nchunks, textures, night, isometric, rotate);
 
+			// free chunks, or pass them to the next iteration
 			nbt_free(nchunks[0]);
 			nbt_free(nchunks[2]);
 			nbt_free(nchunks[3]);
@@ -234,98 +238,35 @@ image render_region_blockmap(const char* regionfile, const texture* textures, co
 				next_chunk = nchunks[1];
 			}
 
-			for (int bz = 0; bz < CHUNK_BLOCK_LENGTH; bz++)
+			// copy chunk image onto region image
+			int cpx, cpy;
+			if (isometric)
 			{
-				// copy a line of pixel data from the chunk image to the region image
-				int offset = (cz * CHUNK_BLOCK_LENGTH + bz) * rimage.width
-						+ cx * CHUNK_BLOCK_LENGTH;
-				memcpy(&rimage.data[offset * CHANNELS],
-						&cimage.data[bz * CHUNK_BLOCK_LENGTH * CHANNELS],
-						CHUNK_BLOCK_LENGTH * CHANNELS);
-			}
-			free_image(cimage);
-		}
-	}
-
-	fclose(reg.file);
-	return rimage;
-}
-
-
-image render_region_iso_blockmap(const char* regionfile, const texture* textures, const char night,
-		const char rotate, char* nfiles[4])
-{
-	image rimage = create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT);
-
-	region reg = read_region(regionfile);
-	if (reg.file == NULL)
-	{
-		printf("Error %d reading region file: %s\n", errno, regionfile);
-		rimage.data = NULL;
-		return rimage;
-	}
-	//printf("Rendering isometric image, %d x %d\n", rimage.width, rimage.height);
-
-	region nregions[4];
-	for (int i = 0; i < 4; i++)
-	{
-		nregions[i] = read_region((nfiles == NULL || nfiles[i] == NULL) ? "" : nfiles[i]);
-	}
-
-	nbt_node *chunk, *prev_chunk, *next_chunk, *nchunks[4];
-	for (int cz = 0; cz <= MAX_CHUNK; cz++)
-	{
-		for (int cx = 0; cx <= MAX_CHUNK; cx++)
-		{
-			chunk = cx > 0 && prev_chunk != NULL ? next_chunk : get_chunk(reg, cx, cz, rotate);
-			if (chunk == NULL)
-			{
-				if (cx > 0) nbt_free(prev_chunk);
-				prev_chunk = NULL;
-				continue;
-			}
-
-			nchunks[0] = cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
-					(!nregions[0].loaded ? NULL : get_chunk(nregions[0], cx, MAX_CHUNK, rotate));
-
-			nchunks[1] = cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, rotate) :
-					(!nregions[1].loaded ? NULL : get_chunk(nregions[1], 0, cz, rotate));
-
-			nchunks[2] = cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, rotate) :
-					(!nregions[2].loaded ? NULL : get_chunk(nregions[2], cx, 0, rotate));
-
-			nchunks[3] = cx > 0 ? prev_chunk :
-					(!nregions[3].loaded ? NULL : get_chunk(nregions[3], MAX_CHUNK, cz, rotate));
-
-			image cimage = render_chunk_iso_blockmap(chunk, textures, night, rotate, nchunks);
-
-			nbt_free(nchunks[0]);
-			nbt_free(nchunks[2]);
-			nbt_free(nchunks[3]);
-			if (cx < MAX_CHUNK)
-			{
-				prev_chunk = chunk;
-				next_chunk = nchunks[1];
+				// translate orthographic to isometric coordinates
+				cpx = (cx + MAX_CHUNK - cz) * ISO_CHUNK_X_MARGIN;
+				cpy = (cx + cz) * ISO_CHUNK_Y_MARGIN;
+				for (int py = 0; py < ISO_CHUNK_HEIGHT; py++)
+				{
+					for (int px = 0; px < ISO_CHUNK_WIDTH; px++)
+					{
+						combine_alpha(&cimage.data[(py * ISO_CHUNK_WIDTH + px) * CHANNELS],
+								&rimage.data[((cpy + py) * rimage.width + cpx + px) * CHANNELS], 1);
+					}
+				}
 			}
 			else
 			{
-				nbt_free(chunk);
-				nbt_free(nchunks[1]);
-			}
-
-			// translate orthographic to isometric coordinates
-			int cpx = (cx + MAX_CHUNK - cz) * ISO_CHUNK_X_MARGIN;
-			int cpy = (cx + cz) * ISO_CHUNK_Y_MARGIN;
-			//printf("Writing chunk %d,%d to pixel %d,%d\n", cx, cz, cpx, cpy);
-
-			for (int py = 0; py < ISO_CHUNK_HEIGHT; py++)
-			{
-				for (int px = 0; px < ISO_CHUNK_WIDTH; px++)
+				cpx = cx * CHUNK_BLOCK_LENGTH;
+				cpy = cz * CHUNK_BLOCK_LENGTH;
+				for (int py = 0; py < CHUNK_BLOCK_LENGTH; py++)
 				{
-					combine_alpha(&cimage.data[(py * ISO_CHUNK_WIDTH + px) * CHANNELS],
-							&rimage.data[((cpy + py) * rimage.width + cpx + px) * CHANNELS], 1);
+					// copy a line of pixel data from the chunk image to the region image
+					memcpy(&rimage.data[((cpy + py) * rimage.width + cpx) * CHANNELS],
+							&cimage.data[py * CHUNK_BLOCK_LENGTH * CHANNELS],
+							CHUNK_BLOCK_LENGTH * CHANNELS);
 				}
 			}
+
 			free_image(cimage);
 		}
 	}
@@ -335,12 +276,10 @@ image render_region_iso_blockmap(const char* regionfile, const texture* textures
 }
 
 
-void save_region_blockmap(const char* regionfile, const char* imagefile, const texture* textures,
+void save_region_map(const char* regionfile, const char* imagefile, const texture* textures,
 		const char night, const char isometric, const char rotate)
 {
-	image rimage = isometric
-			? render_region_iso_blockmap(regionfile, textures, night, rotate, NULL)
-			: render_region_blockmap(regionfile, textures, night, rotate, NULL);
+	image rimage = render_region_map(regionfile, NULL, textures, night, isometric, rotate);
 	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);

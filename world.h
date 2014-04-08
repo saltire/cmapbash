@@ -9,10 +9,7 @@ typedef struct world {
 } world;
 
 
-image render_world_blockmap(world world, const texture* textures, const char night,
-		const char rotate);
-image render_world_iso_blockmap(world world, const texture* textures, const char night,
-		const char rotate);
-
-void save_world_blockmap(const char* worlddir, const char* imagefile, const texture* textures,
+image render_world_map(world world, const texture* textures,
+		const char night, const char isometric, const char rotate);
+void save_world_map(const char* worlddir, const char* imagefile, const texture* textures,
 		const char night, const char isometric, const char rotate);

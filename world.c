@@ -10,7 +10,7 @@
 #include "world.h"
 
 
-static world measure_world(const char* worlddir, const char rotate)
+static world measure_world(const char* worlddir)
 {
 	world world;
 	world.dir = worlddir;
@@ -58,34 +58,10 @@ static world measure_world(const char* worlddir, const char rotate)
 
 	rewinddir(dir);
 	while ((ent = readdir(dir)) != NULL)
-	{
 		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
-		{
-			// get rotated world-relative region coords from absolute region coords
-			int rwx, rwz;
-			switch(rotate) {
-			case 0:
-				rwx = rx - world.rxmin;
-				rwz = rz - world.rzmin;
-				break;
-			case 1:
-				rwx = world.rzsize - (rz - world.rzmin) - 1;
-				rwz = rx - world.rxmin;
-				break;
-			case 2:
-				rwx = world.rxsize - (rx - world.rxmin) - 1;
-				rwz = world.rzsize - (rz - world.rzmin) - 1;
-				break;
-			case 3:
-				rwx = rz - world.rzmin;
-				rwz = world.rxsize - (rx - world.rxmin) - 1;
-				break;
-			}
 			world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin] = 1;
-		}
-	}
 	closedir(dir);
 
 	return world;
@@ -101,7 +77,10 @@ static void free_world(world world)
 static void get_path_from_rel_coords(char* path, const world world, const int rwx, const int rwz,
 		const char rotate)
 {
-	if (rwx < 0 || rwx > world.rxsize - 1 || rwz < 0 || rwz > world.rzsize - 1) return;
+	// check if region is out of bounds
+	if (rwx < 0 || rwz < 0) return;
+	if (!(rotate % 2) && (rwx > world.rxsize - 1 || rwz > world.rzsize - 1)) return;
+	if (rotate % 2 && (rwx > world.rzsize - 1 || rwz > world.rxsize - 1)) return;
 
 	// get absolute region coords from rotated world-relative coords
 	int rx, rz;
@@ -135,7 +114,7 @@ static void get_world_margins(world world, int* margins, const char rotate)
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
 
-	// initialize margins to maximum, and decrease them as regions are parsed
+	// initialize margins to maximum, and decrease them as regions are found
 	for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
 
 	for (int rwz = 0; rwz < rwzsize; rwz++)
@@ -172,8 +151,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
 
-	// world margins measured in pixels
-	// start at maximum and decrease as regions are found
+	// initialize margins to maximum, and decrease them as regions are found
 	margins[0] = margins[2] = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
 			- ISO_BLOCK_TOP_HEIGHT;
 	margins[1] = margins[3] = (world.rxsize + world.rzsize + 1) * ISO_REGION_X_MARGIN;
@@ -231,86 +209,28 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 }
 
 
-image render_world_blockmap(world world, const texture* textures, const char night,
-		const char rotate)
+image render_world_map(world world, const texture* textures,
+		const char night, const char isometric, const char rotate)
 {
-	int margins[4];
-	get_world_margins(world, margins, rotate);
-
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
 
-	image wimage = create_image(
-			rwxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3],
-			rwzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2]);
-	printf("Read %d regions. Image dimensions: %d x %d\n",
-			world.rcount, wimage.width, wimage.height);
-
-	int r = 0;
-	for (int rwz = 0; rwz < rwzsize; rwz++)
+	int width, height, margins[4];
+	image wimage;
+	if (isometric)
 	{
-		for (int rwx = 0; rwx < rwxsize; rwx++)
-		{
-			char path[255] = "";
-			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
-			if (!strcmp(path, "")) continue;
-
-			// get rotated neighbouring region paths
-			char *npaths[4];
-			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(255, sizeof(char));
-			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, rotate);
-			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, rotate);
-			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, rotate);
-			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, rotate);
-
-			int rxo = (rwx == 0 ? margins[3] : 0);
-			int rpx = rwx * REGION_BLOCK_LENGTH - margins[3] + rxo;
-			int rw = REGION_BLOCK_LENGTH - rxo - (rwx == rwxsize - 1 ? margins[1] : 0);
-
-			int ryo = (rwz == 0 ? margins[0] : 0);
-			int rpy = rwz * REGION_BLOCK_LENGTH - margins[0] + ryo;
-			int rh = REGION_BLOCK_LENGTH - ryo - (rwz == rwzsize - 1 ? margins[2] : 0);
-
-			r++;
-			printf("Rendering region %d/%d at pos %d,%d pixel %d,%d\n",
-					r, world.rcount, rwx, rwz, rpx, rpy);
-
-			image rimage = render_region_blockmap(path, textures, night, rotate, npaths);
-			for (int i = 0; i < 4; i++) free(npaths[i]);
-			if (rimage.data == NULL)
-			{
-				free_image(rimage);
-				continue;
-			}
-
-			for (int y = 0; y < rh; y++)
-			{
-				// copy a line of pixel data from the region image to the world image
-				memcpy(&wimage.data[((rpy + y) * wimage.width + rpx) * CHANNELS],
-						&rimage.data[((ryo + y) * REGION_BLOCK_LENGTH + rxo) * CHANNELS],
-						rw * CHANNELS);
-			}
-			free_image(rimage);
-		}
+		get_world_iso_margins(world, margins, rotate);
+		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN;
+		height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
+				+ ISO_CHUNK_DEPTH;
 	}
-
-	return wimage;
-}
-
-
-image render_world_iso_blockmap(world world, const texture* textures, const char night,
-		const char rotate)
-{
-	int margins[4];
-	get_world_iso_margins(world, margins, rotate);
-
-	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
-
-	image wimage = create_image(
-			(rwxsize + rwzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3],
-			((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
-						+ ISO_CHUNK_DEPTH - margins[0] - margins[2]);
+	else
+	{
+		get_world_margins(world, margins, rotate);
+		width = rwxsize * REGION_BLOCK_LENGTH;
+		height = rwzsize * REGION_BLOCK_LENGTH;
+	}
+	wimage = create_image(width - margins[1] - margins[3], height - margins[0] - margins[2]);
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
 
@@ -320,6 +240,7 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 	{
 		for (int rwx = 0; rwx < rwxsize; rwx++)
 		{
+			// get region file path, or skip if it doesn't exist
 			char path[255] = "";
 			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
 			if (!strcmp(path, "")) continue;
@@ -332,28 +253,10 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, rotate);
 			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, rotate);
 
-			// translate orthographic region coordinates to isometric pixel coordinates
-			int rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN - margins[3];
-			int rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN - margins[0];
-
-			// find pixel offsets where regions will be cropped at top or left edge
-			int rxo = rpx < 0 ? -rpx : 0;
-			int ryo = rpy < 0 ? -rpy : 0;
-
-			// find region pixel width and height
-			int rw = rpx + ISO_REGION_WIDTH > wimage.width ?
-					wimage.width - rpx - rxo : ISO_REGION_WIDTH - rxo;
-			int rh = rpy + ISO_REGION_HEIGHT > wimage.height ?
-					wimage.height - rpy - ryo : ISO_REGION_HEIGHT - ryo;
-
-			rpx += rxo;
-			rpy += ryo;
-
 			r++;
-			printf("Rendering region %d/%d at pos %d,%d pixel %d,%d\n",
-					r, world.rcount, rwx, rwz, rpx, rpy);
+			printf("Rendering region %d/%d at pos %d,%d\n", r, world.rcount, rwx, rwz);
 
-			image rimage = render_region_iso_blockmap(path, textures, night, rotate, npaths);
+			image rimage = render_region_map(path, npaths, textures, night, isometric, rotate);
 			for (int i = 0; i < 4; i++) free(npaths[i]);
 			if (rimage.data == NULL)
 			{
@@ -361,15 +264,53 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 				continue;
 			}
 
-			for (int py = 0; py < rh; py++)
+			int rpx, rpy, rxo, ryo, rw, rh;
+			if (isometric)
 			{
-				for (int px = 0; px < rw; px++)
-				{
-					combine_alpha(
-							&rimage.data[((ryo + py) * ISO_REGION_WIDTH + rxo + px) * CHANNELS],
-							&wimage.data[((rpy + py) * wimage.width + rpx + px) * CHANNELS], 1);
-				}
+				// translate orthographic region coordinates to isometric pixel coordinates
+				rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN - margins[3];
+				rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN - margins[0];
+
+				// find top and left crop offsets for this region
+				rxo = rpx < 0 ? -rpx : 0;
+				ryo = rpy < 0 ? -rpy : 0;
+
+				// find region pixel width and height
+				rw = rpx + ISO_REGION_WIDTH > wimage.width ?
+						wimage.width - rpx - rxo : ISO_REGION_WIDTH - rxo;
+				rh = rpy + ISO_REGION_HEIGHT > wimage.height ?
+						wimage.height - rpy - ryo : ISO_REGION_HEIGHT - ryo;
+
+				rpx += rxo;
+				rpy += ryo;
+
+				for (int py = 0; py < rh; py++)
+					for (int px = 0; px < rw; px++)
+						combine_alpha(
+								&rimage.data[((ryo + py) * ISO_REGION_WIDTH + rxo + px) * CHANNELS],
+								&wimage.data[((rpy + py) * wimage.width + rpx + px) * CHANNELS], 1);
 			}
+			else
+			{
+				// top and left crop offsets for this region
+				rxo = (rwx == 0 ? margins[3] : 0);
+				ryo = (rwz == 0 ? margins[0] : 0);
+
+				// destination pixel coordinates for this region
+				rpx = rwx * REGION_BLOCK_LENGTH - margins[3] + rxo;
+				rpy = rwz * REGION_BLOCK_LENGTH - margins[0] + ryo;
+
+				// region pixel width and height
+				rw = REGION_BLOCK_LENGTH - rxo - (rwx == rwxsize - 1 ? margins[1] : 0);
+				rh = REGION_BLOCK_LENGTH - ryo - (rwz == rwzsize - 1 ? margins[2] : 0);
+
+				for (int y = 0; y < rh; y++)
+					// copy a line of pixel data from the region image to the world image
+					memcpy(&wimage.data[((rpy + y) * wimage.width + rpx) * CHANNELS],
+							&rimage.data[((ryo + y) * REGION_BLOCK_LENGTH + rxo) * CHANNELS],
+							rw * CHANNELS);
+			}
+
 			free_image(rimage);
 		}
 	}
@@ -378,19 +319,17 @@ image render_world_iso_blockmap(world world, const texture* textures, const char
 }
 
 
-void save_world_blockmap(const char* worlddir, const char* imagefile, const texture* textures,
+void save_world_map(const char* worlddir, const char* imagefile, const texture* textures,
 		const char night, const char isometric, const char rotate)
 {
-	world world = measure_world(worlddir, rotate);
+	world world = measure_world(worlddir);
 	if (!world.rcount)
 	{
 		printf("No regions found in directory: %s\n", worlddir);
 		return;
 	}
 
-	image wimage = isometric
-			? render_world_iso_blockmap(world, textures, night, rotate)
-			: render_world_blockmap(world, textures, night, rotate);
+	image wimage = render_world_map(world, textures, night, isometric, rotate);
 	free_world(world);
 
 	printf("Saving image to %s ...\n", imagefile);
