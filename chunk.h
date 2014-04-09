@@ -26,7 +26,8 @@
 #define ISO_CHUNK_Y_MARGIN (CHUNK_BLOCK_LENGTH * ISO_BLOCK_TOP_HEIGHT)
 
 
-image render_chunk_map(nbt_node* chunk, nbt_node* nchunks[4], const textures* textures,
+void render_chunk_map(image* image, const int cpx, const int cpy,
+		nbt_node* chunk, nbt_node* nchunks[4], const textures* textures,
 		const char night, const char isometric, const char rotate);
 void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* textures,
 		const char night, const char isometric, const char rotate);

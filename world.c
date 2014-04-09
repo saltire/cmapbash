@@ -215,8 +215,8 @@ image render_world_map(world world, const textures* textures,
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
 
-	int width, height, margins[4];
 	image wimage;
+	int width, height, margins[4];
 	if (isometric)
 	{
 		get_world_iso_margins(world, margins, rotate);
@@ -254,64 +254,24 @@ image render_world_map(world world, const textures* textures,
 			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, rotate);
 
 			r++;
-			printf("Rendering region %d/%d at pos %d,%d\n", r, world.rcount, rwx, rwz);
+			printf("Rendering region %d/%d...\n", r, world.rcount);
 
-			image rimage = render_region_map(path, npaths, textures, night, isometric, rotate);
-			for (int i = 0; i < 4; i++) free(npaths[i]);
-			if (rimage.data == NULL)
-			{
-				free_image(rimage);
-				continue;
-			}
-
-			int rpx, rpy, rxo, ryo, rw, rh;
+			int rpx, rpy;
 			if (isometric)
 			{
 				// translate orthographic region coordinates to isometric pixel coordinates
 				rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN - margins[3];
 				rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN - margins[0];
-
-				// find top and left crop offsets for this region
-				rxo = rpx < 0 ? -rpx : 0;
-				ryo = rpy < 0 ? -rpy : 0;
-
-				// find region pixel width and height
-				rw = rpx + ISO_REGION_WIDTH > wimage.width ?
-						wimage.width - rpx - rxo : ISO_REGION_WIDTH - rxo;
-				rh = rpy + ISO_REGION_HEIGHT > wimage.height ?
-						wimage.height - rpy - ryo : ISO_REGION_HEIGHT - ryo;
-
-				rpx += rxo;
-				rpy += ryo;
-
-				for (int py = 0; py < rh; py++)
-					for (int px = 0; px < rw; px++)
-						combine_alpha(
-								&rimage.data[((ryo + py) * ISO_REGION_WIDTH + rxo + px) * CHANNELS],
-								&wimage.data[((rpy + py) * wimage.width + rpx + px) * CHANNELS], 1);
 			}
 			else
 			{
-				// top and left crop offsets for this region
-				rxo = (rwx == 0 ? margins[3] : 0);
-				ryo = (rwz == 0 ? margins[0] : 0);
-
-				// destination pixel coordinates for this region
-				rpx = rwx * REGION_BLOCK_LENGTH - margins[3] + rxo;
-				rpy = rwz * REGION_BLOCK_LENGTH - margins[0] + ryo;
-
-				// region pixel width and height
-				rw = REGION_BLOCK_LENGTH - rxo - (rwx == rwxsize - 1 ? margins[1] : 0);
-				rh = REGION_BLOCK_LENGTH - ryo - (rwz == rwzsize - 1 ? margins[2] : 0);
-
-				for (int y = 0; y < rh; y++)
-					// copy a line of pixel data from the region image to the world image
-					memcpy(&wimage.data[((rpy + y) * wimage.width + rpx) * CHANNELS],
-							&rimage.data[((ryo + y) * REGION_BLOCK_LENGTH + rxo) * CHANNELS],
-							rw * CHANNELS);
+				rpx = rwx * REGION_BLOCK_LENGTH - margins[3];
+				rpy = rwz * REGION_BLOCK_LENGTH - margins[0];
 			}
 
-			free_image(rimage);
+			render_region_map(&wimage, rpx, rpy, path, npaths, textures, night, isometric, rotate);
+
+			for (int i = 0; i < 4; i++) free(npaths[i]);
 		}
 	}
 

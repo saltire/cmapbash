@@ -163,7 +163,7 @@ static void get_neighbour_values(unsigned char nvalues[4], unsigned char* data,
 }
 
 
-static void render_iso_column(image* cimage, const textures* textures,
+static void render_iso_column(image* image, const int cpx, const int cpy, const textures* textures,
 		unsigned char* blocks, unsigned char* data, unsigned char* blight,
 		unsigned char* nblocks[4], unsigned char* ndata[4],
 		const int x, const int z, const char rotate)
@@ -180,7 +180,6 @@ static void render_iso_column(image* cimage, const textures* textures,
 		if (blockid == 0 || blockid >= BLOCK_TYPES) continue;
 
 		unsigned char dataval = data[offset];
-
 		// get neighbour block ids and data values
 		unsigned char nb[4], nd[4];
 		get_neighbour_values(nb, blocks, nblocks, x, y, z, rotate);
@@ -190,7 +189,6 @@ static void render_iso_column(image* cimage, const textures* textures,
 		unsigned char tcolour[CHANNELS], lcolour[CHANNELS], rcolour[CHANNELS];
 		memcpy(&tcolour, get_block_colour(textures, blockid, dataval), CHANNELS);
 		adjust_colour_by_height(tcolour, y);
-
 		// copy the top colour to the left and right side colours
 		memcpy(&lcolour, &tcolour, CHANNELS);
 		memcpy(&rcolour, &tcolour, CHANNELS);
@@ -198,7 +196,6 @@ static void render_iso_column(image* cimage, const textures* textures,
 		// highlights and shadows on left and right sides
 		if (nb[2] == 0) adjust_colour_brightness(lcolour, CONTOUR_SHADING);
 		if (nb[1] == 0) adjust_colour_brightness(rcolour, -CONTOUR_SHADING);
-
 		// night mode
 		if (blight != NULL && blight[offset] < MAX_LIGHT)
 		{
@@ -207,16 +204,9 @@ static void render_iso_column(image* cimage, const textures* textures,
 			set_colour_brightness(rcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
 		}
 
-		// translate orthographic to isometric coordinates
-		int px = (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
-		int py = (x + z) * ISO_BLOCK_TOP_HEIGHT
-				+ (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
-		//printf("Block %d,%d,%d rendering at pixel %d,%d\n", bx, bz, by, px, py);
-
 		char draw_top = 1;
 		char draw_left = 1;
 		char draw_right = 1;
-
 		// if the block above is the same type or opaque, don't draw the top of this one
 		// opaque means alpha opacity is 255 and shape id is 0 (a solid square)
 		if (y < MAX_HEIGHT)
@@ -236,6 +226,10 @@ static void render_iso_column(image* cimage, const textures* textures,
 		if (get_block_colour(textures, nb[1], nd[1])[ALPHA] == 255 &&
 				get_block_shapeid(textures, nb[1], nd[1]) == 0) draw_right = 0;
 
+		// translate orthographic to isometric coordinates
+		int px = cpx + (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
+		int py = cpy + (x + z) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
+
 		const unsigned char shapeid = get_block_shapeid(textures, blockid, dataval);
 		for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 		{
@@ -244,13 +238,13 @@ static void render_iso_column(image* cimage, const textures* textures,
 			{
 				if (textures->shapes[shapeid][sy * ISO_BLOCK_WIDTH + sx])
 				{
-					int p = (py + sy) * cimage->width + px + sx;
+					int p = (py + sy) * image->width + px + sx;
 					if (sy < ISO_BLOCK_TOP_HEIGHT)
-						combine_alpha(tcolour, &cimage->data[p * CHANNELS], 1);
+						combine_alpha(tcolour, &image->data[p * CHANNELS], 1);
 					else if (sx < ISO_BLOCK_WIDTH / 2 && draw_left)
-						combine_alpha(shapeid ? tcolour : lcolour, &cimage->data[p * CHANNELS], 1);
+						combine_alpha(shapeid ? tcolour : lcolour, &image->data[p * CHANNELS], 1);
 					else if (sx >= ISO_BLOCK_WIDTH / 2 && draw_right)
-						combine_alpha(shapeid ? tcolour : rcolour, &cimage->data[p * CHANNELS], 1);
+						combine_alpha(shapeid ? tcolour : rcolour, &image->data[p * CHANNELS], 1);
 				}
 			}
 		}
@@ -258,12 +252,12 @@ static void render_iso_column(image* cimage, const textures* textures,
 }
 
 
-static void render_ortho_block(image* cimage, const textures* textures,
+static void render_ortho_block(image* image, const int cpx, const int cpy, const textures* textures,
 		unsigned char* blocks, unsigned char* data, unsigned char* blight,
 		unsigned char* nblocks[4], const int x, const int z, const char rotate)
 {
 	// get pixel buffer for this block's rotated position
-	unsigned char* pixel = &cimage->data[(z * CHUNK_BLOCK_LENGTH + x) * CHANNELS];
+	unsigned char* pixel = &image->data[((cpy + z) * image->width + cpx + x) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
 	int hoffset = get_offset(0, x, z, rotate);
@@ -296,12 +290,10 @@ static void render_ortho_block(image* cimage, const textures* textures,
 }
 
 
-image render_chunk_map(nbt_node* chunk, nbt_node* nchunks[4], const textures* textures,
+void render_chunk_map(image* image, const int cpx, const int cpy,
+		nbt_node* chunk, nbt_node* nchunks[4], const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
-	image cimage = isometric ?
-			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
-			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
 	// get block data for this chunk
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
@@ -320,25 +312,32 @@ image render_chunk_map(nbt_node* chunk, nbt_node* nchunks[4], const textures* te
 		for (int x = 0; x <= MAX_BLOCK; x++)
 		{
 			if (isometric)
-				render_iso_column(
-						&cimage, textures, blocks, data, blight, nblocks, ndata, x, z, rotate);
+				render_iso_column(image, cpx, cpy, textures, blocks, data, blight, nblocks, ndata,
+						x, z, rotate);
 			else
-				render_ortho_block(&cimage, textures, blocks, data, blight, nblocks, x, z, rotate);
+				render_ortho_block(image, cpx, cpy, textures, blocks, data, blight, nblocks,
+						x, z, rotate);
 		}
 	}
 
 	free(blocks);
 	free(data);
 	free(blight);
-	for (int i = 0; i < 4; i++) free(nblocks[i]);
-	return cimage;
+	for (int i = 0; i < 4; i++)
+	{
+		free(nblocks[i]);
+		if (isometric) free(ndata[i]);
+	}
 }
 
 
 void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* textures,
 		const char night, const char isometric, const char rotate)
 {
-	image cimage = render_chunk_map(chunk, NULL, textures, night, isometric, rotate);
+	image cimage = isometric ?
+			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
+			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
+	render_chunk_map(&cimage, 0, 0, chunk, NULL, textures, night, isometric, rotate);
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(cimage, imagefile);
