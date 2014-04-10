@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	textures* textures = read_textures("textures.csv");
+	textures* tex = read_textures("textures.csv", "shapes.csv");
 
 //	nbt_node* chunk = nbt_parse_path(inpath);
 //	if (chunk == NULL)
@@ -74,13 +74,13 @@ int main(int argc, char **argv)
 //		printf("Error reading chunk file\n");
 //		return 0;
 //	}
-//	save_chunk_map(chunk, outpath, textures, night, isometric, rotate);
+//	save_chunk_map(chunk, outpath, tex, night, isometric, rotate);
 
-	//save_region_map(inpath, outpath, textures, night, isometric, rotate);
+	//save_region_map(inpath, outpath, tex, night, isometric, rotate);
 
-	save_world_map(inpath, outpath, textures, night, isometric, rotate);
+	save_world_map(inpath, outpath, tex, night, isometric, rotate);
 
-	free(textures);
+	free_textures(tex);
 
 	return 0;
 }

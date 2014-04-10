@@ -8,58 +8,28 @@
 
 
 #define COLUMNS 9
+#define LINE_BUFFER 60
 
 
-unsigned char shapes[SHAPE_COUNT][ISO_BLOCK_AREA] = {
-		// 0: solid
-		{
-				1,1,1,1,
-				1,1,1,1,
-				1,1,1,1,
-				1,1,1,1
-		},
-
-		// 1: flat
-		{
-				0,0,0,0,
-				0,0,0,0,
-				0,0,0,0,
-				1,1,1,1
-		},
-
-		// 2: small square
-		{
-				0,0,0,0,
-				0,0,0,0,
-				0,1,1,0,
-				0,1,1,0
-		},
-
-		// 3: grass
-		{
-				0,0,0,0,
-				0,0,1,0,
-				1,0,1,1,
-				0,1,1,0
-		}
-};
-
-
-textures* read_textures(const char* texturefile)
+textures* read_textures(const char* texturefile, const char* shapefile)
 {
-	FILE* csv = fopen(texturefile, "r");
-	if (csv == NULL)
-	{
-		printf("Error %d reading colour file: %s\n", errno, texturefile);
-	}
-
 	textures* tex = (textures*)calloc(1, sizeof(textures));
-	for (int s = 0; s < SHAPE_COUNT; s++)
-		for (int p = 0; p < ISO_BLOCK_AREA; p++)
-			tex->shapes[s][p] = shapes[s][p];
 
-	char* line = (char*)malloc(60);
-	while (fgets(line, 60, csv))
+	char line[LINE_BUFFER];
+
+	// colour file
+	FILE* tcsv = fopen(texturefile, "r");
+	if (tcsv == NULL) printf("Error %d reading texture file: %s\n", errno, texturefile);
+
+	// find highest block id and allocate blocktypes array
+	unsigned char blockid = -1;
+	while (fgets(line, LINE_BUFFER, tcsv)) blockid = (char)strtol(strtok(line, ","), NULL, 0);
+	tex->blockcount = blockid + 1;
+	tex->blocktypes = (blocktype*)calloc(tex->blockcount, sizeof(blocktype));
+
+	// read block textures
+	fseek(tcsv, 0, SEEK_SET);
+	while (fgets(line, LINE_BUFFER, tcsv))
 	{
 		unsigned char row[COLUMNS];
 		for (int i = 0; i < COLUMNS; i++)
@@ -75,26 +45,54 @@ textures* read_textures(const char* texturefile)
 		memcpy(&tex->blocktypes[blockid].subtypes[subtype].colour, &row[3], CHANNELS);
 		tex->blocktypes[blockid].subtypes[subtype].shapeid = row[8];
 	}
-	free(line);
+	fclose(tcsv);
 
-	fclose(csv);
+	// shape file
+	FILE* scsv = fopen(shapefile, "r");
+	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapefile);
+
+	// count shapes and allocate array
+	int c, s = 0;
+	while ((c = getc(scsv)) != EOF) if (c == '\n') s++;
+	tex->shapes = (unsigned char*)calloc(s * ISO_BLOCK_AREA, sizeof(char));
+
+	// read shape maps
+	s = 0;
+	fseek(scsv, 0, SEEK_SET);
+	while (fgets(line, LINE_BUFFER, scsv))
+	{
+		// convert ascii value to numeric value
+		for (int i = 0; i < ISO_BLOCK_AREA; i++)
+			tex->shapes[s * ISO_BLOCK_AREA + i] = line[i] - '0';
+		s++;
+	}
+	fclose(scsv);
+
 	return tex;
 }
 
 
-const unsigned char* get_block_colour(const textures* textures,
-		const unsigned char blockid, const unsigned char dataval)
+void free_textures(textures* tex)
 {
-	unsigned char type = dataval % textures->blocktypes[blockid].mask;
-	return textures->blocktypes[blockid].subtypes[type].colour;
+	free(tex->blocktypes);
+	free(tex->shapes);
+	free(tex);
 }
 
 
-const unsigned char get_block_shapeid(const textures* textures,
+const unsigned char* get_block_colour(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval)
 {
-	unsigned char type = dataval % textures->blocktypes[blockid].mask;
-	return textures->blocktypes[blockid].subtypes[type].shapeid;
+	unsigned char type = dataval % tex->blocktypes[blockid].mask;
+	return tex->blocktypes[blockid].subtypes[type].colour;
+}
+
+
+const unsigned char get_block_shapeid(const textures* tex,
+		const unsigned char blockid, const unsigned char dataval)
+{
+	unsigned char type = dataval % tex->blocktypes[blockid].mask;
+	return tex->blocktypes[blockid].subtypes[type].shapeid;
 }
 
 
@@ -103,9 +101,8 @@ void set_colour_brightness(unsigned char* pixel, float brightness, float ambienc
 	if (pixel[ALPHA] == 0) return;
 
 	for (int c = 0; c < ALPHA; c++)
-	{
+		// darken pixel to ambient light only, then add brightness
 		pixel[c] *= (ambience + (1 - ambience) * brightness);
-	}
 }
 
 
@@ -114,10 +111,8 @@ void adjust_colour_brightness(unsigned char* pixel, float mod)
 	if (pixel[ALPHA] == 0) return;
 
 	for (int c = 0; c < ALPHA; c++)
-	{
-		unsigned char limit = mod < 0 ? pixel[c] : 255 - pixel[c]; // room to adjust
-		pixel[c] += limit * mod;
-	}
+		// room to adjust, multiplied by modifier %, gives us the amount to adjust
+		pixel[c] += (mod < 0 ? pixel[c] : 255 - pixel[c]) * mod;
 }
 
 
@@ -138,8 +133,6 @@ void combine_alpha(unsigned char* top, unsigned char* bottom, int down)
 	unsigned char alpha = top[ALPHA] + bottom[ALPHA] * bmod;
 	unsigned char* target = down ? bottom : top;
 	for (int ch = 0; ch < ALPHA; ch++)
-	{
 		target[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
-	}
 	target[ALPHA] = alpha;
 }

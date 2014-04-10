@@ -209,7 +209,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 }
 
 
-image render_world_map(world world, const textures* textures,
+image render_world_map(world world, const textures* tex,
 		const char night, const char isometric, const char rotate)
 {
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
@@ -269,7 +269,7 @@ image render_world_map(world world, const textures* textures,
 				rpy = rwz * REGION_BLOCK_LENGTH - margins[0];
 			}
 
-			render_region_map(&wimage, rpx, rpy, path, npaths, textures, night, isometric, rotate);
+			render_region_map(&wimage, rpx, rpy, path, npaths, tex, night, isometric, rotate);
 
 			for (int i = 0; i < 4; i++) free(npaths[i]);
 		}
@@ -279,7 +279,7 @@ image render_world_map(world world, const textures* textures,
 }
 
 
-void save_world_map(const char* worlddir, const char* imagefile, const textures* textures,
+void save_world_map(const char* worlddir, const char* imagefile, const textures* tex,
 		const char night, const char isometric, const char rotate)
 {
 	world world = measure_world(worlddir);
@@ -289,7 +289,7 @@ void save_world_map(const char* worlddir, const char* imagefile, const textures*
 		return;
 	}
 
-	image wimage = render_world_map(world, textures, night, isometric, rotate);
+	image wimage = render_world_map(world, tex, night, isometric, rotate);
 	free_world(world);
 
 	printf("Saving image to %s ...\n", imagefile);

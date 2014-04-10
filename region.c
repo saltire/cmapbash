@@ -175,7 +175,7 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 
 
 void render_region_map(image* image, const int rpx, const int rpy,
-		const char* regionfile, char* nfiles[4], const textures* textures,
+		const char* regionfile, char* nfiles[4], const textures* tex,
 		const char night, const char isometric, const char rotate)
 {
 	region reg = read_region(regionfile);
@@ -229,7 +229,7 @@ void render_region_map(image* image, const int rpx, const int rpy,
 				cpx = rpx + cx * CHUNK_BLOCK_LENGTH;
 				cpy = rpy + cz * CHUNK_BLOCK_LENGTH;
 			}
-			render_chunk_map(image, cpx, cpy, chunk, nchunks, textures, night, isometric, rotate);
+			render_chunk_map(image, cpx, cpy, chunk, nchunks, tex, night, isometric, rotate);
 
 			// free chunks, or pass them to the next iteration
 			nbt_free(nchunks[0]);
@@ -252,14 +252,14 @@ void render_region_map(image* image, const int rpx, const int rpy,
 }
 
 
-void save_region_map(const char* regionfile, const char* imagefile, const textures* textures,
+void save_region_map(const char* regionfile, const char* imagefile, const textures* tex,
 		const char night, const char isometric, const char rotate)
 {
 	image rimage = isometric ?
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
 			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
-	render_region_map(&rimage, 0, 0, regionfile, NULL, textures, night, isometric, rotate);
+	render_region_map(&rimage, 0, 0, regionfile, NULL, tex, night, isometric, rotate);
 	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);

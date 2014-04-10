@@ -5,9 +5,6 @@
 #include "image.h"
 
 
-#define BLOCK_TYPES 176
-#define SHAPE_COUNT 4
-
 // isometric pixel dimensions
 #define ISO_BLOCK_WIDTH 4
 #define ISO_BLOCK_TOP_HEIGHT 1
@@ -26,16 +23,18 @@ typedef struct blocktype {
 
 
 typedef struct textures {
-	blocktype blocktypes[BLOCK_TYPES];
-	unsigned char shapes[SHAPE_COUNT][ISO_BLOCK_AREA];
+	int blockcount;
+	blocktype* blocktypes;
+	unsigned char* shapes;
 } textures;
 
 
-textures* read_textures(const char* texturefile);
+textures* read_textures(const char* texturefile, const char* shapefile);
+void free_textures(textures* tex);
 
-const unsigned char* get_block_colour(const textures* textures,
+const unsigned char* get_block_colour(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval);
-const unsigned char get_block_shapeid(const textures* textures,
+const unsigned char get_block_shapeid(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval);
 
 void set_colour_brightness(unsigned char* pixel, float brightness, float ambience);
