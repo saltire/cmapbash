@@ -18,6 +18,8 @@ int main(int argc, char **argv)
 
 	unsigned int rotateint;
 
+	setvbuf(stdout, NULL, _IOLBF, 0);
+
 	for (int i = 1; i < argc; i++)
 	{
 		// isometric mode
