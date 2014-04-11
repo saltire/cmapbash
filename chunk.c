@@ -185,25 +185,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		get_neighbour_values(nb, blocks, nblocks, x, y, z, rotate);
 		get_neighbour_values(nd, data, ndata, x, y, z, rotate);
 
-		// get block colour
-		unsigned char tcolour[CHANNELS], lcolour[CHANNELS], rcolour[CHANNELS];
-		memcpy(&tcolour, get_block_colour(tex, blockid, dataval), CHANNELS);
-		adjust_colour_by_height(tcolour, y);
-		// copy the top colour to the left and right side colours
-		memcpy(&lcolour, &tcolour, CHANNELS);
-		memcpy(&rcolour, &tcolour, CHANNELS);
-
-		// highlights and shadows on left and right sides
-		if (nb[2] == 0) adjust_colour_brightness(lcolour, CONTOUR_SHADING);
-		if (nb[1] == 0) adjust_colour_brightness(rcolour, -CONTOUR_SHADING);
-		// night mode
-		if (blight != NULL && blight[offset] < MAX_LIGHT)
-		{
-			set_colour_brightness(tcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
-			set_colour_brightness(lcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
-			set_colour_brightness(rcolour, (float)blight[offset] / MAX_HEIGHT, NIGHT_AMBIENCE);
-		}
-
+		// decide which of the three faces of this block to draw, if any
 		char draw_top = 1;
 		char draw_left = 1;
 		char draw_right = 1;
@@ -225,6 +207,39 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 				get_block_shapeid(tex, nb[2], nd[2]) == 0) draw_left = 0;
 		if (get_block_colour(tex, nb[1], nd[1])[ALPHA] == 255 &&
 				get_block_shapeid(tex, nb[1], nd[1]) == 0) draw_right = 0;
+
+		// skip this block if we aren't drawing any of the faces
+		if (!draw_top && !draw_left && !draw_right) continue;
+
+		// get block colour
+		unsigned char tcolour[CHANNELS], lcolour[CHANNELS], rcolour[CHANNELS];
+		memcpy(&tcolour, get_block_colour(tex, blockid, dataval), CHANNELS);
+		adjust_colour_by_height(tcolour, y);
+
+		// copy the top colour to side colours, and draw highlights and shadows
+		if (draw_left)
+		{
+			memcpy(&lcolour, &tcolour, CHANNELS);
+			if (nb[2] == 0) adjust_colour_brightness(lcolour, CONTOUR_SHADING);
+		}
+		if (draw_right)
+		{
+			memcpy(&rcolour, &tcolour, CHANNELS);
+			if (nb[1] == 0) adjust_colour_brightness(rcolour, -CONTOUR_SHADING);
+		}
+
+		// night mode
+		if (blight != NULL)
+		{
+			float bl = y < MAX_HEIGHT ? blight[offset + CHUNK_BLOCK_AREA] : 0;
+			if (bl < MAX_LIGHT)
+			{
+				bl /= MAX_LIGHT;
+				set_colour_brightness(tcolour, bl, NIGHT_AMBIENCE);
+				if (draw_left) set_colour_brightness(lcolour, bl, NIGHT_AMBIENCE);
+				if (draw_right) set_colour_brightness(rcolour, bl, NIGHT_AMBIENCE);
+			}
+		}
 
 		// translate orthographic to isometric coordinates
 		int px = cpx + (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
@@ -282,8 +297,10 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 		if (dark && !light) adjust_colour_brightness(pixel, -CONTOUR_SHADING);
 
 		// night mode
-		if (blight != NULL && blight[offset] < MAX_LIGHT)
-			set_colour_brightness(pixel, (float)blight[offset] / MAX_LIGHT, NIGHT_AMBIENCE);
+		if (blight != NULL) {
+			float bl = y < MAX_HEIGHT ? blight[offset + CHUNK_BLOCK_AREA] : 0;
+			if (bl < MAX_LIGHT) set_colour_brightness(pixel, bl / MAX_LIGHT, NIGHT_AMBIENCE);
+		}
 
 		break;
 	}
