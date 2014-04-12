@@ -199,45 +199,50 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 			{
 				unsigned char tdata = data[offset + CHUNK_BLOCK_AREA];
 				if (get_block_colour(tex, tblock, tdata)[ALPHA] == 255 &&
-						get_block_shapeid(tex, tblock, tdata) == 0) draw_top = 0;
+						get_block_shape(tex, tblock, tdata).is_solid) draw_top = 0;
 			}
 		}
-		// if block in front of left or right side is opaque, don't draw that side
-		if (get_block_colour(tex, nb[2], nd[2])[ALPHA] == 255 &&
-				get_block_shapeid(tex, nb[2], nd[2]) == 0) draw_left = 0;
-		if (get_block_colour(tex, nb[1], nd[1])[ALPHA] == 255 &&
-				get_block_shapeid(tex, nb[1], nd[1]) == 0) draw_right = 0;
+
+		// check if block in front of left or right side is solid
+		char blocked_left = get_block_shape(tex, nb[2], nd[2]).is_solid;
+		char blocked_right = get_block_shape(tex, nb[1], nd[1]).is_solid;
+
+		// if block in front of left or right side is solid and opaque, don't draw that side
+		if (blocked_left && get_block_colour(tex, nb[2], nd[2])[ALPHA] == 255) draw_left = 0;
+		if (blocked_right && get_block_colour(tex, nb[1], nd[1])[ALPHA] == 255) draw_right = 0;
 
 		// skip this block if we aren't drawing any of the faces
 		if (!draw_top && !draw_left && !draw_right) continue;
 
 		// get block colour
-		unsigned char tcolour[CHANNELS], lcolour[CHANNELS], rcolour[CHANNELS];
-		memcpy(&tcolour, get_block_colour(tex, blockid, dataval), CHANNELS);
-		adjust_colour_by_height(tcolour, y);
+		unsigned char colours[COLOURS][CHANNELS];
+		memcpy(&colours[BLOCK], get_block_colour(tex, blockid, dataval), CHANNELS);
+		adjust_colour_by_height(colours[BLOCK], y);
 
-		// copy the top colour to side colours, and draw highlights and shadows
-		if (draw_left)
+		const shape bshape = get_block_shape(tex, blockid, dataval);
+
+		// get highlight and shadow if the shape uses them and that side is not blocked
+		if (bshape.has_hilight)
 		{
-			memcpy(&lcolour, &tcolour, CHANNELS);
-			if (nb[2] == 0) adjust_colour_brightness(lcolour, CONTOUR_SHADING);
+			memcpy(&colours[HILIGHT], &colours[BLOCK], CHANNELS);
+			if (!blocked_left) adjust_colour_brightness(colours[HILIGHT], CONTOUR_SHADING);
 		}
-		if (draw_right)
+		if (bshape.has_shadow)
 		{
-			memcpy(&rcolour, &tcolour, CHANNELS);
-			if (nb[1] == 0) adjust_colour_brightness(rcolour, -CONTOUR_SHADING);
+			memcpy(&colours[SHADOW], &colours[BLOCK], CHANNELS);
+			if (!blocked_right) adjust_colour_brightness(colours[SHADOW], -CONTOUR_SHADING);
 		}
 
-		// night mode
+		// night mode: darken colours according to block light
 		if (blight != NULL)
 		{
 			float bl = y < MAX_HEIGHT ? blight[offset + CHUNK_BLOCK_AREA] : 0;
 			if (bl < MAX_LIGHT)
 			{
 				bl /= MAX_LIGHT;
-				set_colour_brightness(tcolour, bl, NIGHT_AMBIENCE);
-				if (draw_left) set_colour_brightness(lcolour, bl, NIGHT_AMBIENCE);
-				if (draw_right) set_colour_brightness(rcolour, bl, NIGHT_AMBIENCE);
+				set_colour_brightness(colours[BLOCK], bl, NIGHT_AMBIENCE);
+				if (bshape.has_hilight) set_colour_brightness(colours[HILIGHT], bl, NIGHT_AMBIENCE);
+				if (bshape.has_shadow) set_colour_brightness(colours[SHADOW], bl, NIGHT_AMBIENCE);
 			}
 		}
 
@@ -245,21 +250,23 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		int px = cpx + (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
 		int py = cpy + (x + z) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 
-		const unsigned char shapeid = get_block_shapeid(tex, blockid, dataval);
+		// draw pixels
 		for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 		{
 			if (sy < ISO_BLOCK_TOP_HEIGHT && !draw_top) continue;
 			for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
-				if (tex->shapes[shapeid * ISO_BLOCK_AREA + sy * ISO_BLOCK_WIDTH + sx])
+				unsigned char pcolour = bshape.pixels[sy * ISO_BLOCK_WIDTH + sx];
+				if (pcolour == BLANK) continue;
 				{
 					int p = (py + sy) * image->width + px + sx;
-					if (sy < ISO_BLOCK_TOP_HEIGHT)
-						combine_alpha(tcolour, &image->data[p * CHANNELS], 1);
-					else if (sx < ISO_BLOCK_WIDTH / 2 && draw_left)
-						combine_alpha(shapeid ? tcolour : lcolour, &image->data[p * CHANNELS], 1);
-					else if (sx >= ISO_BLOCK_WIDTH / 2 && draw_right)
-						combine_alpha(shapeid ? tcolour : rcolour, &image->data[p * CHANNELS], 1);
+
+					if ((sy < ISO_BLOCK_TOP_HEIGHT && draw_top) ||
+							(sx < ISO_BLOCK_WIDTH / 2 && draw_left) ||
+							(sx >= ISO_BLOCK_WIDTH / 2 && draw_right))
+					{
+						combine_alpha(colours[pcolour], &image->data[p * CHANNELS], 1);
+					}
 				}
 			}
 		}

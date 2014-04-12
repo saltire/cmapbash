@@ -13,6 +13,15 @@
 #define ISO_BLOCK_AREA (ISO_BLOCK_WIDTH * ISO_BLOCK_HEIGHT)
 
 
+typedef enum {
+	BLANK,
+	BLOCK,
+	HILIGHT,
+	SHADOW,
+	COLOURS
+} colourcodes;
+
+
 typedef struct blocktype {
 	unsigned char mask;
 	struct subtype {
@@ -22,10 +31,18 @@ typedef struct blocktype {
 } blocktype;
 
 
+typedef struct shape {
+	char is_solid;
+	char has_hilight;
+	char has_shadow;
+	unsigned char pixels[ISO_BLOCK_AREA];
+} shape;
+
+
 typedef struct textures {
 	int blockcount;
 	blocktype* blocktypes;
-	unsigned char* shapes;
+	shape* shapes;
 } textures;
 
 
@@ -34,7 +51,7 @@ void free_textures(textures* tex);
 
 const unsigned char* get_block_colour(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval);
-const unsigned char get_block_shapeid(const textures* tex,
+const shape get_block_shape(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval);
 
 void set_colour_brightness(unsigned char* pixel, float brightness, float ambience);
