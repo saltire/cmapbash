@@ -26,8 +26,21 @@
 #include "textures.h"
 
 
-#define COLUMNS 9
 #define LINE_BUFFER 60
+
+
+typedef enum {
+	BLOCKID,
+	MASK,
+	SUBTYPE,
+	R,
+	G,
+	B,
+	A,
+	N,
+	SHAPE,
+	COLUMNS
+} columns;
 
 
 textures* read_textures(const char* texturefile, const char* shapefile)
@@ -51,18 +64,26 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	while (fgets(line, LINE_BUFFER, tcsv))
 	{
 		unsigned char row[COLUMNS];
+		char* pos = line;
 		for (int i = 0; i < COLUMNS; i++)
 		{
-			char* value = strtok(i == 0 ? line : NULL, ",");
-			row[i] = (value == NULL ? 0 : (char)strtol(value, NULL, 0));
+			// read the length of the next value
+			size_t len = (pos < line + LINE_BUFFER) ? strcspn(pos, ",") : 0;
+
+			// read the value string and parse it as an integer
+			char value[LINE_BUFFER];
+			strncpy(value, pos, len);
+			*(value + len) = '\0';
+			row[i] = value == "" ? 0 : (char)strtol(value, NULL, 0);
+
+			// advance the pointer, unless we are at the end of the buffer
+			if (pos < line + LINE_BUFFER) pos += len + 1;
 		}
-		unsigned char blockid = row[0];
-		unsigned char subtype = row[2];
 
 		// subtype mask is specified on subtype 0 of each block type
-		if (subtype == 0) tex->blocktypes[blockid].mask = row[1];
-		memcpy(&tex->blocktypes[blockid].subtypes[subtype].colour, &row[3], CHANNELS);
-		tex->blocktypes[blockid].subtypes[subtype].shapeid = row[8];
+		if (row[SUBTYPE] == 0) tex->blocktypes[row[BLOCKID]].mask = row[MASK];
+		memcpy(&tex->blocktypes[row[BLOCKID]].subtypes[row[SUBTYPE]].colour, &row[R], CHANNELS);
+		tex->blocktypes[row[BLOCKID]].subtypes[row[SUBTYPE]].shapeid = row[SHAPE];
 	}
 	fclose(tcsv);
 
@@ -88,6 +109,7 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 			// convert ascii value to numeric value
 			tex->shapes[s].pixels[i] = line[i] - '0';
 
+			// set flags
 			if (tex->shapes[s].pixels[i] == BLANK) tex->shapes[s].is_solid = 0;
 			else if (tex->shapes[s].pixels[i] == HILIGHT) tex->shapes[s].has_hilight = 1;
 			else if (tex->shapes[s].pixels[i] == SHADOW) tex->shapes[s].has_shadow = 1;
