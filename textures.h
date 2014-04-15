@@ -41,15 +41,6 @@ typedef enum {
 } colourcodes;
 
 
-typedef struct blocktype {
-	unsigned char mask;
-	struct subtype {
-		unsigned char colour[CHANNELS];
-		unsigned char shapeid;
-	} subtypes[16];
-} blocktype;
-
-
 typedef struct shape {
 	char is_solid;
 	char has_hilight;
@@ -58,19 +49,28 @@ typedef struct shape {
 } shape;
 
 
+typedef struct blocktype {
+	unsigned char id;
+	unsigned char subtype;
+	unsigned char colour[CHANNELS];
+	shape shape;
+} blocktype;
+
+typedef struct blockID {
+	unsigned char mask;
+	blocktype subtypes[16];
+} blockID;
+
 typedef struct textures {
-	int blockcount;
-	blocktype* blocktypes;
-	shape* shapes;
+	int max_blockid;
+	blockID* blockids;
 } textures;
 
 
 textures* read_textures(const char* texturefile, const char* shapefile);
 void free_textures(textures* tex);
 
-const unsigned char* get_block_colour(const textures* tex,
-		const unsigned char blockid, const unsigned char dataval);
-const shape get_block_shape(const textures* tex,
+const blocktype get_block_type(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval);
 
 void set_colour_brightness(unsigned char* pixel, float brightness, float ambience);

@@ -49,6 +49,37 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 
 	char line[LINE_BUFFER];
 
+	// shape file
+	FILE* scsv = fopen(shapefile, "r");
+	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapefile);
+
+	// count shapes and allocate array
+	int c, scount = 0;
+	while ((c = getc(scsv)) != EOF) if (c == '\n') scount++;
+	shape shapes[scount];
+
+	// read shape pixel maps
+	int s = 0;
+	fseek(scsv, 0, SEEK_SET);
+	while (fgets(line, LINE_BUFFER, scsv))
+	{
+		shapes[s].is_solid = 1;
+		shapes[s].has_hilight = 0;
+		shapes[s].has_shadow = 0;
+		for (int i = 0; i < ISO_BLOCK_AREA; i++)
+		{
+			// convert ascii value to numeric value
+			shapes[s].pixels[i] = line[i] - '0';
+
+			// set flags
+			if (shapes[s].pixels[i] == BLANK) shapes[s].is_solid = 0;
+			else if (shapes[s].pixels[i] == HILIGHT) shapes[s].has_hilight = 1;
+			else if (shapes[s].pixels[i] == SHADOW) shapes[s].has_shadow = 1;
+		}
+		s++;
+	}
+	fclose(scsv);
+
 	// colour file
 	FILE* tcsv = fopen(texturefile, "r");
 	if (tcsv == NULL) printf("Error %d reading texture file: %s\n", errno, texturefile);
@@ -56,8 +87,8 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	// find highest block id and allocate blocktypes array
 	unsigned char blockid = -1;
 	while (fgets(line, LINE_BUFFER, tcsv)) blockid = (char)strtol(strtok(line, ","), NULL, 0);
-	tex->blockcount = blockid + 1;
-	tex->blocktypes = (blocktype*)calloc(tex->blockcount, sizeof(blocktype));
+	tex->max_blockid = blockid;
+	tex->blockids = (blockID*)calloc(tex->max_blockid + 1, sizeof(blockID));
 
 	// read block textures
 	fseek(tcsv, 0, SEEK_SET);
@@ -74,49 +105,23 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 			char value[LINE_BUFFER];
 			strncpy(value, pos, len);
 			*(value + len) = '\0';
-			row[i] = value == "" ? 0 : (char)strtol(value, NULL, 0);
+			row[i] = strcmp(value, "") ? (char)strtol(value, NULL, 0) : 0;
 
 			// advance the pointer, unless we are at the end of the buffer
 			if (pos < line + LINE_BUFFER) pos += len + 1;
 		}
 
 		// subtype mask is specified on subtype 0 of each block type
-		if (row[SUBTYPE] == 0) tex->blocktypes[row[BLOCKID]].mask = row[MASK];
-		memcpy(&tex->blocktypes[row[BLOCKID]].subtypes[row[SUBTYPE]].colour, &row[R], CHANNELS);
-		tex->blocktypes[row[BLOCKID]].subtypes[row[SUBTYPE]].shapeid = row[SHAPE];
+		if (row[SUBTYPE] == 0) tex->blockids[row[BLOCKID]].mask = row[MASK];
+
+		// copy values for this block type
+		blocktype* btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
+		btype->id = row[BLOCKID];
+		btype->subtype = row[SUBTYPE];
+		btype->shape = shapes[row[SHAPE]];
+		memcpy(&btype->colour, &row[R], CHANNELS);
 	}
 	fclose(tcsv);
-
-	// shape file
-	FILE* scsv = fopen(shapefile, "r");
-	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapefile);
-
-	// count shapes and allocate array
-	int c, s = 0;
-	while ((c = getc(scsv)) != EOF) if (c == '\n') s++;
-	tex->shapes = (shape*)calloc(s, sizeof(shape));
-
-	// read shape pixel maps
-	s = 0;
-	fseek(scsv, 0, SEEK_SET);
-	while (fgets(line, LINE_BUFFER, scsv))
-	{
-		tex->shapes[s].is_solid = 1;
-		tex->shapes[s].has_hilight = 0;
-		tex->shapes[s].has_shadow = 0;
-		for (int i = 0; i < ISO_BLOCK_AREA; i++)
-		{
-			// convert ascii value to numeric value
-			tex->shapes[s].pixels[i] = line[i] - '0';
-
-			// set flags
-			if (tex->shapes[s].pixels[i] == BLANK) tex->shapes[s].is_solid = 0;
-			else if (tex->shapes[s].pixels[i] == HILIGHT) tex->shapes[s].has_hilight = 1;
-			else if (tex->shapes[s].pixels[i] == SHADOW) tex->shapes[s].has_shadow = 1;
-		}
-		s++;
-	}
-	fclose(scsv);
 
 	return tex;
 }
@@ -124,25 +129,15 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 
 void free_textures(textures* tex)
 {
-	free(tex->blocktypes);
-	free(tex->shapes);
+	free(tex->blockids);
 	free(tex);
 }
 
 
-const unsigned char* get_block_colour(const textures* tex,
+const blocktype get_block_type(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval)
 {
-	unsigned char type = dataval % tex->blocktypes[blockid].mask;
-	return tex->blocktypes[blockid].subtypes[type].colour;
-}
-
-
-const shape get_block_shape(const textures* tex,
-		const unsigned char blockid, const unsigned char dataval)
-{
-	unsigned char type = dataval % tex->blocktypes[blockid].mask;
-	return tex->shapes[tex->blocktypes[blockid].subtypes[type].shapeid];
+	return tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].mask];
 }
 
 

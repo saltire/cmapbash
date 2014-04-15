@@ -29,7 +29,6 @@
 #define MAX_LIGHT 15
 #define MAX_BLOCK (CHUNK_BLOCK_LENGTH - 1)
 #define MAX_HEIGHT (CHUNK_BLOCK_HEIGHT - 1)
-#define BLOCK_OFFSET(x, z, y) (y * CHUNK_BLOCK_AREA + z * CHUNK_BLOCK_LENGTH + x)
 
 // configurable render options
 #define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
@@ -116,7 +115,7 @@ static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
 		unsigned char* data, const textures* tex, int offset)
 {
 	// copy the block colour into the pixel buffer
-	memcpy(pixel, get_block_colour(tex, blocks[offset], data[offset]), CHANNELS);
+	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset]).colour, CHANNELS);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -196,7 +195,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 
 		// skip air blocks or invalid block ids
 		unsigned char blockid = blocks[offset];
-		if (blockid == 0 || blockid >= tex->blockcount) continue;
+		if (blockid == 0 || blockid > tex->max_blockid) continue;
 
 		unsigned char dataval = data[offset];
 		// get neighbour block ids and data values
@@ -204,52 +203,41 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		get_neighbour_values(nb, blocks, nblocks, x, y, z, rotate);
 		get_neighbour_values(nd, data, ndata, x, y, z, rotate);
 
-		// decide which of the three faces of this block to draw, if any
-		char draw_top = 1;
-		char draw_left = 1;
-		char draw_right = 1;
+		// get the type of this block and neighbouring blocks
+		const blocktype block = get_block_type(tex, blockid, dataval);
+		const blocktype tblock = get_block_type(tex,
+				blocks[offset + CHUNK_BLOCK_AREA], data[offset + CHUNK_BLOCK_AREA]);
+		const blocktype lblock = get_block_type(tex, nb[2], nd[2]);
+		const blocktype rblock = get_block_type(tex, nb[1], nd[1]);
+
 		// if the block above is the same type or opaque, don't draw the top of this one
 		// opaque means alpha opacity is 255 and shape id is 0 (a solid square)
-		if (y < MAX_HEIGHT)
-		{
-			unsigned char tblock = blocks[offset + CHUNK_BLOCK_AREA];
-			if (tblock == blockid) draw_top = 0;
-			else
-			{
-				unsigned char tdata = data[offset + CHUNK_BLOCK_AREA];
-				if (get_block_colour(tex, tblock, tdata)[ALPHA] == 255 &&
-						get_block_shape(tex, tblock, tdata).is_solid) draw_top = 0;
-			}
-		}
-
-		// check if block in front of left or right side is solid
-		char blocked_left = get_block_shape(tex, nb[2], nd[2]).is_solid;
-		char blocked_right = get_block_shape(tex, nb[1], nd[1]).is_solid;
+		char draw_top = !(y < MAX_HEIGHT && (
+				(tblock.id == block.id && tblock.subtype == block.subtype) ||
+				(tblock.colour[ALPHA] == 255 && tblock.shape.is_solid)));
 
 		// if block in front of left or right side is solid and opaque, don't draw that side
-		if (blocked_left && get_block_colour(tex, nb[2], nd[2])[ALPHA] == 255) draw_left = 0;
-		if (blocked_right && get_block_colour(tex, nb[1], nd[1])[ALPHA] == 255) draw_right = 0;
+		char draw_left = !(lblock.shape.is_solid && lblock.colour[ALPHA] == 255);
+		char draw_right = !(rblock.shape.is_solid && rblock.colour[ALPHA] == 255);
 
 		// skip this block if we aren't drawing any of the faces
 		if (!draw_top && !draw_left && !draw_right) continue;
 
 		// get block colour
 		unsigned char colours[COLOURS][CHANNELS];
-		memcpy(&colours[BLOCK], get_block_colour(tex, blockid, dataval), CHANNELS);
+		memcpy(&colours[BLOCK], block.colour, CHANNELS);
 		adjust_colour_by_height(colours[BLOCK], y);
 
-		const shape bshape = get_block_shape(tex, blockid, dataval);
-
 		// get highlight and shadow if the shape uses them and that side is not blocked
-		if (bshape.has_hilight)
+		if (block.shape.has_hilight)
 		{
 			memcpy(&colours[HILIGHT], &colours[BLOCK], CHANNELS);
-			if (!blocked_left) adjust_colour_brightness(colours[HILIGHT], CONTOUR_SHADING);
+			if (!lblock.shape.is_solid) adjust_colour_brightness(colours[HILIGHT], CONTOUR_SHADING);
 		}
-		if (bshape.has_shadow)
+		if (block.shape.has_shadow)
 		{
 			memcpy(&colours[SHADOW], &colours[BLOCK], CHANNELS);
-			if (!blocked_right) adjust_colour_brightness(colours[SHADOW], -CONTOUR_SHADING);
+			if (!rblock.shape.is_solid) adjust_colour_brightness(colours[SHADOW], -CONTOUR_SHADING);
 		}
 
 		// night mode: darken colours according to block light
@@ -260,8 +248,10 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 			{
 				bl /= MAX_LIGHT;
 				set_colour_brightness(colours[BLOCK], bl, NIGHT_AMBIENCE);
-				if (bshape.has_hilight) set_colour_brightness(colours[HILIGHT], bl, NIGHT_AMBIENCE);
-				if (bshape.has_shadow) set_colour_brightness(colours[SHADOW], bl, NIGHT_AMBIENCE);
+				if (block.shape.has_hilight)
+					set_colour_brightness(colours[HILIGHT], bl, NIGHT_AMBIENCE);
+				if (block.shape.has_shadow)
+					set_colour_brightness(colours[SHADOW], bl, NIGHT_AMBIENCE);
 			}
 		}
 
@@ -275,7 +265,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 			if (sy < ISO_BLOCK_TOP_HEIGHT && !draw_top) continue;
 			for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
-				unsigned char pcolour = bshape.pixels[sy * ISO_BLOCK_WIDTH + sx];
+				unsigned char pcolour = block.shape.pixels[sy * ISO_BLOCK_WIDTH + sx];
 				if (pcolour == BLANK) continue;
 				{
 					int p = (py + sy) * image->width + px + sx;
@@ -309,7 +299,7 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 		int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
 		unsigned char blockid = blocks[offset];
-		if (blockid == 0 || blockid >= tex->blockcount) continue;
+		if (blockid == 0 || blockid >= tex->max_blockid) continue;
 
 		get_block_alpha_colour(pixel, blocks, data, tex, offset);
 		adjust_colour_by_height(pixel, y);
@@ -337,7 +327,6 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 		nbt_node* chunk, nbt_node* nchunks[4], const textures* tex,
 		const char night, const char isometric, const char rotate)
 {
-
 	// get block data for this chunk
 	unsigned char* blocks = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	unsigned char* data = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
@@ -355,11 +344,11 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 		for (int x = 0; x <= MAX_BLOCK; x++)
 		{
 			if (isometric)
-				render_iso_column(image, cpx, cpy, tex, blocks, data, blight, nblocks, ndata,
-						x, z, rotate);
+				render_iso_column(
+						image, cpx, cpy, tex, blocks, data, blight, nblocks, ndata, x, z, rotate);
 			else
-				render_ortho_block(image, cpx, cpy, tex, blocks, data, blight, nblocks,
-						x, z, rotate);
+				render_ortho_block(
+						image, cpx, cpy, tex, blocks, data, blight, nblocks, x, z, rotate);
 		}
 	}
 
