@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "chunk.h"
 #include "image.h"
@@ -273,9 +274,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 					if ((sy < ISO_BLOCK_TOP_HEIGHT && draw_top) ||
 							(sx < ISO_BLOCK_WIDTH / 2 && draw_left) ||
 							(sx >= ISO_BLOCK_WIDTH / 2 && draw_right))
-					{
 						combine_alpha(colours[pcolour], &image->data[p * CHANNELS], 1);
-					}
 				}
 			}
 		}
@@ -369,9 +368,15 @@ void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* tex,
 	image cimage = isometric ?
 			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
 			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
+
+	clock_t start = clock();
 	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, night, isometric, rotate);
+	clock_t render_end = clock();
+	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(cimage, imagefile);
+	printf("Total save time: %f seconds\n", (double)(clock() - render_end) / CLOCKS_PER_SEC);
+
 	free_image(cimage);
 }

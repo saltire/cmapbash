@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "image.h"
 #include "region.h"
@@ -278,10 +279,16 @@ void save_region_map(const char* regionfile, const char* imagefile, const textur
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
 			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
+	clock_t start = clock();
 	render_region_map(&rimage, 0, 0, regionfile, NULL, tex, night, isometric, rotate);
+	clock_t render_end = clock();
+	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
+
 	if (rimage.data == NULL) return;
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(rimage, imagefile);
+	printf("Total save time: %f seconds\n", (double)(clock() - render_end) / CLOCKS_PER_SEC);
+
 	free_image(rimage);
 }

@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "image.h"
 #include "region.h"
@@ -228,30 +229,11 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 }
 
 
-image render_world_map(world world, const textures* tex,
+void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
 		const char night, const char isometric, const char rotate)
 {
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
-
-	image wimage;
-	int width, height, margins[4];
-	if (isometric)
-	{
-		get_world_iso_margins(world, margins, rotate);
-		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN;
-		height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
-				+ ISO_CHUNK_DEPTH;
-	}
-	else
-	{
-		get_world_margins(world, margins, rotate);
-		width = rwxsize * REGION_BLOCK_LENGTH;
-		height = rwzsize * REGION_BLOCK_LENGTH;
-	}
-	wimage = create_image(width - margins[1] - margins[3], height - margins[0] - margins[2]);
-	printf("Read %d regions. Image dimensions: %d x %d\n",
-			world.rcount, wimage.width, wimage.height);
 
 	int r = 0;
 	// we need to render the regions in a certain order
@@ -279,22 +261,20 @@ image render_world_map(world world, const textures* tex,
 			if (isometric)
 			{
 				// translate orthographic region coordinates to isometric pixel coordinates
-				rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN - margins[3];
-				rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN - margins[0];
+				rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN + wpx;
+				rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN + wpy;
 			}
 			else
 			{
-				rpx = rwx * REGION_BLOCK_LENGTH - margins[3];
-				rpy = rwz * REGION_BLOCK_LENGTH - margins[0];
+				rpx = rwx * REGION_BLOCK_LENGTH + wpx;
+				rpy = rwz * REGION_BLOCK_LENGTH + wpy;
 			}
 
-			render_region_map(&wimage, rpx, rpy, path, npaths, tex, night, isometric, rotate);
+			render_region_map(image, rpx, rpy, path, npaths, tex, night, isometric, rotate);
 
 			for (int i = 0; i < 4; i++) free(npaths[i]);
 		}
 	}
-
-	return wimage;
 }
 
 
@@ -308,10 +288,37 @@ void save_world_map(const char* worlddir, const char* imagefile, const textures*
 		return;
 	}
 
-	image wimage = render_world_map(world, tex, night, isometric, rotate);
+	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+	int width, height, margins[4];
+	if (isometric)
+	{
+		get_world_iso_margins(world, margins, rotate);
+		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN;
+		height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
+				+ ISO_CHUNK_DEPTH;
+	}
+	else
+	{
+		get_world_margins(world, margins, rotate);
+		width = rwxsize * REGION_BLOCK_LENGTH;
+		height = rwzsize * REGION_BLOCK_LENGTH;
+	}
+
+	image wimage = create_image(width - margins[1] - margins[3], height - margins[0] - margins[2]);
+	printf("Read %d regions. Image dimensions: %d x %d\n",
+			world.rcount, wimage.width, wimage.height);
+
+	clock_t start = clock();
+	render_world_map(&wimage, -margins[3], -margins[0], world, tex, night, isometric, rotate);
+	clock_t render_end = clock();
+	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
+
 	free_world(world);
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(wimage, imagefile);
+	printf("Total save time: %f seconds\n", (double)(clock() - render_end) / CLOCKS_PER_SEC);
+
 	free_image(wimage);
 }

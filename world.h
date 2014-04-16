@@ -28,7 +28,7 @@ typedef struct world {
 } world;
 
 
-image render_world_map(world world, const textures* tex,
+void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
 		const char night, const char isometric, const char rotate);
 void save_world_map(const char* worlddir, const char* imagefile, const textures* tex,
 		const char night, const char isometric, const char rotate);
