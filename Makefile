@@ -4,18 +4,22 @@ objects = ${sources:%.c=%.o} \
 	lodepng/lodepng.o
 
 
-cNBT/%.o : cNBT/%.c
+all: cmapbash
+
+debug: CFLAGS = -g
+debug: cmapbash
+
+cmapbash: $(objects)
+	gcc $(CFLAGS) $(objects) -lz -o cmapbash
+
+%.o: %.c
+	gcc $(CFLAGS) -std=c99 $< -c -I cNBT/ -I lodepng/
+
+cNBT/%.o: cNBT/%.c
 	gcc -std=c99 $< -c -o $@
 
-lodepng/%.o : lodepng/%.c
+lodepng/%.o: lodepng/%.c
 	gcc $< -c -o $@
 
-%.o : %.c
-	gcc -std=c99 $< -c -I cNBT/ -I lodepng/
-
-cmapbash : $(objects)
-	gcc $(objects) -lz -o cmapbash
-
-
-clean :
+clean:
 	rm -f cmapbash *.o */*.o
