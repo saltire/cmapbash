@@ -46,7 +46,7 @@
 
 
 void render_chunk_map(image* image, const int cpx, const int cpy,
-		nbt_node* chunk, nbt_node* nchunks[4], const textures* tex,
+		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex,
 		const char night, const char isometric, const char rotate);
 void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* tex,
 		const char night, const char isometric, const char rotate);

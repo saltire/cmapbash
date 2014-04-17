@@ -182,7 +182,7 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 	//printf("Reading %d bytes at %#lx.\n", length, ftell(reg.file));
 	fread(cdata, length, 1, reg.file);
 
-	nbt_node* chunk = nbt_parse_compressed(cdata, length);
+	nbt_node* chunk_nbt = nbt_parse_compressed(cdata, length);
 	if (errno != NBT_OK)
 	{
 		printf("Parsing error: %d\n", errno);
@@ -190,7 +190,7 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 	}
 	free(cdata);
 
-	return chunk;
+	return chunk_nbt;
 }
 
 
