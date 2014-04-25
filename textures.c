@@ -33,13 +33,17 @@ typedef enum {
 	BLOCKID,
 	MASK,
 	SUBTYPE,
-	R,
-	G,
-	B,
-	A,
-	N,
+	RED1,
+	GREEN1,
+	BLUE1,
+	ALPHA1,
+	RED2,
+	GREEN2,
+	BLUE2,
+	ALPHA2,
+	NOISE,
 	SHAPE,
-	COLUMNS
+	COLUMN_COUNT
 } columns;
 
 
@@ -64,17 +68,15 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	while (fgets(line, LINE_BUFFER, scsv))
 	{
 		shapes[s].is_solid = 1;
-		shapes[s].has_hilight = 0;
-		shapes[s].has_shadow = 0;
 		for (int i = 0; i < ISO_BLOCK_AREA; i++)
 		{
 			// convert ascii value to numeric value
-			shapes[s].pixels[i] = line[i] - '0';
+			unsigned char pcolour = line[i] - '0';
+			shapes[s].pixels[i] = pcolour;
 
 			// set flags
 			if (shapes[s].pixels[i] == BLANK) shapes[s].is_solid = 0;
-			else if (shapes[s].pixels[i] == HILIGHT) shapes[s].has_hilight = 1;
-			else if (shapes[s].pixels[i] == SHADOW) shapes[s].has_shadow = 1;
+			shapes[s].has[pcolour] = 1;
 		}
 		s++;
 	}
@@ -94,9 +96,9 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	fseek(tcsv, 0, SEEK_SET);
 	while (fgets(line, LINE_BUFFER, tcsv))
 	{
-		unsigned char row[COLUMNS];
+		unsigned char row[COLUMN_COUNT];
 		char* pos = line;
-		for (int i = 0; i < COLUMNS; i++)
+		for (int i = 0; i < COLUMN_COUNT; i++)
 		{
 			// read the length of the next value
 			size_t len = (pos < line + LINE_BUFFER) ? strcspn(pos, ",") : 0;
@@ -119,7 +121,10 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
 		btype->shape = shapes[row[SHAPE]];
-		memcpy(&btype->colour, &row[R], CHANNELS);
+		memcpy(&btype->colour1, &row[RED1], CHANNELS);
+		memcpy(&btype->colour2, &row[RED2], CHANNELS);
+		btype->is_opaque = (btype->colour1[ALPHA] == 255 &&
+				(btype->colour2[ALPHA] == 255 || btype->colour2[ALPHA] == 0));
 	}
 	fclose(tcsv);
 

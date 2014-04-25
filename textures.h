@@ -34,17 +34,19 @@
 
 typedef enum {
 	BLANK,
-	BLOCK,
-	HILIGHT,
-	SHADOW,
-	COLOURS
+	COLOUR1,
+	HILIGHT1,
+	SHADOW1,
+	COLOUR2,
+	HILIGHT2,
+	SHADOW2,
+	COLOUR_COUNT
 } colourcodes;
 
 
 typedef struct shape {
 	char is_solid;
-	char has_hilight;
-	char has_shadow;
+	char has[COLOUR_COUNT];
 	unsigned char pixels[ISO_BLOCK_AREA];
 } shape;
 
@@ -52,7 +54,9 @@ typedef struct shape {
 typedef struct blocktype {
 	unsigned char id;
 	unsigned char subtype;
-	unsigned char colour[CHANNELS];
+	unsigned char colour1[CHANNELS];
+	unsigned char colour2[CHANNELS];
+	char is_opaque;
 	shape shape;
 } blocktype;
 
