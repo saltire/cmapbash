@@ -110,14 +110,22 @@
 43,1,8,173,171,163,255,,,,,0,1,double smooth stone slab
 43,1,9,230,230,173,255,,,,,0,1,double smooth sandstone slab
 43,1,10,236,232,226,255,,,,,0,1,double tile quartz slab
-44,8,0,110,101,89,255,,,,,0,1,stone slab
-44,1,1,230,230,173,255,,,,,0,1,sandstone slab
-44,1,2,193,157,101,255,,,,,11,1,wooden slab
-44,1,3,149,146,137,255,,,,,26,1,cobblestone slab
-44,1,4,161,54,1,255,,,,,0,1,brick slab
-44,1,5,169,167,159,255,,,,,7,1,stone brick slab
-44,1,6,30,16,19,255,,,,,0,1,nether brick slab
-44,1,7,236,232,226,255,,,,,0,1,quartz slab
+44,16,0,110,101,89,255,,,,,0,8,stone slab
+44,1,1,230,230,173,255,,,,,0,8,sandstone slab
+44,1,2,193,157,101,255,,,,,11,8,wooden slab
+44,1,3,149,146,137,255,,,,,26,8,cobblestone slab
+44,1,4,161,54,1,255,,,,,0,8,brick slab
+44,1,5,169,167,159,255,,,,,7,8,stone brick slab
+44,1,6,30,16,19,255,,,,,0,8,nether brick slab
+44,1,7,236,232,226,255,,,,,0,8,quartz slab
+44,1,8,110,101,89,255,,,,,0,9,stone slab
+44,1,9,230,230,173,255,,,,,0,9,sandstone slab (inverted)
+44,1,10,193,157,101,255,,,,,11,9,wooden slab (inverted)
+44,1,11,149,146,137,255,,,,,26,9,cobblestone slab (inverted)
+44,1,12,161,54,1,255,,,,,0,9,brick slab (inverted)
+44,1,13,169,167,159,255,,,,,7,9,stone brick slab (inverted)
+44,1,14,30,16,19,255,,,,,0,9,nether brick slab (inverted)
+44,1,15,236,232,226,255,,,,,0,9,quartz slab (inverted)
 45,1,0,161,54,1,255,,,,,0,1,bricks
 46,1,0,193,60,23,255,,,,,0,1, tnt
 47,1,0,106,102,95,255,,,,,0,1,bookshelf
@@ -126,9 +134,16 @@
 50,1,0,254,203,58,198,,,,,0,5,torch
 51,1,0,255,170,30,198,,,,,0,1,fire
 52,1,0,245,220,50,255,,,,,0,1,monster spawner
-53,1,0,107,75,37,255,,,,,11,1,wooden stairs
+53,8,0,107,75,37,255,,,,,11,8,wooden stairs east
+53,8,1,107,75,37,255,,,,,11,8,wooden stairs west
+53,8,2,107,75,37,255,,,,,11,8,wooden stairs south
+53,8,3,107,75,37,255,,,,,11,8,wooden stairs north
+53,8,4,107,75,37,255,,,,,11,9,wooden stairs east (inverted)
+53,8,5,107,75,37,255,,,,,11,9,wooden stairs west (inverted)
+53,8,6,107,75,37,255,,,,,11,9,wooden stairs south (inverted)
+53,8,7,107,75,37,255,,,,,11,9,wooden stairs north (inverted)
 54,1,0,149,119,91,255,,,,,0,1,chest
-55,1,0,105,19,19,255,,,,,0,1,redstone wire
+55,1,0,105,19,19,255,,,,,0,3,redstone wire
 56,1,0,114,227,252,255,,,,,0,1,diamond ore
 57,1,0,148,196,214,255,,,,,0,1,diamond block
 58,1,0,154,124,89,255,,,,,0,1,crafting table
@@ -140,7 +155,14 @@
 64,1,0,193,157,101,255,,,,,11,1,wooden door
 65,1,0,130,115,89,33,,,,,0,1,ladder
 66,1,0,102,98,92,181,,,,,0,3,rail
-67,1,0,104,97,84,255,,,,,26,1,cobblestone stairs
+67,8,0,104,97,84,255,,,,,26,8,cobblestone stairs east
+67,1,1,104,97,84,255,,,,,26,8,cobblestone stairs west
+67,1,2,104,97,84,255,,,,,26,8,cobblestone stairs south
+67,1,3,104,97,84,255,,,,,26,8,cobblestone stairs north
+67,1,4,104,97,84,255,,,,,26,9,cobblestone stairs east (inverted)
+67,1,5,104,97,84,255,,,,,26,9,cobblestone stairs west (inverted)
+67,1,6,104,97,84,255,,,,,26,9,cobblestone stairs south (inverted)
+67,1,7,104,97,84,255,,,,,26,9,cobblestone stairs north (inverted)
 68,1,0,0,0,0,0,,,,,0,1,wall sign
 69,1,0,0,0,0,0,,,,,0,1,lever
 70,1,0,0,0,0,0,,,,,0,1,stone pressure plate
@@ -196,13 +218,34 @@
 105,1,0,115,170,73,255,,,,,0,1,melon stem
 106,1,0,60,89,45,64,,,,,12,1,vines
 107,1,0,137,112,65,224,,,,,0,1,fence gate
-108,1,0,208,93,66,255,,,,,0,1,brick stairs
-109,1,0,122,122,122,255,,,,,7,1,stone brick stairs
+108,8,0,208,93,66,255,,,,,0,8,brick stairs east
+108,1,1,208,93,66,255,,,,,0,8,brick stairs west
+108,1,2,208,93,66,255,,,,,0,8,brick stairs south
+108,1,3,208,93,66,255,,,,,0,8,brick stairs north
+108,1,4,208,93,66,255,,,,,0,9,brick stairs east (inverted)
+108,1,5,208,93,66,255,,,,,0,9,brick stairs west (inverted)
+108,1,6,208,93,66,255,,,,,0,9,brick stairs south (inverted)
+108,1,7,208,93,66,255,,,,,0,9,brick stairs north (inverted)
+109,8,0,122,122,122,255,,,,,7,8,stone brick stairs east
+109,1,1,122,122,122,255,,,,,7,8,stone brick stairs west
+109,1,2,122,122,122,255,,,,,7,8,stone brick stairs south
+109,1,3,122,122,122,255,,,,,7,8,stone brick stairs north
+109,1,4,122,122,122,255,,,,,7,9,stone brick stairs east (inverted)
+109,1,5,122,122,122,255,,,,,7,9,stone brick stairs west (inverted)
+109,1,6,122,122,122,255,,,,,7,9,stone brick stairs south (inverted)
+109,1,7,122,122,122,255,,,,,7,9,stone brick stairs north (inverted)
 110,1,0,128,107,111,255,121,91,58,255,0,7,mycelium
 111,1,0,75,119,15,255,,,,,0,3,lily pad
 112,1,0,30,16,19,255,,,,,0,1,nether brick
 113,1,0,30,16,19,255,,,,,0,1,nether brick fence
-114,1,0,30,16,19,255,,,,,0,1,nether brick stairs
+114,8,0,30,16,19,255,,,,,0,8,nether brick stairs east
+114,1,1,30,16,19,255,,,,,0,8,nether brick stairs west
+114,1,2,30,16,19,255,,,,,0,8,nether brick stairs south
+114,1,3,30,16,19,255,,,,,0,8,nether brick stairs north
+114,1,4,30,16,19,255,,,,,0,9,nether brick stairs east (inverted)
+114,1,5,30,16,19,255,,,,,0,9,nether brick stairs west (inverted)
+114,1,6,30,16,19,255,,,,,0,9,nether brick stairs south (inverted)
+114,1,7,30,16,19,255,,,,,0,9,nether brick stairs north (inverted)
 115,1,0,118,0,0,255,,,,,0,1,nether wart
 116,1,0,88,23,22,255,,,,,0,1,enchantment table
 117,1,0,0,0,0,0,,,,,0,1,brewing stand
@@ -219,22 +262,56 @@
 125,1,3,201,145,106,255,,,,,11,1,jungle wood double slab
 125,1,4,208,132,82,255,,,,,11,1,acacia wood double slab
 125,1,5,70,44,16,255,,,,,11,1,dark oak wood double slab
-126,8,0,193,157,101,255,,,,,11,1,oak wood slab
-126,1,1,142,103,58,255,,,,,11,1,spruce wood slab
-126,1,2,221,199,142,255,,,,,11,1,birch wood slab
-126,1,3,201,145,106,255,,,,,11,1,jungle wood slab
-126,1,4,208,132,82,255,,,,,11,1,acacia wood slab
-126,1,5,70,44,16,255,,,,,11,1,dark oak wood slab
+126,16,0,193,157,101,255,,,,,11,8,oak wood slab
+126,1,1,142,103,58,255,,,,,11,8,spruce wood slab
+126,1,2,221,199,142,255,,,,,11,8,birch wood slab
+126,1,3,201,145,106,255,,,,,11,8,jungle wood slab
+126,1,4,208,132,82,255,,,,,11,8,acacia wood slab
+126,1,5,70,44,16,255,,,,,11,8,dark oak wood slab
+126,1,8,193,157,101,255,,,,,11,9,oak wood slab (inverted)
+126,1,9,142,103,58,255,,,,,11,9,spruce wood slab (inverted)
+126,1,10,221,199,142,255,,,,,11,9,birch wood slab (inverted)
+126,1,11,201,145,106,255,,,,,11,9,jungle wood slab (inverted)
+126,1,12,208,132,82,255,,,,,11,9,acacia wood slab (inverted)
+126,1,13,70,44,16,255,,,,,11,9,dark oak wood slab (inverted)
 127,1,0,0,0,0,0,,,,,0,1,cocoa
-128,1,0,230,230,173,255,,,,,0,1,sandstone stairs
+128,8,0,230,230,173,255,,,,,0,8,sandstone stairs east
+128,1,1,230,230,173,255,,,,,0,8,sandstone stairs west
+128,1,2,230,230,173,255,,,,,0,8,sandstone stairs south
+128,1,3,230,230,173,255,,,,,0,8,sandstone stairs north
+128,1,4,230,230,173,255,,,,,0,9,sandstone stairs east (inverted)
+128,1,5,230,230,173,255,,,,,0,9,sandstone stairs west (inverted)
+128,1,6,230,230,173,255,,,,,0,9,sandstone stairs south (inverted)
+128,1,7,230,230,173,255,,,,,0,9,sandstone stairs north (inverted)
 129,1,0,72,70,60,255,,,,,0,1,emerald ore
 130,1,0,0,0,0,0,,,,,0,1,ender chest
 131,1,0,0,0,0,0,,,,,0,1,tripwire hook
 132,1,0,0,0,0,0,,,,,0,1,tripwire
 133,1,0,34,233,134,255,,,,,0,1,emerald block
-134,1,0,142,103,58,255,,,,,0,1,spruce wood stairs
-135,1,0,221,199,142,255,,,,,0,1,birch wood stairs
-136,1,0,201,145,106,255,,,,,0,1,jungle wood stairs
+134,8,0,142,103,58,255,,,,,0,8,spruce wood stairs east
+134,1,1,142,103,58,255,,,,,0,8,spruce wood stairs west
+134,1,2,142,103,58,255,,,,,0,8,spruce wood stairs south
+134,1,3,142,103,58,255,,,,,0,8,spruce wood stairs north
+134,1,4,142,103,58,255,,,,,0,9,spruce wood stairs east (inverted)
+134,1,5,142,103,58,255,,,,,0,9,spruce wood stairs west (inverted)
+134,1,6,142,103,58,255,,,,,0,9,spruce wood stairs south (inverted)
+134,1,7,142,103,58,255,,,,,0,9,spruce wood stairs north (inverted)
+135,8,0,221,199,142,255,,,,,0,8,birch wood stairs east
+135,1,1,221,199,142,255,,,,,0,8,birch wood stairs west
+135,1,2,221,199,142,255,,,,,0,8,birch wood stairs south
+135,1,3,221,199,142,255,,,,,0,8,birch wood stairs north
+135,1,4,221,199,142,255,,,,,0,9,birch wood stairs east (inverted)
+135,1,5,221,199,142,255,,,,,0,9,birch wood stairs west (inverted)
+135,1,6,221,199,142,255,,,,,0,9,birch wood stairs south (inverted)
+135,1,7,221,199,142,255,,,,,0,9,birch wood stairs north (inverted)
+136,8,0,201,145,106,255,,,,,0,8,jungle wood stairs east
+136,1,1,201,145,106,255,,,,,0,8,jungle wood stairs west
+136,1,2,201,145,106,255,,,,,0,8,jungle wood stairs south
+136,1,3,201,145,106,255,,,,,0,8,jungle wood stairs north
+136,1,4,201,145,106,255,,,,,0,9,jungle wood stairs east (inverted)
+136,1,5,201,145,106,255,,,,,0,9,jungle wood stairs west (inverted)
+136,1,6,201,145,106,255,,,,,0,9,jungle wood stairs south (inverted)
+136,1,7,201,145,106,255,,,,,0,9,jungle wood stairs north (inverted)
 137,1,0,199,126,79,255,,,,,0,1,command block
 138,1,0,156,242,237,255,,,,,0,1,beacon
 139,1,0,149,146,137,255,,,,,26,1,cobblestone wall
@@ -254,7 +331,14 @@
 153,1,0,200,145,129,255,,,,,0,1,nether quartz ore
 154,1,0,0,0,0,0,,,,,0,1,hopper
 155,1,0,236,232,226,225,,,,,0,1,quartz block
-156,1,0,236,232,226,225,,,,,0,1,quartz stairs
+156,8,0,236,232,226,225,,,,,0,8,quartz stairs east
+156,1,1,236,232,226,225,,,,,0,8,quartz stairs west
+156,1,2,236,232,226,225,,,,,0,8,quartz stairs south
+156,1,3,236,232,226,225,,,,,0,8,quartz stairs north
+156,1,4,236,232,226,225,,,,,0,9,quartz stairs east (inverted)
+156,1,5,236,232,226,225,,,,,0,9,quartz stairs west (inverted)
+156,1,6,236,232,226,225,,,,,0,9,quartz stairs south (inverted)
+156,1,7,236,232,226,225,,,,,0,9,quartz stairs north (inverted)
 157,1,0,0,0,0,0,,,,,0,3,activator rail
 158,1,0,0,0,0,0,,,,,0,1,dropper
 159,16,0,197,181,173,255,,,,,0,1,white stained clay
@@ -299,8 +383,22 @@
 162,1,9,54,42,24,255,,,,,0,1,dark oak wood north/south
 162,1,12,108,101,90,255,,,,,0,1,acacia wood bark
 162,1,13,54,42,24,255,,,,,0,1,dark oak wood bark
-163,1,0,208,132,82,255,,,,,11,1,acacia wood stairs
-164,1,0,70,44,16,255,,,,,11,1,dark oak wood stairs
+163,8,0,208,132,82,255,,,,,11,8,acacia wood stairs east
+163,1,1,208,132,82,255,,,,,11,8,acacia wood stairs west
+163,1,2,208,132,82,255,,,,,11,8,acacia wood stairs south
+163,1,3,208,132,82,255,,,,,11,8,acacia wood stairs north
+163,1,4,208,132,82,255,,,,,11,9,acacia wood stairs east (inverted)
+163,1,5,208,132,82,255,,,,,11,9,acacia wood stairs west (inverted)
+163,1,6,208,132,82,255,,,,,11,9,acacia wood stairs south (inverted)
+163,1,7,208,132,82,255,,,,,11,9,acacia wood stairs north (inverted)
+164,8,0,70,44,16,255,,,,,11,8,dark oak wood stairs east
+164,1,1,70,44,16,255,,,,,11,8,dark oak wood stairs west
+164,1,2,70,44,16,255,,,,,11,8,dark oak wood stairs south
+164,1,3,70,44,16,255,,,,,11,8,dark oak wood stairs north
+164,1,4,70,44,16,255,,,,,11,9,dark oak wood stairs east (inverted)
+164,1,5,70,44,16,255,,,,,11,9,dark oak wood stairs west (inverted)
+164,1,6,70,44,16,255,,,,,11,9,dark oak wood stairs south (inverted)
+164,1,7,70,44,16,255,,,,,11,9,dark oak wood stairs north (inverted)
 170,1,0,173,149,21,255,,,,,0,1,hay block
 171,16,0,230,230,230,255,,,,,10,3,white carpet
 171,1,1,233,130,3,255,,,,,10,3,orange carpet
