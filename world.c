@@ -24,6 +24,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "dims.h"
 #include "image.h"
 #include "region.h"
 #include "textures.h"

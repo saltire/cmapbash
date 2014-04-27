@@ -23,13 +23,10 @@
 #include <time.h>
 
 #include "chunk.h"
+#include "dims.h"
 #include "image.h"
 #include "textures.h"
 
-
-#define MAX_LIGHT 15
-#define MAX_BLOCK (CHUNK_BLOCK_LENGTH - 1)
-#define MAX_HEIGHT (CHUNK_BLOCK_HEIGHT - 1)
 
 // configurable render options
 #define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
@@ -141,14 +138,14 @@ static int get_offset(const int y, const int x, const int z, const unsigned char
 		break;
 	case 1:
 		bx = z;
-		bz = MAX_BLOCK - x;
+		bz = MAX_LENGTH - x;
 		break;
 	case 2:
-		bx = MAX_BLOCK - x;
-		bz = MAX_BLOCK - z;
+		bx = MAX_LENGTH - x;
+		bz = MAX_LENGTH - z;
 		break;
 	case 3:
-		bx = MAX_BLOCK - z;
+		bx = MAX_LENGTH - z;
 		bz = x;
 		break;
 	}
@@ -160,16 +157,16 @@ static void get_neighbour_values(unsigned char* data, unsigned char* ndata[4],
 		unsigned char nvalues[4], const int x, const int y, const int z, const char rotate)
 {
 	nvalues[0] = z > 0 ? data[get_offset(y, x, z - 1, rotate)] :
-			(ndata[0] == NULL ? 0 : ndata[0][get_offset(y, x, MAX_BLOCK, rotate)]);
+			(ndata[0] == NULL ? 0 : ndata[0][get_offset(y, x, MAX_LENGTH, rotate)]);
 
-	nvalues[1] = x < MAX_BLOCK ? data[get_offset(y, x + 1, z, rotate)] :
+	nvalues[1] = x < MAX_LENGTH ? data[get_offset(y, x + 1, z, rotate)] :
 			(ndata[1] == NULL ? 0 : ndata[1][get_offset(y, 0, z, rotate)]);
 
-	nvalues[2] = z < MAX_BLOCK ? data[get_offset(y, x, z + 1, rotate)] :
+	nvalues[2] = z < MAX_LENGTH ? data[get_offset(y, x, z + 1, rotate)] :
 			(ndata[2] == NULL ? 0 : ndata[2][get_offset(y, x, 0, rotate)]);
 
 	nvalues[3] = x > 0 ? data[get_offset(y, x - 1, z, rotate)] :
-			(ndata[3] == NULL ? 0 : ndata[3][get_offset(y, MAX_BLOCK, z, rotate)]);
+			(ndata[3] == NULL ? 0 : ndata[3][get_offset(y, MAX_LENGTH, z, rotate)]);
 }
 
 
@@ -277,7 +274,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		}
 
 		// translate orthographic to isometric coordinates
-		int px = cpx + (x + MAX_BLOCK - z) * ISO_BLOCK_WIDTH / 2;
+		int px = cpx + (x + MAX_LENGTH - z) * ISO_BLOCK_WIDTH / 2;
 		int py = cpy + (x + z) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 
 		// draw pixels
@@ -373,9 +370,9 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 	}
 
 	// loop through rotated chunk's blocks
-	for (int z = 0; z <= MAX_BLOCK; z++)
+	for (int z = 0; z <= MAX_LENGTH; z++)
 	{
-		for (int x = 0; x <= MAX_BLOCK; x++)
+		for (int x = 0; x <= MAX_LENGTH; x++)
 		{
 			if (isometric)
 				render_iso_column(image, cpx, cpy, tex, chunk, x, z, rotate);

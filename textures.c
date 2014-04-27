@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dims.h"
 #include "image.h"
 #include "textures.h"
 
@@ -120,11 +121,10 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		blocktype* btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
-		btype->shape = shapes[row[SHAPE]];
 		memcpy(&btype->colour1, &row[RED1], CHANNELS);
 		memcpy(&btype->colour2, &row[RED2], CHANNELS);
-		btype->is_opaque = (btype->colour1[ALPHA] == 255 &&
-				(btype->colour2[ALPHA] == 255 || btype->colour2[ALPHA] == 0));
+		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
+		btype->shape = shapes[row[SHAPE]];
 	}
 	fclose(tcsv);
 

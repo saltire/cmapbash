@@ -21,15 +21,8 @@
 #define TEXTURES_H
 
 
+#include "dims.h"
 #include "image.h"
-
-
-// isometric pixel dimensions
-#define ISO_BLOCK_WIDTH 4
-#define ISO_BLOCK_TOP_HEIGHT 1
-#define ISO_BLOCK_DEPTH 3
-#define ISO_BLOCK_HEIGHT (ISO_BLOCK_TOP_HEIGHT + ISO_BLOCK_DEPTH)
-#define ISO_BLOCK_AREA (ISO_BLOCK_WIDTH * ISO_BLOCK_HEIGHT)
 
 
 typedef enum {
