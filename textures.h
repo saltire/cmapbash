@@ -67,7 +67,7 @@ typedef struct textures {
 textures* read_textures(const char* texturefile, const char* shapefile);
 void free_textures(textures* tex);
 
-const blocktype get_block_type(const textures* tex,
+const blocktype* get_block_type(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval);
 
 void set_colour_brightness(unsigned char* pixel, float brightness, float ambience);

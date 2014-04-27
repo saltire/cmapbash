@@ -104,7 +104,7 @@ static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
 		unsigned char* data, const textures* tex, int offset)
 {
 	// copy the block colour into the pixel buffer
-	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset]).colour1, CHANNELS);
+	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset])->colour1, CHANNELS);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -192,21 +192,21 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		get_neighbour_values(chunk.bdata, chunk.nbdata, nbdata, x, y, z, rotate);
 
 		// get the type of this block and neighbouring blocks
-		const blocktype btype = get_block_type(tex, bid, bdata);
-		const blocktype tbtype = get_block_type(tex,
+		const blocktype* btype = get_block_type(tex, bid, bdata);
+		const blocktype* tbtype = get_block_type(tex,
 				chunk.bids[offset + CHUNK_BLOCK_AREA], chunk.bdata[offset + CHUNK_BLOCK_AREA]);
-		const blocktype lbtype = get_block_type(tex, nbids[2], nbdata[2]);
-		const blocktype rbtype = get_block_type(tex, nbids[1], nbdata[1]);
+		const blocktype* lbtype = get_block_type(tex, nbids[2], nbdata[2]);
+		const blocktype* rbtype = get_block_type(tex, nbids[1], nbdata[1]);
 
 		// if the block above is the same type or opaque, don't draw the top of this one
 		// opaque means alpha opacity is 255 and shape id is 0 (a solid square)
 		char draw_top = !(y < MAX_HEIGHT && (
-				(tbtype.id == btype.id && tbtype.subtype == btype.subtype) ||
-				(tbtype.shape.is_solid && tbtype.is_opaque)));
+				(tbtype->id == btype->id && tbtype->subtype == btype->subtype) ||
+				(tbtype->shape.is_solid && tbtype->is_opaque)));
 
 		// if block in front of left or right side is solid and opaque, don't draw that side
-		char draw_left = !(lbtype.shape.is_solid && lbtype.is_opaque);
-		char draw_right = !(rbtype.shape.is_solid && rbtype.is_opaque);
+		char draw_left = !(lbtype->shape.is_solid && lbtype->is_opaque);
+		char draw_right = !(rbtype->shape.is_solid && rbtype->is_opaque);
 
 		// skip this block if we aren't drawing any of the faces
 		if (!draw_top && !draw_left && !draw_right) continue;
@@ -214,37 +214,37 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		// get block colours
 		unsigned char colours[COLOUR_COUNT][CHANNELS];
 
-		memcpy(&colours[COLOUR1], btype.colour1, CHANNELS);
+		memcpy(&colours[COLOUR1], btype->colour1, CHANNELS);
 		adjust_colour_by_height(colours[COLOUR1], y);
-		if (btype.shape.has[COLOUR2])
+		if (btype->shape.has[COLOUR2])
 		{
-			memcpy(&colours[COLOUR2], btype.colour2, CHANNELS);
+			memcpy(&colours[COLOUR2], btype->colour2, CHANNELS);
 			adjust_colour_by_height(colours[COLOUR2], y);
 		}
 
 		// get highlight and shadow if the shape uses them and that side is not blocked
-		if (btype.shape.has[HILIGHT1])
+		if (btype->shape.has[HILIGHT1])
 		{
 			memcpy(&colours[HILIGHT1], &colours[COLOUR1], CHANNELS);
-			if (!lbtype.shape.is_solid)
+			if (!lbtype->shape.is_solid)
 				adjust_colour_brightness(colours[HILIGHT1], CONTOUR_SHADING);
 		}
-		if (btype.shape.has[SHADOW1])
+		if (btype->shape.has[SHADOW1])
 		{
 			memcpy(&colours[SHADOW1], &colours[COLOUR1], CHANNELS);
-			if (!rbtype.shape.is_solid)
+			if (!rbtype->shape.is_solid)
 				adjust_colour_brightness(colours[SHADOW1], -CONTOUR_SHADING);
 		}
-		if (btype.shape.has[HILIGHT2])
+		if (btype->shape.has[HILIGHT2])
 		{
 			memcpy(&colours[HILIGHT2], &colours[COLOUR2], CHANNELS);
-			if (!lbtype.shape.is_solid)
+			if (!lbtype->shape.is_solid)
 				adjust_colour_brightness(colours[HILIGHT2], CONTOUR_SHADING);
 		}
-		if (btype.shape.has[SHADOW2])
+		if (btype->shape.has[SHADOW2])
 		{
 			memcpy(&colours[SHADOW2], &colours[COLOUR2], CHANNELS);
-			if (!rbtype.shape.is_solid)
+			if (!rbtype->shape.is_solid)
 				adjust_colour_brightness(colours[SHADOW2], -CONTOUR_SHADING);
 		}
 
@@ -255,22 +255,27 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 			float tblight = y < MAX_HEIGHT ? (float)chunk.blight[offset + CHUNK_BLOCK_AREA] : 0;
 			if (tblight < MAX_LIGHT)
 			{
-				set_colour_brightness(colours[COLOUR1], tblight / MAX_LIGHT, NIGHT_AMBIENCE);
-				if (btype.shape.has[COLOUR2])
-					set_colour_brightness(colours[COLOUR2], tblight / MAX_LIGHT, NIGHT_AMBIENCE);
+				tblight /= MAX_LIGHT;
+				set_colour_brightness(colours[COLOUR1], tblight, NIGHT_AMBIENCE);
+				if (btype->shape.has[COLOUR2])
+					set_colour_brightness(colours[COLOUR2], tblight, NIGHT_AMBIENCE);
 			}
-			if (btype.shape.has[HILIGHT1] && nblight[2] < MAX_LIGHT)
-				set_colour_brightness(
-						colours[HILIGHT1], (float)nblight[2] / MAX_LIGHT, NIGHT_AMBIENCE);
-			if (btype.shape.has[HILIGHT2] && nblight[2] < MAX_LIGHT)
-				set_colour_brightness(
-						colours[HILIGHT2], (float)nblight[2] / MAX_LIGHT, NIGHT_AMBIENCE);
-			if (btype.shape.has[SHADOW1] && nblight[1] < MAX_LIGHT)
-				set_colour_brightness(
-						colours[SHADOW1], (float)nblight[1] / MAX_LIGHT, NIGHT_AMBIENCE);
-			if (btype.shape.has[SHADOW2] && nblight[1] < MAX_LIGHT)
-				set_colour_brightness(
-						colours[SHADOW2], (float)nblight[1] / MAX_LIGHT, NIGHT_AMBIENCE);
+			if (nblight[2] < MAX_LIGHT)
+			{
+				float lblight = (float)nblight[2] / MAX_LIGHT;
+				if (btype->shape.has[HILIGHT1])
+					set_colour_brightness(colours[HILIGHT1], lblight, NIGHT_AMBIENCE);
+				if (btype->shape.has[HILIGHT2])
+					set_colour_brightness(colours[HILIGHT2], lblight, NIGHT_AMBIENCE);
+			}
+			if (nblight[1] < MAX_LIGHT)
+			{
+				float rblight = (float)nblight[1] / MAX_LIGHT;
+				if (btype->shape.has[SHADOW1])
+					set_colour_brightness(colours[SHADOW1], rblight, NIGHT_AMBIENCE);
+				if (btype->shape.has[SHADOW2])
+					set_colour_brightness(colours[SHADOW2], rblight, NIGHT_AMBIENCE);
+			}
 		}
 
 		// translate orthographic to isometric coordinates
@@ -283,7 +288,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 			if (sy < ISO_BLOCK_TOP_HEIGHT && !draw_top) continue;
 			for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
-				unsigned char pcolour = btype.shape.pixels[sy * ISO_BLOCK_WIDTH + sx];
+				unsigned char pcolour = btype->shape.pixels[sy * ISO_BLOCK_WIDTH + sx];
 				if (pcolour == BLANK) continue;
 				{
 					int p = (py + sy) * image->width + px + sx;

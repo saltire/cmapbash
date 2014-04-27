@@ -139,10 +139,10 @@ void free_textures(textures* tex)
 }
 
 
-const blocktype get_block_type(const textures* tex,
+const blocktype* get_block_type(const textures* tex,
 		const unsigned char blockid, const unsigned char dataval)
 {
-	return tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].mask];
+	return &tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].mask];
 }
 
 
