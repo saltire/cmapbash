@@ -50,7 +50,7 @@ typedef struct blocktype {
 	unsigned char colour1[CHANNELS];
 	unsigned char colour2[CHANNELS];
 	char is_opaque;
-	shape shape;
+	shape shapes[4];
 } blocktype;
 
 typedef struct blockID {

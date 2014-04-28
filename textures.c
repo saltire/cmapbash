@@ -27,7 +27,7 @@
 #include "textures.h"
 
 
-#define LINE_BUFFER 60
+#define LINE_BUFFER 100
 
 
 typedef enum {
@@ -42,8 +42,10 @@ typedef enum {
 	GREEN2,
 	BLUE2,
 	ALPHA2,
-	NOISE,
-	SHAPE,
+	SHAPE_N,
+	SHAPE_E,
+	SHAPE_S,
+	SHAPE_W,
 	COLUMN_COUNT
 } columns;
 
@@ -68,17 +70,14 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	fseek(scsv, 0, SEEK_SET);
 	while (fgets(line, LINE_BUFFER, scsv))
 	{
-		shapes[s].is_solid = 1;
-		for (int i = 0; i < ISO_BLOCK_AREA; i++)
+		for (int p = 0; p < ISO_BLOCK_AREA; p++)
 		{
 			// convert ascii value to numeric value
-			unsigned char pcolour = line[i] - '0';
-			shapes[s].pixels[i] = pcolour;
-
-			// set flags
-			if (shapes[s].pixels[i] == BLANK) shapes[s].is_solid = 0;
+			unsigned char pcolour = line[p] - '0';
+			shapes[s].pixels[p] = pcolour;
 			shapes[s].has[pcolour] = 1;
 		}
+		shapes[s].is_solid = !(shapes[s].has[BLANK] == 1);
 		s++;
 	}
 	fclose(scsv);
@@ -124,7 +123,12 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		memcpy(&btype->colour1, &row[RED1], CHANNELS);
 		memcpy(&btype->colour2, &row[RED2], CHANNELS);
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
-		btype->shape = shapes[row[SHAPE]];
+
+		// copy shapes for each rotation; if any of the last 3 are blank or zero, use the first
+		btype->shapes[0] = shapes[row[SHAPE_N]];
+		btype->shapes[1] = row[SHAPE_E] != 0 ? shapes[row[SHAPE_E]] : shapes[row[SHAPE_N]];
+		btype->shapes[2] = row[SHAPE_S] != 0 ? shapes[row[SHAPE_S]] : shapes[row[SHAPE_N]];
+		btype->shapes[3] = row[SHAPE_W] != 0 ? shapes[row[SHAPE_W]] : shapes[row[SHAPE_N]];
 	}
 	fclose(tcsv);
 

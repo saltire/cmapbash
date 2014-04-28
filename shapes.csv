@@ -8,3 +8,12 @@
 1111223355665566,solid shadows alternate top colour
 0000000011112233,half block
 1111223300000000,inverted half block
+0111022311132233,stairs north
+0111023322332233,stairs east
+1110223122332233,stairs south
+1110233021112233,stairs west
+1111223322330223,stairs north (inverted)
+1111223302330233,stairs east (inverted)
+1111223322302230,stairs south (inverted)
+1111223322332330,stairs west (inverted)
+0000000000000110,small flat
