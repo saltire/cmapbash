@@ -5,7 +5,7 @@
 0000000001100230,small square shadows
 0000000001100110,small square no shadows
 0000001010110110,grass
-1111223355665566,solid shadows alternate top colour
+1111223355665566,alternate colour bottom half
 0000000011112233,half block
 1111223300000000,inverted half block
 0111022311132233,stairs north
@@ -17,3 +17,6 @@
 1111223322302230,stairs south (inverted)
 1111223322332330,stairs west (inverted)
 0000000000000110,small flat
+1111556655665566,alternate colour sides
+1111553355335533,alternate colour left side
+1111226622662266,alternate colour right side
