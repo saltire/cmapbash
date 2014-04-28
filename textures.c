@@ -27,6 +27,9 @@
 #include "textures.h"
 
 
+// configurable render options
+#define CONTOUR_SHADING 0.125 // amount of contrast for topographical highlights and shadows
+
 #define LINE_BUFFER 100
 
 
@@ -120,8 +123,6 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		blocktype* btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
-		memcpy(&btype->colour1, &row[RED1], CHANNELS);
-		memcpy(&btype->colour2, &row[RED2], CHANNELS);
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
 
 		// copy shapes for each rotation; if any of the last 3 are blank or zero, use the first
@@ -129,6 +130,18 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		btype->shapes[1] = row[SHAPE_E] != 0 ? shapes[row[SHAPE_E]] : shapes[row[SHAPE_N]];
 		btype->shapes[2] = row[SHAPE_S] != 0 ? shapes[row[SHAPE_S]] : shapes[row[SHAPE_N]];
 		btype->shapes[3] = row[SHAPE_W] != 0 ? shapes[row[SHAPE_W]] : shapes[row[SHAPE_N]];
+
+		// copy and adjust colours
+		memcpy(&btype->colours[COLOUR1], &row[RED1], CHANNELS);
+		memcpy(&btype->colours[HILIGHT1], &row[RED1], CHANNELS);
+		memcpy(&btype->colours[SHADOW1], &row[RED1], CHANNELS);
+		adjust_colour_brightness(btype->colours[HILIGHT1], CONTOUR_SHADING);
+		adjust_colour_brightness(btype->colours[SHADOW1], -CONTOUR_SHADING);
+		memcpy(&btype->colours[COLOUR2], &row[RED2], CHANNELS);
+		memcpy(&btype->colours[HILIGHT2], &row[RED2], CHANNELS);
+		memcpy(&btype->colours[SHADOW2], &row[RED2], CHANNELS);
+		adjust_colour_brightness(btype->colours[HILIGHT2], CONTOUR_SHADING);
+		adjust_colour_brightness(btype->colours[SHADOW2], -CONTOUR_SHADING);
 	}
 	fclose(tcsv);
 

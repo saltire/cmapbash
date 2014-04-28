@@ -47,8 +47,7 @@ typedef struct shape {
 typedef struct blocktype {
 	unsigned char id;
 	unsigned char subtype;
-	unsigned char colour1[CHANNELS];
-	unsigned char colour2[CHANNELS];
+	unsigned char colours[COLOUR_COUNT][CHANNELS];
 	char is_opaque;
 	shape shapes[4];
 } blocktype;

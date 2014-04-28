@@ -104,7 +104,7 @@ static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
 		unsigned char* data, const textures* tex, int offset)
 {
 	// copy the block colour into the pixel buffer
-	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset])->colour1, CHANNELS);
+	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset])->colours[COLOUR1], CHANNELS);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -193,13 +193,12 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 
 		// get the type of this block and neighbouring blocks
 		const blocktype* btype = get_block_type(tex, bid, bdata);
-		const blocktype* tbtype = get_block_type(tex,
+		const blocktype* tbtype = y == MAX_HEIGHT ? NULL : get_block_type(tex,
 				chunk.bids[offset + CHUNK_BLOCK_AREA], chunk.bdata[offset + CHUNK_BLOCK_AREA]);
 		const blocktype* lbtype = get_block_type(tex, nbids[2], nbdata[2]);
 		const blocktype* rbtype = get_block_type(tex, nbids[1], nbdata[1]);
 
 		// if the block above is the same type or opaque, don't draw the top of this one
-		// opaque means alpha opacity is 255 and shape id is 0 (a solid square)
 		char draw_top = !(y < MAX_HEIGHT && (
 				(tbtype->id == btype->id && tbtype->subtype == btype->subtype) ||
 				(tbtype->shapes[rotate].is_solid && tbtype->is_opaque)));
@@ -214,48 +213,29 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		// get block shape for this rotation
 		shape bshape = btype->shapes[rotate];
 
-		// get block colours
+		// get block colours and adjust for height
 		unsigned char colours[COLOUR_COUNT][CHANNELS];
+		memcpy(&colours, btype->colours, COLOUR_COUNT * CHANNELS);
+		for (int i = 0; i < COLOUR_COUNT; i++)
+			if (bshape.has[i]) adjust_colour_by_height(colours[i], y);
 
-		memcpy(&colours[COLOUR1], btype->colour1, CHANNELS);
-		adjust_colour_by_height(colours[COLOUR1], y);
-		if (bshape.has[COLOUR2])
+		// replace highlight and/or shadow with unshaded colour if that side is blocked
+		if (lbtype->shapes[rotate].is_solid)
 		{
-			memcpy(&colours[COLOUR2], btype->colour2, CHANNELS);
-			adjust_colour_by_height(colours[COLOUR2], y);
+			if (bshape.has[HILIGHT1]) memcpy(&colours[HILIGHT1], &colours[COLOUR1], CHANNELS);
+			if (bshape.has[HILIGHT2]) memcpy(&colours[HILIGHT2], &colours[COLOUR1], CHANNELS);
 		}
-
-		// get highlight and shadow if the shape uses them and that side is not blocked
-		if (bshape.has[HILIGHT1])
+		if (rbtype->shapes[rotate].is_solid)
 		{
-			memcpy(&colours[HILIGHT1], &colours[COLOUR1], CHANNELS);
-			if (!lbtype->shapes[rotate].is_solid)
-				adjust_colour_brightness(colours[HILIGHT1], CONTOUR_SHADING);
-		}
-		if (bshape.has[SHADOW1])
-		{
-			memcpy(&colours[SHADOW1], &colours[COLOUR1], CHANNELS);
-			if (!rbtype->shapes[rotate].is_solid)
-				adjust_colour_brightness(colours[SHADOW1], -CONTOUR_SHADING);
-		}
-		if (bshape.has[HILIGHT2])
-		{
-			memcpy(&colours[HILIGHT2], &colours[COLOUR2], CHANNELS);
-			if (!lbtype->shapes[rotate].is_solid)
-				adjust_colour_brightness(colours[HILIGHT2], CONTOUR_SHADING);
-		}
-		if (bshape.has[SHADOW2])
-		{
-			memcpy(&colours[SHADOW2], &colours[COLOUR2], CHANNELS);
-			if (!rbtype->shapes[rotate].is_solid)
-				adjust_colour_brightness(colours[SHADOW2], -CONTOUR_SHADING);
+			if (bshape.has[SHADOW1]) memcpy(&colours[SHADOW1], &colours[COLOUR1], CHANNELS);
+			if (bshape.has[SHADOW2]) memcpy(&colours[SHADOW2], &colours[COLOUR2], CHANNELS);
 		}
 
 		// night mode: darken colours according to block light
 		if (chunk.blight != NULL)
 		{
 			get_neighbour_values(chunk.blight, chunk.nblight, nblight, x, y, z, rotate);
-			float tblight = y < MAX_HEIGHT ? (float)chunk.blight[offset + CHUNK_BLOCK_AREA] : 0;
+			float tblight = y == MAX_HEIGHT ? 0 : (float)chunk.blight[offset + CHUNK_BLOCK_AREA];
 			if (tblight < MAX_LIGHT)
 			{
 				tblight /= MAX_LIGHT;
