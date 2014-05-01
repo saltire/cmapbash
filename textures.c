@@ -27,9 +27,6 @@
 #include "textures.h"
 
 
-// configurable render options
-#define CONTOUR_SHADING 0.125 // amount of contrast for topographical highlights and shadows
-
 #define LINE_BUFFER 100
 
 
@@ -135,13 +132,13 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		memcpy(&btype->colours[COLOUR1], &row[RED1], CHANNELS);
 		memcpy(&btype->colours[HILIGHT1], &row[RED1], CHANNELS);
 		memcpy(&btype->colours[SHADOW1], &row[RED1], CHANNELS);
-		adjust_colour_brightness(btype->colours[HILIGHT1], CONTOUR_SHADING);
-		adjust_colour_brightness(btype->colours[SHADOW1], -CONTOUR_SHADING);
+		adjust_colour_brightness(btype->colours[HILIGHT1], HILIGHT_AMOUNT);
+		adjust_colour_brightness(btype->colours[SHADOW1], SHADOW_AMOUNT);
 		memcpy(&btype->colours[COLOUR2], &row[RED2], CHANNELS);
 		memcpy(&btype->colours[HILIGHT2], &row[RED2], CHANNELS);
 		memcpy(&btype->colours[SHADOW2], &row[RED2], CHANNELS);
-		adjust_colour_brightness(btype->colours[HILIGHT2], CONTOUR_SHADING);
-		adjust_colour_brightness(btype->colours[SHADOW2], -CONTOUR_SHADING);
+		adjust_colour_brightness(btype->colours[HILIGHT2], HILIGHT_AMOUNT);
+		adjust_colour_brightness(btype->colours[SHADOW2], SHADOW_AMOUNT);
 	}
 	fclose(tcsv);
 

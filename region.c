@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "chunk.h"
 #include "dims.h"
 #include "image.h"
 #include "region.h"
@@ -196,8 +197,7 @@ static nbt_node* get_chunk(region reg, int cx, int cz, const char rotate)
 
 
 void render_region_map(image* image, const int rpx, const int rpy,
-		const char* regionfile, char* nfiles[4], const textures* tex,
-		const char night, const char isometric, const char rotate)
+		const char* regionfile, char* nfiles[4], const textures* tex, const options opts)
 {
 	region reg = read_region(regionfile);
 	if (reg.file == NULL)
@@ -216,7 +216,7 @@ void render_region_map(image* image, const int rpx, const int rpy,
 		for (int cx = 0; cx <= MAX_CHUNK; cx++)
 		{
 			// get this chunk
-			chunk = cx > 0 && prev_chunk != NULL ? next_chunk : get_chunk(reg, cx, cz, rotate);
+			chunk = cx > 0 && prev_chunk != NULL ? next_chunk : get_chunk(reg, cx, cz, opts.rotate);
 			if (chunk == NULL)
 			{
 				if (cx > 0) nbt_free(prev_chunk);
@@ -225,21 +225,25 @@ void render_region_map(image* image, const int rpx, const int rpy,
 			}
 
 			// get neighbouring chunks, either from this region or a neighbouring one
-			nchunks[0] = cz > 0 ? get_chunk(reg, cx, cz - 1, rotate) :
-					(!nregions[0].loaded ? NULL : get_chunk(nregions[0], cx, MAX_CHUNK, rotate));
+			nchunks[0] = cz > 0 ? get_chunk(reg, cx, cz - 1, opts.rotate) :
+					(!nregions[0].loaded ? NULL :
+							get_chunk(nregions[0], cx, MAX_CHUNK, opts.rotate));
 
-			nchunks[1] = cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, rotate) :
-					(!nregions[1].loaded ? NULL : get_chunk(nregions[1], 0, cz, rotate));
+			nchunks[1] = cx < MAX_CHUNK ? get_chunk(reg, cx + 1, cz, opts.rotate) :
+					(!nregions[1].loaded ? NULL :
+							get_chunk(nregions[1], 0, cz, opts.rotate));
 
-			nchunks[2] = cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, rotate) :
-					(!nregions[2].loaded ? NULL : get_chunk(nregions[2], cx, 0, rotate));
+			nchunks[2] = cz < MAX_CHUNK ? get_chunk(reg, cx, cz + 1, opts.rotate) :
+					(!nregions[2].loaded ? NULL :
+							get_chunk(nregions[2], cx, 0, opts.rotate));
 
 			nchunks[3] = cx > 0 ? prev_chunk :
-					(!nregions[3].loaded ? NULL : get_chunk(nregions[3], MAX_CHUNK, cz, rotate));
+					(!nregions[3].loaded ? NULL :
+							get_chunk(nregions[3], MAX_CHUNK, cz, opts.rotate));
 
 			// render chunk image onto region image
 			int cpx, cpy;
-			if (isometric)
+			if (opts.isometric)
 			{
 				// translate orthographic to isometric coordinates
 				cpx = rpx + (cx + MAX_CHUNK - cz) * ISO_CHUNK_X_MARGIN;
@@ -250,7 +254,7 @@ void render_region_map(image* image, const int rpx, const int rpy,
 				cpx = rpx + cx * CHUNK_BLOCK_LENGTH;
 				cpy = rpy + cz * CHUNK_BLOCK_LENGTH;
 			}
-			render_chunk_map(image, cpx, cpy, chunk, nchunks, tex, night, isometric, rotate);
+			render_chunk_map(image, cpx, cpy, chunk, nchunks, tex, opts);
 
 			// free chunks, or pass them to the next iteration
 			nbt_free(nchunks[0]);
@@ -274,14 +278,14 @@ void render_region_map(image* image, const int rpx, const int rpy,
 
 
 void save_region_map(const char* regionfile, const char* imagefile, const textures* tex,
-		const char night, const char isometric, const char rotate)
+		const options opts)
 {
-	image rimage = isometric ?
+	image rimage = opts.isometric ?
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
 			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
 	clock_t start = clock();
-	render_region_map(&rimage, 0, 0, regionfile, NULL, tex, night, isometric, rotate);
+	render_region_map(&rimage, 0, 0, regionfile, NULL, tex, opts);
 	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 

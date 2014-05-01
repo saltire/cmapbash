@@ -27,11 +27,17 @@
 #include "textures.h"
 
 
+typedef struct options {
+	char isometric;
+	char night;
+	unsigned char rotate;
+} options;
+
+
 void render_chunk_map(image* image, const int cpx, const int cpy,
-		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex,
-		const char night, const char isometric, const char rotate);
+		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex, const options opts);
 void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* tex,
-		const char night, const char isometric, const char rotate);
+		const options opts);
 
 
 #endif

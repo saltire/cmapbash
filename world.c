@@ -24,6 +24,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "chunk.h"
 #include "dims.h"
 #include "image.h"
 #include "region.h"
@@ -231,10 +232,10 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 
 
 void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
-		const char night, const char isometric, const char rotate)
+		const options opts)
 {
-	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
 
 	int r = 0;
 	// we need to render the regions in a certain order
@@ -244,22 +245,22 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 		{
 			// get region file path, or skip if it doesn't exist
 			char path[255] = "";
-			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
+			get_path_from_rel_coords(path, world, rwx, rwz, opts.rotate);
 			if (!strcmp(path, "")) continue;
 
 			// get rotated neighbouring region paths
 			char *npaths[4];
 			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(255, sizeof(char));
-			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, rotate);
-			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, rotate);
-			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, rotate);
-			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, rotate);
+			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, opts.rotate);
+			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, opts.rotate);
+			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, opts.rotate);
+			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, opts.rotate);
 
 			r++;
 			printf("Rendering region %d/%d...\n", r, world.rcount);
 
 			int rpx, rpy;
-			if (isometric)
+			if (opts.isometric)
 			{
 				// translate orthographic region coordinates to isometric pixel coordinates
 				rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN + wpx;
@@ -271,7 +272,7 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 				rpy = rwz * REGION_BLOCK_LENGTH + wpy;
 			}
 
-			render_region_map(image, rpx, rpy, path, npaths, tex, night, isometric, rotate);
+			render_region_map(image, rpx, rpy, path, npaths, tex, opts);
 
 			for (int i = 0; i < 4; i++) free(npaths[i]);
 		}
@@ -280,7 +281,7 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 
 
 void save_world_map(const char* worlddir, const char* imagefile, const textures* tex,
-		const char night, const char isometric, const char rotate)
+		const options opts)
 {
 	world world = measure_world(worlddir);
 	if (!world.rcount)
@@ -289,19 +290,19 @@ void save_world_map(const char* worlddir, const char* imagefile, const textures*
 		return;
 	}
 
-	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
 	int width, height, margins[4];
-	if (isometric)
+	if (opts.isometric)
 	{
-		get_world_iso_margins(world, margins, rotate);
+		get_world_iso_margins(world, margins, opts.rotate);
 		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN;
 		height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
 				+ ISO_CHUNK_DEPTH;
 	}
 	else
 	{
-		get_world_margins(world, margins, rotate);
+		get_world_margins(world, margins, opts.rotate);
 		width = rwxsize * REGION_BLOCK_LENGTH;
 		height = rwzsize * REGION_BLOCK_LENGTH;
 	}
@@ -311,7 +312,7 @@ void save_world_map(const char* worlddir, const char* imagefile, const textures*
 			world.rcount, wimage.width, wimage.height);
 
 	clock_t start = clock();
-	render_world_map(&wimage, -margins[3], -margins[0], world, tex, night, isometric, rotate);
+	render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
 	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 

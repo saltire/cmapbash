@@ -25,6 +25,10 @@
 #include "image.h"
 
 
+// configurable render options
+#define HILIGHT_AMOUNT 0.125
+#define SHADOW_AMOUNT -0.125
+
 typedef enum {
 	BLANK,
 	COLOUR1,
@@ -36,13 +40,11 @@ typedef enum {
 	COLOUR_COUNT
 } colourcodes;
 
-
 typedef struct shape {
 	char is_solid;
 	char has[COLOUR_COUNT];
 	unsigned char pixels[ISO_BLOCK_AREA];
 } shape;
-
 
 typedef struct blocktype {
 	unsigned char id;

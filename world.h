@@ -17,6 +17,7 @@
 */
 
 
+#include "chunk.h"
 #include "image.h"
 #include "textures.h"
 
@@ -29,6 +30,6 @@ typedef struct world {
 
 
 void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
-		const char night, const char isometric, const char rotate);
+		const options opts);
 void save_world_map(const char* worlddir, const char* imagefile, const textures* tex,
-		const char night, const char isometric, const char rotate);
+		const options opts);

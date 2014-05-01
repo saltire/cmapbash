@@ -32,7 +32,6 @@
 #define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
 #define HEIGHT_CONTRAST 0.7 // amount of contrast for height shading
 #define NIGHT_AMBIENCE 0.2 // base light level for night renders
-#define CONTOUR_SHADING 0.125 // amount of contrast for topographical highlights and shadows
 
 
 typedef struct chunkdata {
@@ -313,8 +312,8 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 		get_neighbour_values(chunk.bids, chunk.nbids, nbids, x, y, z, rotate);
 		char light = (nbids[0] == 0 || nbids[3] == 0);
 		char dark = (nbids[1] == 0 || nbids[2] == 0);
-		if (light && !dark) adjust_colour_brightness(pixel, CONTOUR_SHADING);
-		if (dark && !light) adjust_colour_brightness(pixel, -CONTOUR_SHADING);
+		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);
+		if (dark && !light) adjust_colour_brightness(pixel, SHADOW_AMOUNT);
 
 		// night mode: darken colours according to block light
 		if (chunk.blight != NULL) {
@@ -328,14 +327,13 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 
 
 void render_chunk_map(image* image, const int cpx, const int cpy,
-		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex,
-		const char night, const char isometric, const char rotate)
+		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex, const options opts)
 {
 	// get block data for this chunk
 	chunkdata chunk;
 	chunk.bids = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	chunk.bdata = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
-	chunk.blight = night ? (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
+	chunk.blight = opts.night ? (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
 	get_chunk_data(chunk_nbt, chunk.bids, chunk.bdata, chunk.blight);
 
 	for (int i = 0; i < 4; i++)
@@ -349,9 +347,9 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 		else
 		{
 			chunk.nbids[i] = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
-			chunk.nbdata[i] = isometric ?
+			chunk.nbdata[i] = opts.isometric ?
 					(unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
-			chunk.nblight[i] = isometric && night ?
+			chunk.nblight[i] = opts.isometric && opts.night ?
 					(unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
 			get_chunk_data(nchunks_nbt[i], chunk.nbids[i], chunk.nbdata[i], chunk.nblight[i]);
 		}
@@ -362,10 +360,10 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 	{
 		for (int x = 0; x <= MAX_LENGTH; x++)
 		{
-			if (isometric)
-				render_iso_column(image, cpx, cpy, tex, chunk, x, z, rotate);
+			if (opts.isometric)
+				render_iso_column(image, cpx, cpy, tex, chunk, x, z, opts.rotate);
 			else
-				render_ortho_block(image, cpx, cpy, tex, chunk, x, z, rotate);
+				render_ortho_block(image, cpx, cpy, tex, chunk, x, z, opts.rotate);
 		}
 	}
 
@@ -382,14 +380,14 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 
 
 void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* tex,
-		const char night, const char isometric, const char rotate)
+		const options opts)
 {
-	image cimage = isometric ?
+	image cimage = opts.isometric ?
 			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
 			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
 	clock_t start = clock();
-	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, night, isometric, rotate);
+	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, opts);
 	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
