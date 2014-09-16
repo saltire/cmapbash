@@ -29,9 +29,11 @@
 
 
 // configurable render options
-#define HEIGHT_MIDPOINT 0.3 // midpoint of height shading gradient
-#define HEIGHT_CONTRAST 0.7 // amount of contrast for height shading
+#define HSHADE_HEIGHT 0.3 // height below which to add shadows
+#define HSHADE_AMOUNT 0.7 // amount of shadow to add
 #define NIGHT_AMBIENCE 0.2 // base light level for night renders
+
+#define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
 
 
 typedef struct chunkdata {
@@ -117,13 +119,10 @@ static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
 }
 
 
-static void adjust_colour_by_height(unsigned char* pixel, int y)
+static void add_height_shading(unsigned char* pixel, int y)
 {
-	if (pixel[ALPHA] == 0) return;
-
-	float alt = (float)y / MAX_HEIGHT - HEIGHT_MIDPOINT; // +/- distance from center
-	float mod = alt / (alt < 0 ? HEIGHT_MIDPOINT : 1 - HEIGHT_MIDPOINT); // amount to adjust
-	adjust_colour_brightness(pixel, mod * HEIGHT_CONTRAST);
+	if (pixel[ALPHA] == 0 || y >= HSHADE_BLOCK_HEIGHT) return;
+	adjust_colour_brightness(pixel, (((float)y / HSHADE_BLOCK_HEIGHT) - 1) * HSHADE_AMOUNT);
 }
 
 
@@ -216,7 +215,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		unsigned char colours[COLOUR_COUNT][CHANNELS];
 		memcpy(&colours, btype->colours, COLOUR_COUNT * CHANNELS);
 		for (int i = 0; i < COLOUR_COUNT; i++)
-			if (bshape.has[i]) adjust_colour_by_height(colours[i], y);
+			if (bshape.has[i]) add_height_shading(colours[i], y);
 
 		// replace highlight and/or shadow with unshaded colour if that side is blocked
 		if (lbtype->shapes[rotate].is_solid)
@@ -305,7 +304,7 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 
 		// get block colour
 		get_block_alpha_colour(pixel, chunk.bids, chunk.bdata, tex, offset);
-		adjust_colour_by_height(pixel, y);
+		add_height_shading(pixel, y);
 
 		// contour highlights and shadows
 		unsigned char nbids[4];
