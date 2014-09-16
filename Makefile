@@ -13,7 +13,7 @@ cmapbash: $(objects)
 	gcc $(CFLAGS) $(objects) -lz -o cmapbash
 
 %.o: %.c
-	gcc $(CFLAGS) -std=c99 $< -c -I cNBT/ -I lodepng/
+	gcc $(CFLAGS) -std=c99 $< -c -IcNBT -Ilodepng
 
 cNBT/%.o: cNBT/%.c
 	gcc -std=c99 $< -c -o $@
