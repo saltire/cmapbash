@@ -325,6 +325,44 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 }
 
 
+void render_quick_chunk_map(image* image, const int cpx, const int cpy, nbt_node* chunk_nbt,
+		const options opts)
+{
+	// get block data for this chunk
+	unsigned char* bids = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
+	get_chunk_data(chunk_nbt, bids, NULL, NULL);
+
+	unsigned char colour[CHANNELS] = {255, 255, 255, 255};
+
+	// loop through rotated chunk's blocks
+	for (int z = 0; z <= MAX_LENGTH; z++)
+	{
+		for (int x = 0; x <= MAX_LENGTH; x++)
+		{
+			// get pixel buffer for this block's rotated position
+			unsigned char* pixel = &image->data[((cpy + z) * image->width + cpx + x) * CHANNELS];
+
+			// get unrotated 2d block offset from rotated coordinates
+			int hoffset = get_offset(0, x, z, opts.rotate);
+			for (int y = MAX_HEIGHT; y >= 0; y--)
+			{
+				// get unrotated 3d block offset
+				int offset = y * CHUNK_BLOCK_AREA + hoffset;
+
+				// skip air blocks
+				if (bids[offset] == 0) continue;
+
+				// colour in pixel if a non-air block is found
+				memcpy(pixel, colour, CHANNELS);
+				break;
+			}
+		}
+	}
+
+	free(bids);
+}
+
+
 void render_chunk_map(image* image, const int cpx, const int cpy,
 		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex, const options opts)
 {
@@ -335,6 +373,7 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 	chunk.blight = opts.night ? (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
 	get_chunk_data(chunk_nbt, chunk.bids, chunk.bdata, chunk.blight);
 
+	// get block data for neighbouring chunks
 	for (int i = 0; i < 4; i++)
 	{
 		if (nchunks_nbt[i] == NULL)
@@ -378,16 +417,28 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 }
 
 
-void save_chunk_map(nbt_node* chunk, const char* imagefile, const textures* tex,
-		const options opts)
+void save_chunk_map(nbt_node* chunk, const char* imagefile, const options opts)
 {
 	image cimage = opts.isometric ?
 			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
 			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
-	clock_t start = clock();
-	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, opts);
-	clock_t render_end = clock();
+	clock_t start, render_end;
+
+	if (opts.quick)
+	{
+		start = clock();
+		render_quick_chunk_map(&cimage, 0, 0, chunk, opts);
+		render_end = clock();
+	}
+	else
+	{
+		textures* tex = read_textures(opts.texpath, opts.shapepath);
+		start = clock();
+		render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, opts);
+		render_end = clock();
+		free_textures(tex);
+	}
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
 	printf("Saving image to %s ...\n", imagefile);

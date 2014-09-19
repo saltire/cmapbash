@@ -152,8 +152,6 @@ static void get_world_margins(world world, int* margins, const char rotate)
 
 			int rmargins[4];
 			get_region_margins(path, rmargins, rotate);
-			//printf("Margins for region %d, %d: top %d, right %d, bottom %d, left %d\n",
-			//		rx, rz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
 			// use margins for the specific edge(s) that this region touches
 			if (rwz == 0 && rmargins[0] < margins[0]) margins[0] = rmargins[0];
@@ -162,9 +160,6 @@ static void get_world_margins(world world, int* margins, const char rotate)
 			if (rwx == 0 && rmargins[3] < margins[3]) margins[3] = rmargins[3];
 		}
 	}
-
-	//printf("Margins: top %d, right %d, bottom %d, left %d\n",
-	//		margins[0], margins[1], margins[2], margins[3]);
 }
 
 
@@ -203,8 +198,6 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 			{
 				int rmargins[4];
 				get_region_iso_margins(path, rmargins, rotate);
-				//printf("Margins for region at %d,%d: T %d, R %d, B %d, L %d\n",
-				//		rwx, rwz, rmargins[0], rmargins[1], rmargins[2], rmargins[3]);
 
 				int rmargin;
 				for (int i = 0; i < 4; i++)
@@ -223,11 +216,33 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 			}
 		}
 	}
+}
 
-	//printf("World margins in regions: top %d, right %d, bottom %d, left %d\n",
-	//		wrm[0], wrm[1], wrm[2], wrm[3]);
-	//printf("World margins in pixels: top %d, right %d, bottom %d, left %d\n",
-	//		margins[0], margins[1], margins[2], margins[3]);
+
+void render_quick_world_map(image* image, int wpx, int wpy, world world, const options opts)
+{
+	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
+	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
+
+	int r = 0;
+	for (int rwz = 0; rwz < rwzsize; rwz++)
+	{
+		for (int rwx = 0; rwx < rwxsize; rwx++)
+		{
+			// get region file path, or skip if it doesn't exist
+			char path[255] = "";
+			get_path_from_rel_coords(path, world, rwx, rwz, opts.rotate);
+			if (!strcmp(path, "")) continue;
+
+			r++;
+			printf("Rendering region %d/%d...\n", r, world.rcount);
+
+			int rpx = rwx * REGION_BLOCK_LENGTH + wpx;
+			int rpy = rwz * REGION_BLOCK_LENGTH + wpy;
+
+			render_quick_region_map(image, rpx, rpy, path, opts);
+		}
+	}
 }
 
 
@@ -238,7 +253,7 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
 
 	int r = 0;
-	// we need to render the regions in a certain order
+	// we need to render the regions in order from top to bottom for isometric view
 	for (int rwz = 0; rwz < rwzsize; rwz++)
 	{
 		for (int rwx = 0; rwx < rwxsize; rwx++)
@@ -280,8 +295,7 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 }
 
 
-void save_world_map(const char* worlddir, const char* imagefile, const textures* tex,
-		const options opts)
+void save_world_map(const char* worlddir, const char* imagefile, const options opts)
 {
 	world world = measure_world(worlddir);
 	if (!world.rcount)
@@ -296,24 +310,37 @@ void save_world_map(const char* worlddir, const char* imagefile, const textures*
 	if (opts.isometric)
 	{
 		get_world_iso_margins(world, margins, opts.rotate);
-		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN;
+		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3];
 		height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
-				+ ISO_CHUNK_DEPTH;
+				+ ISO_CHUNK_DEPTH - margins[0] - margins[2];
 	}
 	else
 	{
 		get_world_margins(world, margins, opts.rotate);
-		width = rwxsize * REGION_BLOCK_LENGTH;
-		height = rwzsize * REGION_BLOCK_LENGTH;
+		width = rwxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3];
+		height = rwzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2];
 	}
 
-	image wimage = create_image(width - margins[1] - margins[3], height - margins[0] - margins[2]);
+	image wimage = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n",
 			world.rcount, wimage.width, wimage.height);
 
-	clock_t start = clock();
-	render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
-	clock_t render_end = clock();
+	clock_t start, render_end;
+
+	if (opts.quick)
+	{
+		start = clock();
+		render_quick_world_map(&wimage, -margins[3], -margins[0], world, opts);
+		render_end = clock();
+	}
+	else
+	{
+		textures* tex = read_textures(opts.texpath, opts.shapepath);
+		start = clock();
+		render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
+		render_end = clock();
+		free_textures(tex);
+	}
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
 	free_world(world);

@@ -35,11 +35,16 @@ int main(int argc, char **argv)
 	options opts = {
 			.isometric = 0,
 			.night = 0,
-			.rotate = 0
+			.quick = 0,
+			.rotate = 0,
+			.texpath = "textures.csv",
+			.shapepath = "shapes.csv"
 	};
 
+	// flush output on newlines
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
+	// parse options
 	for (int i = 1; i < argc; i++)
 	{
 		if (!strcmp(argv[i], "-i"))
@@ -47,6 +52,9 @@ int main(int argc, char **argv)
 
 		else if (!strcmp(argv[i], "-n"))
 			opts.night = 1;
+
+		else if (!strcmp(argv[i], "-q"))
+			opts.quick = 1;
 
 		else if (!strcmp(argv[i], "-r") && i + 1 < argc)
 		{
@@ -74,27 +82,22 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	printf("Rendering in %s mode\n", opts.isometric ? "isometric" : "orthographic");
-	if (opts.night)
-		printf("Night mode is on\n");
 	if (opts.rotate)
 		printf("Rotating %d degrees clockwise\n", opts.rotate * 90);
 
-	textures* tex = read_textures("textures.csv", "shapes.csv");
+	if (opts.quick)
+	{
+		opts.isometric = 0;
+		printf("Rendering in quick mode\n");
+	}
+	else
+	{
+		printf("Rendering in %s mode\n", opts.isometric ? "isometric" : "orthographic");
+		if (opts.night)
+			printf("Night mode is on\n");
+	}
 
-//	nbt_node* chunk = nbt_parse_path(inpath);
-//	if (chunk == NULL)
-//	{
-//		printf("Error reading chunk file\n");
-//		return 0;
-//	}
-//	save_chunk_map(chunk, outpath, tex, opts);
-
-	//save_region_map(inpath, outpath, tex, opts);
-
-	save_world_map(inpath, outpath, tex, opts);
-
-	free_textures(tex);
+	save_world_map(inpath, outpath, opts);
 
 	return 0;
 }
