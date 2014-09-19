@@ -221,7 +221,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		if (lbtype->shapes[rotate].is_solid)
 		{
 			if (bshape.has[HILIGHT1]) memcpy(&colours[HILIGHT1], &colours[COLOUR1], CHANNELS);
-			if (bshape.has[HILIGHT2]) memcpy(&colours[HILIGHT2], &colours[COLOUR1], CHANNELS);
+			if (bshape.has[HILIGHT2]) memcpy(&colours[HILIGHT2], &colours[COLOUR2], CHANNELS);
 		}
 		if (rbtype->shapes[rotate].is_solid)
 		{
