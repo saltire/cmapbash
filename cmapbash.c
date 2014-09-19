@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include "chunk.h"
-#include "textures.h"
 #include "world.h"
 
 
@@ -35,7 +34,7 @@ int main(int argc, char **argv)
 	options opts = {
 			.isometric = 0,
 			.night = 0,
-			.quick = 0,
+			.tiny = 0,
 			.rotate = 0,
 			.texpath = "textures.csv",
 			.shapepath = "shapes.csv"
@@ -53,8 +52,8 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "-n"))
 			opts.night = 1;
 
-		else if (!strcmp(argv[i], "-q"))
-			opts.quick = 1;
+		else if (!strcmp(argv[i], "-t"))
+			opts.tiny = 1;
 
 		else if (!strcmp(argv[i], "-r") && i + 1 < argc)
 		{
@@ -65,13 +64,11 @@ int main(int argc, char **argv)
 				printf("Invalid rotate value: %s\n", argv[i + 1]);
 			i++;
 		}
-
 		else if (!strcmp(argv[i], "-o") && i + 1 < argc)
 		{
 			outpath = argv[i + 1];
 			i++;
 		}
-
 		else if (inpath == NULL)
 			inpath = argv[i];
 	}
@@ -85,19 +82,18 @@ int main(int argc, char **argv)
 	if (opts.rotate)
 		printf("Rotating %d degrees clockwise\n", opts.rotate * 90);
 
-	if (opts.quick)
+	if (opts.tiny)
 	{
-		opts.isometric = 0;
-		printf("Rendering in quick mode\n");
+		printf("Rendering in tiny mode\n");
+		save_tiny_world_map(inpath, outpath, opts);
 	}
 	else
 	{
 		printf("Rendering in %s mode\n", opts.isometric ? "isometric" : "orthographic");
 		if (opts.night)
 			printf("Night mode is on\n");
+		save_world_map(inpath, outpath, opts);
 	}
-
-	save_world_map(inpath, outpath, opts);
 
 	return 0;
 }

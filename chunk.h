@@ -30,15 +30,13 @@
 typedef struct options {
 	char isometric;
 	char night;
-	char quick;
+	char tiny;
 	unsigned char rotate;
 	char *texpath;
 	char *shapepath;
 } options;
 
 
-void render_quick_chunk_map(image* image, const int cpx, const int cpy, nbt_node* chunk_nbt,
-		const options opts);
 void render_chunk_map(image* image, const int cpx, const int cpy,
 		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex, const options opts);
 

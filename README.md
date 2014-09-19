@@ -12,8 +12,10 @@ Supports orthographic and isometric rendering.
 Options so far:
 - `-i` - Isometric mode.
 - `-n` - Night mode.
+- `-t` - Tiny mode. Renders a quick minimap of all existing chunks.
 - `-o [filename]` - The image file to save to. Defaults to `map.png`.
 - `-r [#]` - Rotate the map `#` x 90 degrees clockwise.
-By default, north is at the top in orthographic mode, and the top right in isometric mode.
+By default, north is at the top in orthographic mode,
+and northwest is at the top in isometric mode.
 
 This happens to be my first C project.

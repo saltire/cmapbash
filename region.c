@@ -148,7 +148,7 @@ static region read_region(const char* regionfile)
 }
 
 
-static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
+static int get_chunk_offset(region reg, int rcx, int rcz, const char rotate)
 {
 	// get absolute chunk coordinates from rotated chunk coordinates
 	int cx, cz;
@@ -171,7 +171,13 @@ static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
 		break;
 	}
 
-	int offset = reg.offsets[cz * REGION_CHUNK_LENGTH + cx];
+	return reg.offsets[cz * REGION_CHUNK_LENGTH + cx];
+}
+
+
+static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
+{
+	int offset = get_chunk_offset(reg, rcx, rcz, rotate);
 	if (offset == 0) return NULL;
 
 	unsigned char buffer[4];
@@ -196,7 +202,7 @@ static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
 }
 
 
-void render_quick_region_map(image* image, const int rpx, const int rpy, const char* regionfile,
+void render_tiny_region_map(image* image, const int rpx, const int rpy, const char* regionfile,
 		const options opts)
 {
 	region reg = read_region(regionfile);
@@ -206,20 +212,21 @@ void render_quick_region_map(image* image, const int rpx, const int rpy, const c
 		return;
 	}
 
+	unsigned char colour[CHANNELS] = {255, 255, 255, 255};
+
 	for (int rcz = 0; rcz <= MAX_CHUNK; rcz++)
 	{
 		for (int rcx = 0; rcx <= MAX_CHUNK; rcx++)
 		{
-			// get the actual chunk from its rotated coordinates
-			nbt_node* chunk = get_chunk(reg, rcx, rcz, opts.rotate);
-			if (chunk == NULL) continue;
+			// check for the chunk's existence using its rotated coordinates
+			int offset = get_chunk_offset(reg, rcx, rcz, opts.rotate);
+			if (offset == 0) continue;
 
-			// render chunk image onto region image
-			int cpx = rpx + rcx * CHUNK_BLOCK_LENGTH;
-			int cpy = rpy + rcz * CHUNK_BLOCK_LENGTH;
-			render_quick_chunk_map(image, cpx, cpy, chunk, opts);
-
-			nbt_free(chunk);
+			// if it exists, colour this pixel
+			int cpx = rpx + rcx;
+			int cpy = rpy + rcz;
+			unsigned char* pixel = &image->data[(cpy * image->width + cpx) * CHANNELS];
+			memcpy(pixel, colour, CHANNELS);
 		}
 	}
 
@@ -317,23 +324,14 @@ void save_region_map(const char* regionfile, const char* imagefile, const option
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
 			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
-	clock_t start, render_end;
+	textures* tex = read_textures(opts.texpath, opts.shapepath);
 
-	if (opts.quick)
-	{
-		start = clock();
-		render_quick_region_map(&rimage, 0, 0, regionfile, opts);
-		render_end = clock();
-	}
-	else
-	{
-		textures* tex = read_textures(opts.texpath, opts.shapepath);
-		start = clock();
-		render_region_map(&rimage, 0, 0, regionfile, NULL, tex, opts);
-		render_end = clock();
-		free_textures(tex);
-	}
+	clock_t start = clock();
+	render_region_map(&rimage, 0, 0, regionfile, NULL, tex, opts);
+	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
+
+	free_textures(tex);
 
 	if (rimage.data == NULL) return;
 

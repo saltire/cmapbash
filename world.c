@@ -219,7 +219,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 }
 
 
-void render_quick_world_map(image* image, int wpx, int wpy, world world, const options opts)
+void render_tiny_world_map(image* image, int wpx, int wpy, world world, const options opts)
 {
 	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
@@ -237,10 +237,10 @@ void render_quick_world_map(image* image, int wpx, int wpy, world world, const o
 			r++;
 			printf("Rendering region %d/%d...\n", r, world.rcount);
 
-			int rpx = rwx * REGION_BLOCK_LENGTH + wpx;
-			int rpy = rwz * REGION_BLOCK_LENGTH + wpy;
+			int rpx = rwx * REGION_CHUNK_LENGTH + wpx;
+			int rpy = rwz * REGION_CHUNK_LENGTH + wpy;
 
-			render_quick_region_map(image, rpx, rpy, path, opts);
+			render_tiny_region_map(image, rpx, rpy, path, opts);
 		}
 	}
 }
@@ -295,6 +295,40 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 }
 
 
+void save_tiny_world_map(const char* worlddir, const char* imagefile, const options opts)
+{
+	world world = measure_world(worlddir);
+	if (!world.rcount)
+	{
+		printf("No regions found in directory: %s\n", worlddir);
+		return;
+	}
+
+	int width, height, margins[4];
+	get_world_margins(world, margins, opts.rotate);
+
+	// tiny map's scale is 1 chunk : 1 pixel
+	for (int i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
+
+	width = (opts.rotate % 2 ? world.rzsize : world.rxsize) * REGION_CHUNK_LENGTH
+			- margins[1] - margins[3];
+	height = (opts.rotate % 2 ? world.rxsize : world.rzsize) * REGION_CHUNK_LENGTH
+			- margins[0] - margins[2];
+
+	image wimage = create_image(width, height);
+	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
+
+	render_tiny_world_map(&wimage, -margins[3], -margins[0], world, opts);
+
+	free_world(world);
+
+	printf("Saving image to %s ...\n", imagefile);
+	save_image(wimage, imagefile);
+
+	free_image(wimage);
+}
+
+
 void save_world_map(const char* worlddir, const char* imagefile, const options opts)
 {
 	world world = measure_world(worlddir);
@@ -304,45 +338,34 @@ void save_world_map(const char* worlddir, const char* imagefile, const options o
 		return;
 	}
 
-	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
 	int width, height, margins[4];
 	if (opts.isometric)
 	{
 		get_world_iso_margins(world, margins, opts.rotate);
-		width = (rwxsize + rwzsize) * ISO_REGION_X_MARGIN - margins[1] - margins[3];
-		height = ((rwxsize + rwzsize) * ISO_REGION_Y_MARGIN - ISO_BLOCK_TOP_HEIGHT)
-				+ ISO_CHUNK_DEPTH - margins[0] - margins[2];
+		width = (world.rxsize + world.rzsize) * ISO_REGION_X_MARGIN;
+		height = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
+				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 	}
 	else
 	{
 		get_world_margins(world, margins, opts.rotate);
-		width = rwxsize * REGION_BLOCK_LENGTH - margins[1] - margins[3];
-		height = rwzsize * REGION_BLOCK_LENGTH - margins[0] - margins[2];
+		width = (opts.rotate % 2 ? world.rzsize : world.rxsize) * REGION_BLOCK_LENGTH;
+		height = (opts.rotate % 2 ? world.rxsize : world.rzsize) * REGION_BLOCK_LENGTH;
 	}
+	width -= (margins[1] + margins[3]);
+	height -= (margins[0] + margins[2]);
 
 	image wimage = create_image(width, height);
-	printf("Read %d regions. Image dimensions: %d x %d\n",
-			world.rcount, wimage.width, wimage.height);
+	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
 
-	clock_t start, render_end;
+	textures* tex = read_textures(opts.texpath, opts.shapepath);
 
-	if (opts.quick)
-	{
-		start = clock();
-		render_quick_world_map(&wimage, -margins[3], -margins[0], world, opts);
-		render_end = clock();
-	}
-	else
-	{
-		textures* tex = read_textures(opts.texpath, opts.shapepath);
-		start = clock();
-		render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
-		render_end = clock();
-		free_textures(tex);
-	}
+	clock_t start = clock();
+	render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
+	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
+	free_textures(tex);
 	free_world(world);
 
 	printf("Saving image to %s ...\n", imagefile);

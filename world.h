@@ -29,8 +29,9 @@ typedef struct world {
 } world;
 
 
-void render_quick_world_map(image* image, int wpx, int wpy, world world, const options opts);
+void render_tiny_world_map(image* image, int wpx, int wpy, world world, const options opts);
 void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
 		const options opts);
 
+void save_tiny_world_map(const char* worlddir, const char* imagefile, const options opts);
 void save_world_map(const char* worlddir, const char* imagefile, const options opts);
