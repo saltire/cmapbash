@@ -12,6 +12,7 @@ Supports orthographic and isometric rendering.
 Options so far:
 - `-i` - Isometric mode.
 - `-n` - Night mode.
+- `-s` - Render daytime shadows in isometric mode (experimental, may be buggy).
 - `-t` - Tiny mode. Renders a quick minimap of all existing chunks.
 - `-o [filename]` - The image file to save to. Defaults to `map.png`.
 - `-r [#]` - Rotate the map `#` x 90 degrees clockwise.

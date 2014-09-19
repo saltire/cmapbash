@@ -30,6 +30,7 @@
 typedef struct options {
 	char isometric;
 	char night;
+	char shadows;
 	char tiny;
 	unsigned char rotate;
 	char *texpath;

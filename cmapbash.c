@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 	options opts = {
 			.isometric = 0,
 			.night = 0,
+			.shadows = 0,
 			.tiny = 0,
 			.rotate = 0,
 			.texpath = "textures.csv",
@@ -51,6 +52,9 @@ int main(int argc, char **argv)
 
 		else if (!strcmp(argv[i], "-n"))
 			opts.night = 1;
+
+		else if (!strcmp(argv[i], "-s"))
+			opts.shadows = 1;
 
 		else if (!strcmp(argv[i], "-t"))
 			opts.tiny = 1;
@@ -92,9 +96,10 @@ int main(int argc, char **argv)
 		printf("Rendering in %s mode\n", opts.isometric ? "isometric" : "orthographic");
 		if (opts.night)
 			printf("Night mode is on\n");
+		else if (opts.isometric && opts.shadows)
+			printf("Daytime shadows are on\n");
 		save_world_map(inpath, outpath, opts);
 	}
 
 	return 0;
 }
-

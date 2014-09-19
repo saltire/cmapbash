@@ -37,7 +37,7 @@
 
 
 typedef struct chunkdata {
-	unsigned char *bids, *bdata, *blight, *nbids[4], *nbdata[4], *nblight[4];
+	unsigned char *bids, *bdata, *blight, *slight, *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
 } chunkdata;
 
 
@@ -73,9 +73,8 @@ static void copy_section_half_bytes(nbt_node* section, char* name, unsigned char
 
 
 static void get_chunk_data(nbt_node* chunk_nbt, unsigned char* bids, unsigned char* bdata,
-		unsigned char* blight)
+		unsigned char* blight, unsigned char* slight)
 {
-
 	nbt_node* sections = nbt_find_by_name(chunk_nbt, "Sections");
 	if (sections->type == TAG_LIST)
 	{
@@ -95,6 +94,7 @@ static void get_chunk_data(nbt_node* chunk_nbt, unsigned char* bids, unsigned ch
 				copy_section_bytes(section->data, "Blocks", bids, y);
 				if (bdata != NULL) copy_section_half_bytes(section->data, "Data", bdata, y);
 				if (blight != NULL) copy_section_half_bytes(section->data, "BlockLight", blight, y);
+				if (slight != NULL) copy_section_half_bytes(section->data, "SkyLight", slight, y);
 			}
 		}
 	}
@@ -178,7 +178,7 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		// get unrotated 3d block offset
 		int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
-		unsigned char bid, bdata, blight, nbids[4], nbdata[4], nblight[4];
+		unsigned char bid, bdata, blight, nbids[4], nbdata[4], nblight[4], nslight[4];
 		bid = chunk.bids[offset];
 		bdata = chunk.bdata[offset];
 
@@ -229,33 +229,38 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 			if (bshape.has[SHADOW2]) memcpy(&colours[SHADOW2], &colours[COLOUR2], CHANNELS);
 		}
 
-		// night mode: darken colours according to block light
-		if (chunk.blight != NULL)
+		// darken colours according to sky light (day) or block light (night)
+		unsigned char *clight = chunk.slight != NULL ? chunk.slight :
+				(chunk.blight != NULL ? chunk.blight : NULL);
+		if (clight != NULL)
 		{
-			get_neighbour_values(chunk.blight, chunk.nblight, nblight, x, y, z, rotate);
-			float tblight = y == MAX_HEIGHT ? 0 : (float)chunk.blight[offset + CHUNK_BLOCK_AREA];
-			if (tblight < MAX_LIGHT)
+			unsigned char nclight[4];
+			get_neighbour_values(clight, (chunk.slight != NULL ? chunk.nslight :
+					(chunk.blight != NULL ? chunk.nblight : NULL)), nclight, x, y, z, rotate);
+
+			float tclight = y == MAX_HEIGHT ? 0 : (float)clight[offset + CHUNK_BLOCK_AREA];
+			if (tclight < MAX_LIGHT)
 			{
-				tblight /= MAX_LIGHT;
-				set_colour_brightness(colours[COLOUR1], tblight, NIGHT_AMBIENCE);
+				tclight /= MAX_LIGHT;
+				set_colour_brightness(colours[COLOUR1], tclight, NIGHT_AMBIENCE);
 				if (bshape.has[COLOUR2])
-					set_colour_brightness(colours[COLOUR2], tblight, NIGHT_AMBIENCE);
+					set_colour_brightness(colours[COLOUR2], tclight, NIGHT_AMBIENCE);
 			}
-			if (nblight[2] < MAX_LIGHT)
+			if (draw_left && nclight[2] < MAX_LIGHT)
 			{
-				float lblight = (float)nblight[2] / MAX_LIGHT;
+				float lclight = (float)nclight[2] / MAX_LIGHT;
 				if (bshape.has[HILIGHT1])
-					set_colour_brightness(colours[HILIGHT1], lblight, NIGHT_AMBIENCE);
+					set_colour_brightness(colours[HILIGHT1], lclight, NIGHT_AMBIENCE);
 				if (bshape.has[HILIGHT2])
-					set_colour_brightness(colours[HILIGHT2], lblight, NIGHT_AMBIENCE);
+					set_colour_brightness(colours[HILIGHT2], lclight, NIGHT_AMBIENCE);
 			}
-			if (nblight[1] < MAX_LIGHT)
+			if (draw_right && nclight[1] < MAX_LIGHT)
 			{
-				float rblight = (float)nblight[1] / MAX_LIGHT;
+				float rclight = (float)nclight[1] / MAX_LIGHT;
 				if (bshape.has[SHADOW1])
-					set_colour_brightness(colours[SHADOW1], rblight, NIGHT_AMBIENCE);
+					set_colour_brightness(colours[SHADOW1], rclight, NIGHT_AMBIENCE);
 				if (bshape.has[SHADOW2])
-					set_colour_brightness(colours[SHADOW2], rblight, NIGHT_AMBIENCE);
+					set_colour_brightness(colours[SHADOW2], rclight, NIGHT_AMBIENCE);
 			}
 		}
 
@@ -333,7 +338,11 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 	chunk.bids = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	chunk.bdata = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	chunk.blight = opts.night ? (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
-	get_chunk_data(chunk_nbt, chunk.bids, chunk.bdata, chunk.blight);
+	chunk.slight = opts.isometric && !opts.night && opts.shadows ?
+			(unsigned char*)malloc(CHUNK_BLOCK_VOLUME) : NULL;
+	// initialize skylight to full rather than zero
+	if (chunk.slight != NULL) memset(chunk.slight, 255, CHUNK_BLOCK_VOLUME);
+	get_chunk_data(chunk_nbt, chunk.bids, chunk.bdata, chunk.blight, chunk.slight);
 
 	// get block data for neighbouring chunks
 	for (int i = 0; i < 4; i++)
@@ -343,6 +352,7 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 			chunk.nbids[i] = NULL;
 			chunk.nbdata[i] = NULL;
 			chunk.nblight[i] = NULL;
+			chunk.nslight[i] = NULL;
 		}
 		else
 		{
@@ -351,7 +361,11 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 					(unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
 			chunk.nblight[i] = opts.isometric && opts.night ?
 					(unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
-			get_chunk_data(nchunks_nbt[i], chunk.nbids[i], chunk.nbdata[i], chunk.nblight[i]);
+			chunk.nslight[i] = opts.isometric && !opts.night && opts.shadows ?
+					(unsigned char*)malloc(CHUNK_BLOCK_VOLUME) : NULL;
+			if (chunk.nslight[i] != NULL) memset(chunk.nslight[i], 255, CHUNK_BLOCK_VOLUME);
+			get_chunk_data(nchunks_nbt[i], chunk.nbids[i], chunk.nbdata[i], chunk.nblight[i],
+					chunk.nslight[i]);
 		}
 	}
 
@@ -370,11 +384,13 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 	free(chunk.bids);
 	free(chunk.bdata);
 	free(chunk.blight);
+	free(chunk.slight);
 	for (int i = 0; i < 4; i++)
 	{
 		free(chunk.nbids[i]);
 		free(chunk.nbdata[i]);
 		free(chunk.nblight[i]);
+		free(chunk.nslight[i]);
 	}
 }
 
