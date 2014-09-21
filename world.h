@@ -22,16 +22,24 @@
 #include "textures.h"
 
 
-typedef struct world {
-	const char* dir;
+#define WORLDDIR_PATH_MAXLEN 255
+#define REGIONDIR_PATH_MAXLEN (WORLDDIR_PATH_MAXLEN + 7)
+#define REGION_COORD_MAXLEN 8
+#define REGIONFILE_PATH_MAXLEN (REGIONDIR_PATH_MAXLEN + MAX_REGION_COORD_LENGTH * 2 + 8)
+
+
+typedef struct world
+{
+	char regiondir[REGIONDIR_PATH_MAXLEN];
 	int rcount, rxmin, rxmax, rzmin, rzmax, rxsize, rzsize;
-	unsigned char* regionmap;
-} world;
+	unsigned char *regionmap;
+}
+world;
 
 
-void render_tiny_world_map(image* image, int wpx, int wpy, world world, const options opts);
-void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
+void render_tiny_world_map(image *image, int wpx, int wpy, world world, const options opts);
+void render_world_map(image *image, int wpx, int wpy, world world, const textures *tex,
 		const options opts);
 
-void save_tiny_world_map(const char* worlddir, const char* imagefile, const options opts);
-void save_world_map(const char* worlddir, const char* imagefile, const options opts);
+void save_tiny_world_map(char *worlddir, const char *imagefile, const options opts);
+void save_world_map(char *worlddir, const char *imagefile, const options opts);

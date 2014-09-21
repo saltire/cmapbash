@@ -36,32 +36,34 @@
 #define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
 
 
-typedef struct chunkdata {
-	unsigned char *bids, *bdata, *blight, *slight, *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
-} chunkdata;
-
-
-static void copy_section_bytes(nbt_node* section, char* name, unsigned char* data, int8_t y)
+typedef struct chunkdata
 {
-	nbt_node* array = nbt_find_by_name(section, name);
+	unsigned char *bids, *bdata, *blight, *slight, *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
+}
+chunkdata;
+
+
+static void copy_section_bytes(nbt_node *section, char *name, unsigned char *data, int8_t y)
+{
+	nbt_node *array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
 			array->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME)
 	{
-		printf("Problem parsing section byte data.\n");
+		fprintf(stderr, "Problem parsing section byte data.\n");
 	}
 	memcpy(data + y * SECTION_BLOCK_VOLUME, array->payload.tag_byte_array.data,
 			SECTION_BLOCK_VOLUME);
 }
 
 
-static void copy_section_half_bytes(nbt_node* section, char* name, unsigned char* data,
+static void copy_section_half_bytes(nbt_node *section, char *name, unsigned char *data,
 		int8_t y)
 {
-	nbt_node* array = nbt_find_by_name(section, name);
+	nbt_node *array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
 			array->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME / 2)
 	{
-		printf("Problem parsing section byte data.\n");
+		fprintf(stderr, "Problem parsing section byte data.\n");
 	}
 	for (int i = 0; i < SECTION_BLOCK_VOLUME; i += 2)
 	{
@@ -72,22 +74,22 @@ static void copy_section_half_bytes(nbt_node* section, char* name, unsigned char
 }
 
 
-static void get_chunk_data(nbt_node* chunk_nbt, unsigned char* bids, unsigned char* bdata,
-		unsigned char* blight, unsigned char* slight)
+static void get_chunk_data(nbt_node *chunk_nbt, unsigned char *bids, unsigned char *bdata,
+		unsigned char *blight, unsigned char *slight)
 {
-	nbt_node* sections = nbt_find_by_name(chunk_nbt, "Sections");
+	nbt_node *sections = nbt_find_by_name(chunk_nbt, "Sections");
 	if (sections->type == TAG_LIST)
 	{
-		struct list_head* pos;
+		struct list_head *pos;
 		list_for_each(pos, &sections->payload.tag_list->entry)
 		{
-			struct nbt_list* section = list_entry(pos, struct nbt_list, entry);
+			struct nbt_list *section = list_entry(pos, struct nbt_list, entry);
 			if (section->data->type == TAG_COMPOUND)
 			{
-				nbt_node* ynode = nbt_find_by_name(section->data, "Y");
+				nbt_node *ynode = nbt_find_by_name(section->data, "Y");
 				if (ynode->type != TAG_BYTE)
 				{
-					printf("Problem parsing sections.\n");
+					fprintf(stderr, "Problem parsing sections.\n");
 				}
 				int8_t y = ynode->payload.tag_byte;
 
@@ -101,8 +103,8 @@ static void get_chunk_data(nbt_node* chunk_nbt, unsigned char* bids, unsigned ch
 }
 
 
-static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
-		unsigned char* data, const textures* tex, int offset)
+static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
+		unsigned char *data, const textures *tex, int offset)
 {
 	// copy the block colour into the pixel buffer
 	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset])->colours[COLOUR1], CHANNELS);
@@ -119,7 +121,7 @@ static void get_block_alpha_colour(unsigned char* pixel, unsigned char* blocks,
 }
 
 
-static void add_height_shading(unsigned char* pixel, int y)
+static void add_height_shading(unsigned char *pixel, int y)
 {
 	if (pixel[ALPHA] == 0 || y >= HSHADE_BLOCK_HEIGHT) return;
 	adjust_colour_brightness(pixel, (((float)y / HSHADE_BLOCK_HEIGHT) - 1) * HSHADE_AMOUNT);
@@ -151,7 +153,7 @@ static int get_offset(const int y, const int x, const int z, const unsigned char
 }
 
 
-static void get_neighbour_values(unsigned char* data, unsigned char* ndata[4],
+static void get_neighbour_values(unsigned char *data, unsigned char *ndata[4],
 		unsigned char nvalues[4], const int x, const int y, const int z, const char rotate)
 {
 	nvalues[0] = z > 0 ? data[get_offset(y, x, z - 1, rotate)] :
@@ -168,7 +170,7 @@ static void get_neighbour_values(unsigned char* data, unsigned char* ndata[4],
 }
 
 
-static void render_iso_column(image* image, const int cpx, const int cpy, const textures* tex,
+static void render_iso_column(image *image, const int cpx, const int cpy, const textures *tex,
 		chunkdata chunk, const int x, const int z, const char rotate)
 {
 	// get unrotated 2d block offset from rotated coordinates
@@ -190,11 +192,11 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 		get_neighbour_values(chunk.bdata, chunk.nbdata, nbdata, x, y, z, rotate);
 
 		// get the type of this block and neighbouring blocks
-		const blocktype* btype = get_block_type(tex, bid, bdata);
-		const blocktype* tbtype = y == MAX_HEIGHT ? NULL : get_block_type(tex,
+		const blocktype *btype = get_block_type(tex, bid, bdata);
+		const blocktype *tbtype = y == MAX_HEIGHT ? NULL : get_block_type(tex,
 				chunk.bids[offset + CHUNK_BLOCK_AREA], chunk.bdata[offset + CHUNK_BLOCK_AREA]);
-		const blocktype* lbtype = get_block_type(tex, nbids[2], nbdata[2]);
-		const blocktype* rbtype = get_block_type(tex, nbids[1], nbdata[1]);
+		const blocktype *lbtype = get_block_type(tex, nbids[2], nbdata[2]);
+		const blocktype *rbtype = get_block_type(tex, nbids[1], nbdata[1]);
 
 		// if the block above is the same type or opaque, don't draw the top of this one
 		char draw_top = !(y < MAX_HEIGHT && (
@@ -290,11 +292,11 @@ static void render_iso_column(image* image, const int cpx, const int cpy, const 
 }
 
 
-static void render_ortho_block(image* image, const int cpx, const int cpy, const textures* tex,
+static void render_ortho_block(image *image, const int cpx, const int cpy, const textures *tex,
 		chunkdata chunk, const int x, const int z, const char rotate)
 {
 	// get pixel buffer for this block's rotated position
-	unsigned char* pixel = &image->data[((cpy + z) * image->width + cpx + x) * CHANNELS];
+	unsigned char *pixel = &image->data[((cpy + z) * image->width + cpx + x) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
 	int hoffset = get_offset(0, x, z, rotate);
@@ -330,8 +332,8 @@ static void render_ortho_block(image* image, const int cpx, const int cpy, const
 }
 
 
-void render_chunk_map(image* image, const int cpx, const int cpy,
-		nbt_node* chunk_nbt, nbt_node* nchunks_nbt[4], const textures* tex, const options opts)
+void render_chunk_map(image *image, const int cpx, const int cpy,
+		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options opts)
 {
 	// get block data for this chunk
 	chunkdata chunk;
@@ -395,13 +397,13 @@ void render_chunk_map(image* image, const int cpx, const int cpy,
 }
 
 
-void save_chunk_map(nbt_node* chunk, const char* imagefile, const options opts)
+void save_chunk_map(nbt_node *chunk, const char *imagefile, const options opts)
 {
 	image cimage = opts.isometric ?
 			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
 			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
-	textures* tex = read_textures(opts.texpath, opts.shapepath);
+	textures *tex = read_textures(opts.texpath, opts.shapepath);
 
 	clock_t start = clock();
 	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, opts);

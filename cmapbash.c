@@ -17,8 +17,7 @@
 */
 
 
-#include <ctype.h>
-#include <errno.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,56 +30,79 @@ int main(int argc, char **argv)
 {
 	char *inpath = NULL;
 	char *outpath = "map.png";
-	options opts = {
-			.isometric = 0,
-			.night = 0,
-			.shadows = 0,
-			.tiny = 0,
-			.rotate = 0,
-			.texpath = "textures.csv",
-			.shapepath = "shapes.csv"
+	static options opts =
+	{
+		.isometric = 0,
+		.night     = 0,
+		.shadows   = 0,
+		.tiny      = 0,
+		.rotate    = 0,
+		.texpath   = "textures.csv",
+		.shapepath = "shapes.csv"
 	};
+	unsigned int rotateint;
 
 	// flush output on newlines
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
-	// parse options
-	for (int i = 1; i < argc; i++)
+	static struct option long_options[] =
 	{
-		if (!strcmp(argv[i], "-i"))
-			opts.isometric = 1;
+		{"isometric", no_argument, &opts.isometric, 1},
+		{"night",     no_argument, &opts.night,     1},
+		{"shadows",   no_argument, &opts.shadows,   1},
+		{"tiny",      no_argument, &opts.tiny,      1},
+		{"rotate",    required_argument, 0, 'r'},
+		{"world",     required_argument, 0, 'w'},
+		{"output",    required_argument, 0, 'o'},
+		{0, 0, 0, 0}
+	};
 
-		else if (!strcmp(argv[i], "-n"))
-			opts.night = 1;
+	int c;
+	while (1)
+	{
+		int option_index = 0;
+		c = getopt_long(argc, argv, "instr:w:o:", long_options, &option_index);
+		if (c == -1) break;
 
-		else if (!strcmp(argv[i], "-s"))
-			opts.shadows = 1;
-
-		else if (!strcmp(argv[i], "-t"))
-			opts.tiny = 1;
-
-		else if (!strcmp(argv[i], "-r") && i + 1 < argc)
+		switch (c)
 		{
-			unsigned int rotateint;
-			if (sscanf(argv[i + 1], "%d", &rotateint))
+		case 0: // flag set with long option
+			break;
+		case 'i':
+			opts.isometric = 1;
+			break;
+		case 'n':
+			opts.night = 1;
+			break;
+		case 's':
+			opts.shadows = 1;
+			break;
+		case 't':
+			opts.tiny = 1;
+			break;
+		case 'r':
+			if (sscanf(optarg, "%d", &rotateint))
 				opts.rotate = (unsigned char)rotateint % 4;
 			else
-				printf("Invalid rotate value: %s\n", argv[i + 1]);
-			i++;
+				fprintf(stderr, "Invalid rotate argument: %s\n", optarg);
+			break;
+		case 'w':
+			inpath = optarg;
+			break;
+		case 'o':
+			outpath = optarg;
+			break;
+		case '?': // unknown option
+			break;
+		default:
+			abort();
 		}
-		else if (!strcmp(argv[i], "-o") && i + 1 < argc)
-		{
-			outpath = argv[i + 1];
-			i++;
-		}
-		else if (inpath == NULL)
-			inpath = argv[i];
 	}
 
 	if (inpath == NULL)
 	{
-		printf("Please specify a region directory.\n");
-		return 0;
+		printf("Please specify a region directory with -w.\n");
+		return 1;
 	}
 
 	if (opts.rotate)

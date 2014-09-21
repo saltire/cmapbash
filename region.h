@@ -21,12 +21,12 @@
 #include "textures.h"
 
 
-void get_region_margins(const char* regionfile, int* margins, const char rotate);
-void get_region_iso_margins(const char* regionfile, int* margins, const char rotate);
+void get_region_margins(const char *regionfile, int *margins, const char rotate);
+void get_region_iso_margins(const char *regionfile, int *margins, const char rotate);
 
-void render_tiny_region_map(image* image, const int rpx, const int rpy, const char* regionfile,
+void render_tiny_region_map(image *image, const int rpx, const int rpy, const char *regionfile,
 		const options opts);
-void render_region_map(image* image, const int rpx, const int rpy, const char* regionfile,
-		char* nfiles[4], const textures* tex, const options opts);
+void render_region_map(image *image, const int rpx, const int rpy, const char *regionfile,
+		char *nfiles[4], const textures *tex, const options opts);
 
-void save_region_map(const char* regionfile, const char* imagefile, const options opts);
+void save_region_map(const char *regionfile, const char *imagefile, const options opts);

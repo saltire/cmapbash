@@ -29,7 +29,8 @@
 #define HILIGHT_AMOUNT 0.125
 #define SHADOW_AMOUNT -0.125
 
-typedef enum {
+typedef enum
+{
 	BLANK,
 	COLOUR1,
 	HILIGHT1,
@@ -38,42 +39,51 @@ typedef enum {
 	HILIGHT2,
 	SHADOW2,
 	COLOUR_COUNT
-} colourcodes;
+}
+colourcodes;
 
-typedef struct shape {
+typedef struct shape
+{
 	char is_solid;
 	char has[COLOUR_COUNT];
 	unsigned char pixels[ISO_BLOCK_AREA];
-} shape;
+}
+shape;
 
-typedef struct blocktype {
+typedef struct blocktype
+{
 	unsigned char id;
 	unsigned char subtype;
 	unsigned char colours[COLOUR_COUNT][CHANNELS];
 	char is_opaque;
 	shape shapes[4];
-} blocktype;
+}
+blocktype;
 
-typedef struct blockID {
+typedef struct blockID
+{
 	unsigned char mask;
 	blocktype subtypes[16];
-} blockID;
+}
+blockID;
 
-typedef struct textures {
+typedef struct textures
+{
 	int max_blockid;
 	blockID* blockids;
-} textures;
+}
+textures;
 
 
-textures* read_textures(const char* texturefile, const char* shapefile);
-void free_textures(textures* tex);
+textures *read_textures(const char *texturefile, const char *shapefile);
+void free_textures(textures *tex);
 
-const blocktype* get_block_type(const textures* tex,
+const blocktype *get_block_type(const textures *tex,
 		const unsigned char blockid, const unsigned char dataval);
 
-void set_colour_brightness(unsigned char* pixel, float brightness, float ambience);
-void adjust_colour_brightness(unsigned char* pixel, float mod);
-void combine_alpha(unsigned char* top, unsigned char* bottom, int down);
+void set_colour_brightness(unsigned char *pixel, float brightness, float ambience);
+void adjust_colour_brightness(unsigned char *pixel, float mod);
+void combine_alpha(unsigned char *top, unsigned char *bottom, int down);
 
 
 #endif

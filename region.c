@@ -33,19 +33,21 @@
 #define SECTOR_LENGTH 4096
 
 
-typedef struct region {
-	FILE* file;
+typedef struct region
+{
+	FILE *file;
 	unsigned int offsets[REGION_CHUNK_AREA];
 	unsigned char loaded;
-} region;
+}
+region;
 
 
-void get_region_margins(const char* regionfile, int* margins, const char rotate)
+void get_region_margins(const char *regionfile, int *margins, const char rotate)
 {
-	FILE* region = fopen(regionfile, "r");
+	FILE *region = fopen(regionfile, "r");
 	if (region == NULL)
 	{
-		printf("Error %d reading region file: %s\n", errno, regionfile);
+		fprintf(stderr, "Error %d reading region file: %s\n", errno, regionfile);
 		return;
 	}
 
@@ -62,11 +64,12 @@ void get_region_margins(const char* regionfile, int* margins, const char rotate)
 			if (offset > 0)
 			{
 				// margins for this chunk, measured in pixels
-				int cm[] = {
-						z,
-						REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH,
-						REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH,
-						x
+				int cm[] =
+				{
+					z,
+					REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH,
+					REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH,
+					x
 				};
 
 				// assign to rotated region margins if lower
@@ -81,12 +84,12 @@ void get_region_margins(const char* regionfile, int* margins, const char rotate)
 }
 
 
-void get_region_iso_margins(const char* regionfile, int* margins, const char rotate)
+void get_region_iso_margins(const char *regionfile, int *margins, const char rotate)
 {
-	FILE* rfile = fopen(regionfile, "r");
+	FILE *rfile = fopen(regionfile, "r");
 	if (rfile == NULL)
 	{
-		printf("Error %d reading region file: %s\n", errno, regionfile);
+		fprintf(stderr, "Error %d reading region file: %s\n", errno, regionfile);
 		return;
 	}
 
@@ -105,11 +108,12 @@ void get_region_iso_margins(const char* regionfile, int* margins, const char rot
 			if (offset > 0)
 			{
 				// margins for this chunk, measured in chunks
-				int ccm[] = {
-						cx + cz, // NW
-						MAX_CHUNK - cx + cz, // NE
-						MAX_CHUNK - cx + MAX_CHUNK - cz, // SE
-						cx + MAX_CHUNK - cz, // SW
+				int ccm[] =
+				{
+					cx + cz, // NW
+					MAX_CHUNK - cx + cz, // NE
+					MAX_CHUNK - cx + MAX_CHUNK - cz, // SE
+					cx + MAX_CHUNK - cz, // SW
 				};
 
 				for (int i = 0; i < 4; i++)
@@ -129,7 +133,7 @@ void get_region_iso_margins(const char* regionfile, int* margins, const char rot
 }
 
 
-static region read_region(const char* regionfile)
+static region read_region(const char *regionfile)
 {
 	region reg;
 	reg.file = fopen(regionfile, "r");
@@ -175,7 +179,7 @@ static int get_chunk_offset(region reg, int rcx, int rcz, const char rotate)
 }
 
 
-static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
+static nbt_node *get_chunk(region reg, int rcx, int rcz, const char rotate)
 {
 	int offset = get_chunk_offset(reg, rcx, rcz, rotate);
 	if (offset == 0) return NULL;
@@ -185,12 +189,12 @@ static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
 	fread(buffer, 1, 4, reg.file);
 	int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
 
-	char* cdata = (char*)malloc(length);
+	char *cdata = (char*)malloc(length);
 	fseek(reg.file, 1, SEEK_CUR);
 	//printf("Reading %d bytes at %#lx.\n", length, ftell(reg.file));
 	fread(cdata, length, 1, reg.file);
 
-	nbt_node* chunk_nbt = nbt_parse_compressed(cdata, length);
+	nbt_node *chunk_nbt = nbt_parse_compressed(cdata, length);
 	if (errno != NBT_OK)
 	{
 		printf("Parsing error: %d\n", errno);
@@ -202,13 +206,13 @@ static nbt_node* get_chunk(region reg, int rcx, int rcz, const char rotate)
 }
 
 
-void render_tiny_region_map(image* image, const int rpx, const int rpy, const char* regionfile,
+void render_tiny_region_map(image *image, const int rpx, const int rpy, const char *regionfile,
 		const options opts)
 {
 	region reg = read_region(regionfile);
 	if (reg.file == NULL)
 	{
-		printf("Error %d reading region file: %s\n", errno, regionfile);
+		fprintf(stderr, "Error %d reading region file: %s\n", errno, regionfile);
 		return;
 	}
 
@@ -225,7 +229,7 @@ void render_tiny_region_map(image* image, const int rpx, const int rpy, const ch
 			// if it exists, colour this pixel
 			int cpx = rpx + rcx;
 			int cpy = rpy + rcz;
-			unsigned char* pixel = &image->data[(cpy * image->width + cpx) * CHANNELS];
+			unsigned char *pixel = &image->data[(cpy * image->width + cpx) * CHANNELS];
 			memcpy(pixel, colour, CHANNELS);
 		}
 	}
@@ -234,13 +238,13 @@ void render_tiny_region_map(image* image, const int rpx, const int rpy, const ch
 }
 
 
-void render_region_map(image* image, const int rpx, const int rpy, const char* regionfile,
-		char* nfiles[4], const textures* tex, const options opts)
+void render_region_map(image *image, const int rpx, const int rpy, const char *regionfile,
+		char *nfiles[4], const textures *tex, const options opts)
 {
 	region reg = read_region(regionfile);
 	if (reg.file == NULL)
 	{
-		printf("Error %d reading region file: %s\n", errno, regionfile);
+		fprintf(stderr, "Error %d reading region file: %s\n", errno, regionfile);
 		return;
 	}
 
@@ -318,13 +322,13 @@ void render_region_map(image* image, const int rpx, const int rpy, const char* r
 }
 
 
-void save_region_map(const char* regionfile, const char* imagefile, const options opts)
+void save_region_map(const char *regionfile, const char *imagefile, const options opts)
 {
 	image rimage = opts.isometric ?
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
 			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
-	textures* tex = read_textures(opts.texpath, opts.shapepath);
+	textures *tex = read_textures(opts.texpath, opts.shapepath);
 
 	clock_t start = clock();
 	render_region_map(&rimage, 0, 0, regionfile, NULL, tex, opts);

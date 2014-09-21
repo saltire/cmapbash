@@ -30,7 +30,8 @@
 #define LINE_BUFFER 100
 
 
-typedef enum {
+typedef enum
+{
 	BLOCKID,
 	MASK,
 	SUBTYPE,
@@ -47,17 +48,18 @@ typedef enum {
 	SHAPE_S,
 	SHAPE_W,
 	COLUMN_COUNT
-} columns;
+}
+columns;
 
 
-textures* read_textures(const char* texturefile, const char* shapefile)
+textures *read_textures(const char *texturefile, const char *shapefile)
 {
-	textures* tex = (textures*)calloc(1, sizeof(textures));
+	textures *tex = (textures*)calloc(1, sizeof(textures));
 
 	char line[LINE_BUFFER];
 
 	// shape file
-	FILE* scsv = fopen(shapefile, "r");
+	FILE *scsv = fopen(shapefile, "r");
 	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapefile);
 
 	// count shapes and allocate array
@@ -83,7 +85,7 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	fclose(scsv);
 
 	// colour file
-	FILE* tcsv = fopen(texturefile, "r");
+	FILE *tcsv = fopen(texturefile, "r");
 	if (tcsv == NULL) printf("Error %d reading texture file: %s\n", errno, texturefile);
 
 	// find highest block id and allocate blocktypes array
@@ -97,7 +99,7 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 	while (fgets(line, LINE_BUFFER, tcsv))
 	{
 		unsigned char row[COLUMN_COUNT];
-		char* pos = line;
+		char *pos = line;
 		for (int i = 0; i < COLUMN_COUNT; i++)
 		{
 			// read the length of the next value
@@ -117,7 +119,7 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 		if (row[SUBTYPE] == 0) tex->blockids[row[BLOCKID]].mask = row[MASK];
 
 		// copy values for this block type
-		blocktype* btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
+		blocktype *btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
@@ -146,21 +148,21 @@ textures* read_textures(const char* texturefile, const char* shapefile)
 }
 
 
-void free_textures(textures* tex)
+void free_textures(textures *tex)
 {
 	free(tex->blockids);
 	free(tex);
 }
 
 
-const blocktype* get_block_type(const textures* tex,
+const blocktype *get_block_type(const textures *tex,
 		const unsigned char blockid, const unsigned char dataval)
 {
 	return &tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].mask];
 }
 
 
-void set_colour_brightness(unsigned char* pixel, float brightness, float ambience)
+void set_colour_brightness(unsigned char *pixel, float brightness, float ambience)
 {
 	if (pixel[ALPHA] == 0) return;
 
@@ -170,7 +172,7 @@ void set_colour_brightness(unsigned char* pixel, float brightness, float ambienc
 }
 
 
-void adjust_colour_brightness(unsigned char* pixel, float mod)
+void adjust_colour_brightness(unsigned char *pixel, float mod)
 {
 	if (pixel[ALPHA] == 0) return;
 
@@ -180,7 +182,7 @@ void adjust_colour_brightness(unsigned char* pixel, float mod)
 }
 
 
-void combine_alpha(unsigned char* top, unsigned char* bottom, int down)
+void combine_alpha(unsigned char *top, unsigned char *bottom, int down)
 {
 	if (top[ALPHA] == 255 || bottom[ALPHA] == 0)
 	{
@@ -195,7 +197,7 @@ void combine_alpha(unsigned char* top, unsigned char* bottom, int down)
 
 	float bmod = (float)(255 - top[ALPHA]) / 255;
 	unsigned char alpha = top[ALPHA] + bottom[ALPHA] * bmod;
-	unsigned char* target = down ? bottom : top;
+	unsigned char *target = down ? bottom : top;
 	for (int ch = 0; ch < ALPHA; ch++)
 		target[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
 	target[ALPHA] = alpha;

@@ -32,21 +32,33 @@
 #include "world.h"
 
 
-static world measure_world(const char* worlddir)
+static world measure_world(char *worldpath)
 {
 	world world;
-	world.dir = worlddir;
-	world.rcount = 0;
+	world.rcount = -1;
 
-	DIR* dir = opendir(worlddir);
+	// check for errors, strip trailing slash and append region directory
+	size_t dirlen = strlen(worldpath);
+	if (dirlen > WORLDDIR_PATH_MAXLEN)
+	{
+		fprintf(stderr, "World path is too long (max 255 characters)\n");
+		return world;
+	}
+	if (worldpath[dirlen - 1] == '/')
+		worldpath[dirlen - 1] = 0;
+	sprintf(world.regiondir, "%s/region", worldpath);
+
+	DIR *dir = opendir(world.regiondir);
 	if (dir == NULL)
 	{
-		printf("Error %d reading region directory: %s\n", errno, worlddir);
+		fprintf(stderr, "Error %d reading region directory: %s\n", errno, world.regiondir);
 		return world;
 	}
 
+	world.rcount = 0;
+
 	// list directory to find the number of region files, and image dimensions
-	struct dirent* ent;
+	struct dirent *ent;
 	int rx, rz, length;
 	char ext[4]; // three-char extension + null char
 	while ((ent = readdir(dir)) != NULL)
@@ -96,7 +108,7 @@ static void free_world(world world)
 }
 
 
-static void get_path_from_rel_coords(char* path, const world world, const int rwx, const int rwz,
+static void get_path_from_rel_coords(char *path, const world world, const int rwx, const int rwz,
 		const char rotate)
 {
 	// check if region is out of bounds
@@ -125,13 +137,15 @@ static void get_path_from_rel_coords(char* path, const world world, const int rw
 		break;
 	}
 
+	// if the region doesn't exist, path remains null
 	if (!world.regionmap[(rz - world.rzmin) * world.rxsize + rx - world.rxmin]) return;
-	// FIXME: path/filename joining needs to be more flexible
-	sprintf(path, "%s/r.%d.%d.mca", world.dir, rx, rz);
+
+	// a path buffer of 288 characters allows up to 8-digit region numbers
+	sprintf(path, "%s/r.%d.%d.mca", world.regiondir, rx, rz);
 }
 
 
-static void get_world_margins(world world, int* margins, const char rotate)
+static void get_world_margins(world world, int *margins, const char rotate)
 {
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
@@ -146,7 +160,7 @@ static void get_world_margins(world world, int* margins, const char rotate)
 			// skip regions not on the edge of the map
 			if (rwx > 0 && rwx < rwxsize - 1 && rwz > 0 && rwz < rwzsize - 1) continue;
 
-			char path[255] = "";
+			char path[280] = "";
 			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
 			if (!strcmp(path, "")) continue;
 
@@ -163,7 +177,7 @@ static void get_world_margins(world world, int* margins, const char rotate)
 }
 
 
-static void get_world_iso_margins(world world, int* margins, const char rotate)
+static void get_world_iso_margins(world world, int *margins, const char rotate)
 {
 	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
@@ -181,16 +195,17 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 	{
 		for (int rwx = 0; rwx < rwxsize; rwx++)
 		{
-			char path[255] = "";
+			char path[280] = "";
 			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
 			if (!strcmp(path, "")) continue;
 
 			// rotated margins for this region, measured in regions - compare to wrm
-			int rrm[] = {
-					rwx + rwz, // top
-					rwxsize - 1 - rwx + rwz, // right
-					rwxsize - 1 - rwx + rwzsize - 1 - rwz, // bottom
-					rwx + rwzsize - 1 - rwz, // left
+			int rrm[] =
+			{
+				rwx + rwz, // top
+				rwxsize - 1 - rwx + rwz, // right
+				rwxsize - 1 - rwx + rwzsize - 1 - rwz, // bottom
+				rwx + rwzsize - 1 - rwz, // left
 			};
 
 			// skip reading this region unless it's the closest yet to one or more corners
@@ -219,7 +234,7 @@ static void get_world_iso_margins(world world, int* margins, const char rotate)
 }
 
 
-void render_tiny_world_map(image* image, int wpx, int wpy, world world, const options opts)
+void render_tiny_world_map(image *image, int wpx, int wpy, world world, const options opts)
 {
 	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
 	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
@@ -230,7 +245,7 @@ void render_tiny_world_map(image* image, int wpx, int wpy, world world, const op
 		for (int rwx = 0; rwx < rwxsize; rwx++)
 		{
 			// get region file path, or skip if it doesn't exist
-			char path[255] = "";
+			char path[280] = "";
 			get_path_from_rel_coords(path, world, rwx, rwz, opts.rotate);
 			if (!strcmp(path, "")) continue;
 
@@ -246,7 +261,7 @@ void render_tiny_world_map(image* image, int wpx, int wpy, world world, const op
 }
 
 
-void render_world_map(image* image, int wpx, int wpy, world world, const textures* tex,
+void render_world_map(image *image, int wpx, int wpy, world world, const textures *tex,
 		const options opts)
 {
 	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
@@ -259,13 +274,13 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 		for (int rwx = 0; rwx < rwxsize; rwx++)
 		{
 			// get region file path, or skip if it doesn't exist
-			char path[255] = "";
+			char path[280] = "";
 			get_path_from_rel_coords(path, world, rwx, rwz, opts.rotate);
 			if (!strcmp(path, "")) continue;
 
 			// get rotated neighbouring region paths
 			char *npaths[4];
-			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(255, sizeof(char));
+			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(280, sizeof(char));
 			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, opts.rotate);
 			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, opts.rotate);
 			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, opts.rotate);
@@ -295,12 +310,12 @@ void render_world_map(image* image, int wpx, int wpy, world world, const texture
 }
 
 
-void save_tiny_world_map(const char* worlddir, const char* imagefile, const options opts)
+void save_tiny_world_map(char *worlddir, const char *imagefile, const options opts)
 {
 	world world = measure_world(worlddir);
 	if (!world.rcount)
 	{
-		printf("No regions found in directory: %s\n", worlddir);
+		fprintf(stderr, "No regions found in directory: %s\n", worlddir);
 		return;
 	}
 
@@ -329,12 +344,15 @@ void save_tiny_world_map(const char* worlddir, const char* imagefile, const opti
 }
 
 
-void save_world_map(const char* worlddir, const char* imagefile, const options opts)
+void save_world_map(char *worldpath, const char *imagefile, const options opts)
 {
-	world world = measure_world(worlddir);
-	if (!world.rcount)
+	world world = measure_world(worldpath);
+
+	// check for errors
+	if (world.rcount == -1) return;
+	if (world.rcount == 0)
 	{
-		printf("No regions found in directory: %s\n", worlddir);
+		fprintf(stderr, "No regions found in world region directory: %s\n", world.regiondir);
 		return;
 	}
 
@@ -358,7 +376,7 @@ void save_world_map(const char* worlddir, const char* imagefile, const options o
 	image wimage = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
 
-	textures* tex = read_textures(opts.texpath, opts.shapepath);
+	textures *tex = read_textures(opts.texpath, opts.shapepath);
 
 	clock_t start = clock();
 	render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
