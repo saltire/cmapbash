@@ -44,7 +44,7 @@ region;
 
 void get_region_margins(const char *regionfile, int *margins, const char rotate)
 {
-	FILE *region = fopen(regionfile, "r");
+	FILE *region = fopen(regionfile, "rb");
 	if (region == NULL)
 	{
 		fprintf(stderr, "Error %d reading region file: %s\n", errno, regionfile);
@@ -86,7 +86,7 @@ void get_region_margins(const char *regionfile, int *margins, const char rotate)
 
 void get_region_iso_margins(const char *regionfile, int *margins, const char rotate)
 {
-	FILE *rfile = fopen(regionfile, "r");
+	FILE *rfile = fopen(regionfile, "rb");
 	if (rfile == NULL)
 	{
 		fprintf(stderr, "Error %d reading region file: %s\n", errno, regionfile);
@@ -136,7 +136,7 @@ void get_region_iso_margins(const char *regionfile, int *margins, const char rot
 static region read_region(const char *regionfile)
 {
 	region reg;
-	reg.file = fopen(regionfile, "r");
+	reg.file = fopen(regionfile, "rb");
 	if (reg.file == NULL) reg.loaded = 0;
 	else
 	{
@@ -197,7 +197,7 @@ static nbt_node *get_chunk(region reg, int rcx, int rcz, const char rotate)
 	nbt_node *chunk_nbt = nbt_parse_compressed(cdata, length);
 	if (errno != NBT_OK)
 	{
-		printf("Parsing error: %d\n", errno);
+		fprintf(stderr, "Error %d parsing chunk\n", errno);
 		return NULL;
 	}
 	free(cdata);
