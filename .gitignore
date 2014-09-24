@@ -1,4 +1,5 @@
 .project
 .cproject
 .settings
-*.o
+bin
+obj

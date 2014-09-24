@@ -37,8 +37,8 @@ int main(int argc, char **argv)
 		.shadows   = 0,
 		.tiny      = 0,
 		.rotate    = 0,
-		.texpath   = "textures.csv",
-		.shapepath = "shapes.csv"
+		.texpath   = "resources/textures.csv",
+		.shapepath = "resources/shapes.csv"
 	};
 	unsigned int rotateint;
 
