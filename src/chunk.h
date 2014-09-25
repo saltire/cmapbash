@@ -27,15 +27,31 @@
 #include "textures.h"
 
 
+typedef struct cuboid
+{
+	int xmin;
+	int ymin;
+	int zmin;
+	int xmax;
+	int ymax;
+	int zmax;
+}
+cuboid;
+
+
 typedef struct options
 {
 	int isometric;
 	int night;
 	int shadows;
 	int tiny;
+
 	unsigned char rotate;
+
 	char *texpath;
 	char *shapepath;
+
+	cuboid *limits;
 }
 options;
 

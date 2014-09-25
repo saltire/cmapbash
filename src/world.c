@@ -32,7 +32,7 @@
 #include "world.h"
 
 
-static world measure_world(char *worldpath)
+static world measure_world(char *worldpath, cuboid *limits)
 {
 	world world;
 	world.rcount = -1;
@@ -55,6 +55,17 @@ static world measure_world(char *worldpath)
 		return world;
 	}
 
+	int rxmin, rzmin, rxmax, rzmax;
+	if (limits != NULL)
+	{
+		// similar to dividing by REGION_BLOCK_LENGTH, except that would round toward zero
+		// bitshifting will correctly give us the floor of the result instead
+		rxmin = limits->xmin >> 9;
+		rzmin = limits->zmin >> 9;
+		rxmax = limits->xmax >> 9;
+		rzmax = limits->zmax >> 9;
+	}
+
 	world.rcount = 0;
 
 	// list directory to find the number of region files, and image dimensions
@@ -65,7 +76,8 @@ static world measure_world(char *worldpath)
 	{
 		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
-				!strcmp(ext, "mca") && length == strlen(ent->d_name))
+				!strcmp(ext, "mca") && length == strlen(ent->d_name) &&
+				(limits == NULL || (rx >= rxmin && rx <= rxmax && rz >= rzmin && rz <= rzmax)))
 		{
 			if (world.rcount == 0)
 			{
@@ -312,7 +324,7 @@ void render_world_map(image *image, int wpx, int wpy, world world, const texture
 
 void save_tiny_world_map(char *worlddir, const char *imagefile, const options opts)
 {
-	world world = measure_world(worlddir);
+	world world = measure_world(worlddir, opts.limits);
 	if (!world.rcount)
 	{
 		fprintf(stderr, "No regions found in directory: %s\n", worlddir);
@@ -346,7 +358,7 @@ void save_tiny_world_map(char *worlddir, const char *imagefile, const options op
 
 void save_world_map(char *worldpath, const char *imagefile, const options opts)
 {
-	world world = measure_world(worldpath);
+	world world = measure_world(worldpath, opts.limits);
 
 	// check for errors
 	if (world.rcount == -1) return;

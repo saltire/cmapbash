@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "chunk.h"
+#include "dims.h"
 #include "world.h"
 
 
@@ -32,15 +33,15 @@ int main(int argc, char **argv)
 	char *outpath = "map.png";
 	static options opts =
 	{
-		.isometric = 0,
-		.night     = 0,
-		.shadows   = 0,
-		.tiny      = 0,
-		.rotate    = 0,
 		.texpath   = "resources/textures.csv",
-		.shapepath = "resources/shapes.csv"
+		.shapepath = "resources/shapes.csv",
 	};
+	static cuboid limits;
 	unsigned int rotateint;
+	int fc = 0;
+	int f1, f2, f3, fx, fy, fz;
+	int tc = 0;
+	int t1, t2, t3, tx, ty, tz;
 
 	// flush output on newlines
 	setvbuf(stdout, NULL, _IOLBF, 0);
@@ -54,6 +55,8 @@ int main(int argc, char **argv)
 		{"rotate",    required_argument, 0, 'r'},
 		{"world",     required_argument, 0, 'w'},
 		{"output",    required_argument, 0, 'o'},
+		{"from",      required_argument, 0, 'F'},
+		{"to",        required_argument, 0, 'T'},
 		{0, 0, 0, 0}
 	};
 
@@ -61,7 +64,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		int option_index = 0;
-		c = getopt_long(argc, argv, "instr:w:o:", long_options, &option_index);
+		c = getopt_long(argc, argv, "instr:w:o:F:T:", long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c)
@@ -92,6 +95,16 @@ int main(int argc, char **argv)
 		case 'o':
 			outpath = optarg;
 			break;
+		case 'F':
+			fc = sscanf(optarg, "%d,%d,%d", &f1, &f2, &f3);
+			if (fc < 2)
+				fprintf(stderr, "Invalid 'from' coordinates: %s\n", optarg);
+			break;
+		case 'T':
+			tc = sscanf(optarg, "%d,%d,%d", &t1, &t2, &t3);
+			if (tc < 2)
+				fprintf(stderr, "Invalid 'to' coordinates: %s\n", optarg);
+			break;
 		case '?': // unknown option
 			break;
 		default:
@@ -105,12 +118,45 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (fc != tc)
+		fprintf(stderr, "'From' and 'to' coordinates must be in the same format (X,Z or X,Y,Z).\n");
+	else if (fc >= 2)
+	{
+		fx = f1;
+		tx = t1;
+		if (fc == 3)
+		{
+			fy = f2;
+			ty = t2;
+			fz = f3;
+			tz = t3;
+		}
+		else
+		{
+			fy = 0;
+			ty = MAX_HEIGHT;
+			fz = f2;
+			tz = t2;
+		}
+
+		limits.xmin = MIN(fx,tx);
+		limits.ymin = MIN(fy,ty);
+		limits.zmin = MIN(fz,tz);
+		limits.xmax = MAX(fx,tx);
+		limits.ymax = MAX(fy,ty);
+		limits.zmax = MAX(fz,tz);
+		opts.limits = &limits;
+
+		printf("Drawing from (X:%d, Y:%d, Z:%d) to (X:%d, Y:%d, Z:%d)\n",
+				fx, fy, fz, tx, ty, tz);
+	}
+
 	if (opts.rotate)
 		printf("Rotating %d degrees clockwise\n", opts.rotate * 90);
 
 	if (opts.tiny)
 	{
-		printf("Rendering in tiny mode\n");
+		printf("Rendering in tiny mode.\n");
 		save_tiny_world_map(inpath, outpath, opts);
 	}
 	else
