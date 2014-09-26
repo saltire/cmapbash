@@ -120,32 +120,33 @@ static void free_world(world world)
 }
 
 
-static void get_path_from_rel_coords(char *path, const world world, const int rwx, const int rwz,
+static void get_path_from_rel_coords(char *path, const world world, const int rrx, const int rrz,
 		const char rotate)
 {
+	int rrxmax = (rotate % 2 ? world.rzsize : world.rxsize) - 1;
+	int rrzmax = (rotate % 2 ? world.rxsize : world.rzsize) - 1;
+
 	// check if region is out of bounds
-	if (rwx < 0 || rwz < 0) return;
-	if (!(rotate % 2) && (rwx > world.rxsize - 1 || rwz > world.rzsize - 1)) return;
-	if (rotate % 2 && (rwx > world.rzsize - 1 || rwz > world.rxsize - 1)) return;
+	if (rrx < 0 || rrx > rrxmax || rrz < 0 || rrz > rrzmax) return;
 
 	// get absolute region coords from rotated world-relative coords
 	int rx, rz;
 	switch(rotate) {
 	case 0:
-		rx = rwx + world.rxmin;
-		rz = rwz + world.rzmin;
+		rx = rrx + world.rxmin;
+		rz = rrz + world.rzmin;
 		break;
 	case 1:
-		rx = rwz + world.rxmin;
-		rz = (world.rzsize - rwx - 1) + world.rzmin;
+		rx = rrz + world.rxmin;
+		rz = rrxmax - rrx + world.rzmin;
 		break;
 	case 2:
-		rx = (world.rxsize - rwx - 1) + world.rxmin;
-		rz = (world.rzsize - rwz - 1) + world.rzmin;
+		rx = rrxmax - rrx + world.rxmin;
+		rz = rrzmax - rrz + world.rzmin;
 		break;
 	case 3:
-		rx = (world.rxsize - rwz - 1) + world.rxmin;
-		rz = rwx + world.rzmin;
+		rx = rrzmax - rrz + world.rxmin;
+		rz = rrx + world.rzmin;
 		break;
 	}
 
@@ -157,89 +158,64 @@ static void get_path_from_rel_coords(char *path, const world world, const int rw
 }
 
 
-static void get_world_margins(world world, int *margins, const char rotate)
+static void get_world_margins(world world, int *margins, const char rotate, const char isometric)
 {
-	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
+	int rrxmax = (rotate % 2 ? world.rzsize : world.rxsize) - 1;
+	int rrzmax = (rotate % 2 ? world.rxsize : world.rzsize) - 1;
 
 	// initialize margins to maximum, and decrease them as regions are found
-	for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
-
-	for (int rwz = 0; rwz < rwzsize; rwz++)
+	if (isometric)
 	{
-		for (int rwx = 0; rwx < rwxsize; rwx++)
+		margins[0] = margins[2] = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
+				- ISO_BLOCK_TOP_HEIGHT;
+		margins[1] = margins[3] = (world.rxsize + world.rzsize + 1) * ISO_REGION_X_MARGIN;
+	}
+	else
+		for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
+
+	for (int rrz = 0; rrz <= rrzmax; rrz++)
+	{
+		for (int rrx = 0; rrx <= rrxmax; rrx++)
 		{
 			// skip regions not on the edge of the map
-			if (rwx > 0 && rwx < rwxsize - 1 && rwz > 0 && rwz < rwzsize - 1) continue;
+			if (!isometric && rrx > 0 && rrx < rrxmax && rrz > 0 && rrz < rrzmax)
+				continue;
 
 			char path[280] = "";
-			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
+			get_path_from_rel_coords(path, world, rrx, rrz, rotate);
 			if (!strcmp(path, "")) continue;
 
 			int rmargins[4];
 			get_region_margins(path, rmargins, rotate);
 
-			// use margins for the specific edge(s) that this region touches
-			if (rwz == 0 && rmargins[0] < margins[0]) margins[0] = rmargins[0];
-			if (rwx == rwxsize - 1 && rmargins[1] < margins[1]) margins[1] = rmargins[1];
-			if (rwz == rwzsize - 1 && rmargins[2] < margins[2]) margins[2] = rmargins[2];
-			if (rwx == 0 && rmargins[3] < margins[3]) margins[3] = rmargins[3];
-		}
-	}
-}
-
-
-static void get_world_iso_margins(world world, int *margins, const char rotate)
-{
-	int rwxsize = rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = rotate % 2 ? world.rxsize : world.rzsize;
-
-	// initialize margins to maximum, and decrease them as regions are found
-	margins[0] = margins[2] = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
-			- ISO_BLOCK_TOP_HEIGHT;
-	margins[1] = margins[3] = (world.rxsize + world.rzsize + 1) * ISO_REGION_X_MARGIN;
-
-	// world margins measured in regions - used only so we can skip irrelevant regions
-	int wrm[4];
-	for (int i = 0; i < 4; i++) wrm[i] = rwxsize + rwzsize;
-
-	for (int rwz = 0; rwz < rwzsize; rwz++)
-	{
-		for (int rwx = 0; rwx < rwxsize; rwx++)
-		{
-			char path[280] = "";
-			get_path_from_rel_coords(path, world, rwx, rwz, rotate);
-			if (!strcmp(path, "")) continue;
-
-			// rotated margins for this region, measured in regions - compare to wrm
-			int rrm[] =
+			if (isometric)
 			{
-				rwx + rwz, // top
-				rwxsize - 1 - rwx + rwz, // right
-				rwxsize - 1 - rwx + rwzsize - 1 - rwz, // bottom
-				rwx + rwzsize - 1 - rwz, // left
-			};
+				// isometric offsets for this region
+				int rro[] =
+				{
+					(rrx + rrz)                   * ISO_REGION_Y_MARGIN, // top
+					(rrxmax - rrx + rrz)          * ISO_REGION_X_MARGIN, // right
+					(rrxmax - rrx + rrzmax - rrz) * ISO_REGION_Y_MARGIN, // bottom
+					(rrx + rrzmax - rrz)          * ISO_REGION_X_MARGIN, // left
+				};
 
-			// skip reading this region unless it's the closest yet to one or more corners
-			if (rrm[0] < wrm[0] || rrm[1] < wrm[1] || rrm[2] < wrm[2] || rrm[3] < wrm[3])
-			{
-				int rmargins[4];
-				get_region_iso_margins(path, rmargins, rotate);
-
-				int rmargin;
 				for (int i = 0; i < 4; i++)
 				{
-					// skip this corner unless it's one that's close to a world corner
-					if (rrm[i] <= wrm[i])
-					{
-						wrm[i] = rrm[i];
-						// margin for this corner of this region in pixels
-						// assign to world margin if lower
-						rmargin = rrm[i] * (i % 2 ? ISO_REGION_X_MARGIN : ISO_REGION_Y_MARGIN)
-								+ rmargins[i];
-						if (rmargin < margins[i]) margins[i] = rmargin;
-					}
+					// find isometric region margin, then add region offset in pixels
+					int rmargin = (rmargins[i] + rmargins[(i + 3) % 4])
+							* (i % 2 ? ISO_BLOCK_X_MARGIN : ISO_BLOCK_Y_MARGIN)
+							+ rro[i];
+					// if it's lower, update the final world margin
+					if (rmargin < margins[i]) margins[i] = rmargin;
 				}
+			}
+			else
+			{
+				// use margins for the specific edge(s) that this region touches
+				if (rrz == 0      && rmargins[0] < margins[0]) margins[0] = rmargins[0];
+				if (rrx == rrxmax && rmargins[1] < margins[1]) margins[1] = rmargins[1];
+				if (rrz == rrzmax && rmargins[2] < margins[2]) margins[2] = rmargins[2];
+				if (rrx == 0      && rmargins[3] < margins[3]) margins[3] = rmargins[3];
 			}
 		}
 	}
@@ -248,24 +224,24 @@ static void get_world_iso_margins(world world, int *margins, const char rotate)
 
 void render_tiny_world_map(image *image, int wpx, int wpy, world world, const options opts)
 {
-	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
+	int wrxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
+	int wrzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
 
 	int r = 0;
-	for (int rwz = 0; rwz < rwzsize; rwz++)
+	for (int rrz = 0; rrz < wrzsize; rrz++)
 	{
-		for (int rwx = 0; rwx < rwxsize; rwx++)
+		for (int rrx = 0; rrx < wrxsize; rrx++)
 		{
 			// get region file path, or skip if it doesn't exist
 			char path[280] = "";
-			get_path_from_rel_coords(path, world, rwx, rwz, opts.rotate);
+			get_path_from_rel_coords(path, world, rrx, rrz, opts.rotate);
 			if (!strcmp(path, "")) continue;
 
 			r++;
 			printf("Rendering region %d/%d...\n", r, world.rcount);
 
-			int rpx = rwx * REGION_CHUNK_LENGTH + wpx;
-			int rpy = rwz * REGION_CHUNK_LENGTH + wpy;
+			int rpx = rrx * REGION_CHUNK_LENGTH + wpx;
+			int rpy = rrz * REGION_CHUNK_LENGTH + wpy;
 
 			render_tiny_region_map(image, rpx, rpy, path, opts);
 		}
@@ -276,27 +252,27 @@ void render_tiny_world_map(image *image, int wpx, int wpy, world world, const op
 void render_world_map(image *image, int wpx, int wpy, world world, const textures *tex,
 		const options opts)
 {
-	int rwxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
-	int rwzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
+	int wrxsize = opts.rotate % 2 ? world.rzsize : world.rxsize;
+	int wrzsize = opts.rotate % 2 ? world.rxsize : world.rzsize;
 
 	int r = 0;
 	// we need to render the regions in order from top to bottom for isometric view
-	for (int rwz = 0; rwz < rwzsize; rwz++)
+	for (int rrz = 0; rrz < wrzsize; rrz++)
 	{
-		for (int rwx = 0; rwx < rwxsize; rwx++)
+		for (int rrx = 0; rrx < wrxsize; rrx++)
 		{
 			// get region file path, or skip if it doesn't exist
 			char path[280] = "";
-			get_path_from_rel_coords(path, world, rwx, rwz, opts.rotate);
+			get_path_from_rel_coords(path, world, rrx, rrz, opts.rotate);
 			if (!strcmp(path, "")) continue;
 
 			// get rotated neighbouring region paths
 			char *npaths[4];
 			for (int i = 0; i < 4; i++) npaths[i] = (char*)calloc(280, sizeof(char));
-			get_path_from_rel_coords(npaths[0], world, rwx, rwz - 1, opts.rotate);
-			get_path_from_rel_coords(npaths[1], world, rwx + 1, rwz, opts.rotate);
-			get_path_from_rel_coords(npaths[2], world, rwx, rwz + 1, opts.rotate);
-			get_path_from_rel_coords(npaths[3], world, rwx - 1, rwz, opts.rotate);
+			get_path_from_rel_coords(npaths[0], world, rrx, rrz - 1, opts.rotate);
+			get_path_from_rel_coords(npaths[1], world, rrx + 1, rrz, opts.rotate);
+			get_path_from_rel_coords(npaths[2], world, rrx, rrz + 1, opts.rotate);
+			get_path_from_rel_coords(npaths[3], world, rrx - 1, rrz, opts.rotate);
 
 			r++;
 			printf("Rendering region %d/%d...\n", r, world.rcount);
@@ -305,13 +281,13 @@ void render_world_map(image *image, int wpx, int wpy, world world, const texture
 			if (opts.isometric)
 			{
 				// translate orthographic region coordinates to isometric pixel coordinates
-				rpx = (rwx + rwzsize - 1 - rwz) * ISO_REGION_X_MARGIN + wpx;
-				rpy = (rwx + rwz) * ISO_REGION_Y_MARGIN + wpy;
+				rpx = (rrx + wrzsize - 1 - rrz) * ISO_REGION_X_MARGIN + wpx;
+				rpy = (rrx + rrz)               * ISO_REGION_Y_MARGIN + wpy;
 			}
 			else
 			{
-				rpx = rwx * REGION_BLOCK_LENGTH + wpx;
-				rpy = rwz * REGION_BLOCK_LENGTH + wpy;
+				rpx = rrx * REGION_BLOCK_LENGTH + wpx;
+				rpy = rrz * REGION_BLOCK_LENGTH + wpy;
 			}
 
 			render_region_map(image, rpx, rpy, path, npaths, tex, opts);
@@ -332,12 +308,12 @@ void save_tiny_world_map(char *worlddir, const char *imagefile, const options op
 	}
 
 	int width, height, margins[4];
-	get_world_margins(world, margins, opts.rotate);
+	get_world_margins(world, margins, opts.rotate, 0);
 
 	// tiny map's scale is 1 chunk : 1 pixel
 	for (int i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
 
-	width = (opts.rotate % 2 ? world.rzsize : world.rxsize) * REGION_CHUNK_LENGTH
+	width  = (opts.rotate % 2 ? world.rzsize : world.rxsize) * REGION_CHUNK_LENGTH
 			- margins[1] - margins[3];
 	height = (opts.rotate % 2 ? world.rxsize : world.rzsize) * REGION_CHUNK_LENGTH
 			- margins[0] - margins[2];
@@ -371,18 +347,17 @@ void save_world_map(char *worldpath, const char *imagefile, const options opts)
 	int width, height, margins[4];
 	if (opts.isometric)
 	{
-		get_world_iso_margins(world, margins, opts.rotate);
-		width = (world.rxsize + world.rzsize) * ISO_REGION_X_MARGIN;
+		width  = (world.rxsize + world.rzsize) * ISO_REGION_X_MARGIN;
 		height = (world.rxsize + world.rzsize) * ISO_REGION_Y_MARGIN
 				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 	}
 	else
 	{
-		get_world_margins(world, margins, opts.rotate);
-		width = (opts.rotate % 2 ? world.rzsize : world.rxsize) * REGION_BLOCK_LENGTH;
+		width  = (opts.rotate % 2 ? world.rzsize : world.rxsize) * REGION_BLOCK_LENGTH;
 		height = (opts.rotate % 2 ? world.rxsize : world.rzsize) * REGION_BLOCK_LENGTH;
 	}
-	width -= (margins[1] + margins[3]);
+	get_world_margins(world, margins, opts.rotate, opts.isometric);
+	width  -= (margins[1] + margins[3]);
 	height -= (margins[0] + margins[2]);
 
 	image wimage = create_image(width, height);

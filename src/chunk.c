@@ -138,14 +138,14 @@ static int get_offset(const int y, const int x, const int z, const unsigned char
 		break;
 	case 1:
 		bx = z;
-		bz = MAX_LENGTH - x;
+		bz = MAX_CHUNK_BLOCK - x;
 		break;
 	case 2:
-		bx = MAX_LENGTH - x;
-		bz = MAX_LENGTH - z;
+		bx = MAX_CHUNK_BLOCK - x;
+		bz = MAX_CHUNK_BLOCK - z;
 		break;
 	case 3:
-		bx = MAX_LENGTH - z;
+		bx = MAX_CHUNK_BLOCK - z;
 		bz = x;
 		break;
 	}
@@ -157,24 +157,24 @@ static void get_neighbour_values(unsigned char *data, unsigned char *ndata[4],
 		unsigned char nvalues[4], const int x, const int y, const int z, const char rotate)
 {
 	nvalues[0] = z > 0 ? data[get_offset(y, x, z - 1, rotate)] :
-			(ndata[0] == NULL ? 0 : ndata[0][get_offset(y, x, MAX_LENGTH, rotate)]);
+			(ndata[0] == NULL ? 0 : ndata[0][get_offset(y, x, MAX_CHUNK_BLOCK, rotate)]);
 
-	nvalues[1] = x < MAX_LENGTH ? data[get_offset(y, x + 1, z, rotate)] :
+	nvalues[1] = x < MAX_CHUNK_BLOCK ? data[get_offset(y, x + 1, z, rotate)] :
 			(ndata[1] == NULL ? 0 : ndata[1][get_offset(y, 0, z, rotate)]);
 
-	nvalues[2] = z < MAX_LENGTH ? data[get_offset(y, x, z + 1, rotate)] :
+	nvalues[2] = z < MAX_CHUNK_BLOCK ? data[get_offset(y, x, z + 1, rotate)] :
 			(ndata[2] == NULL ? 0 : ndata[2][get_offset(y, x, 0, rotate)]);
 
 	nvalues[3] = x > 0 ? data[get_offset(y, x - 1, z, rotate)] :
-			(ndata[3] == NULL ? 0 : ndata[3][get_offset(y, MAX_LENGTH, z, rotate)]);
+			(ndata[3] == NULL ? 0 : ndata[3][get_offset(y, MAX_CHUNK_BLOCK, z, rotate)]);
 }
 
 
 static void render_iso_column(image *image, const int cpx, const int cpy, const textures *tex,
-		chunkdata chunk, const int x, const int z, const char rotate)
+		chunkdata chunk, const int rbx, const int rbz, const char rotate)
 {
 	// get unrotated 2d block offset from rotated coordinates
-	int hoffset = get_offset(0, x, z, rotate);
+	int hoffset = get_offset(0, rbx, rbz, rotate);
 	for (int y = 0; y <= MAX_HEIGHT; y++)
 	{
 		// get unrotated 3d block offset
@@ -188,8 +188,8 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 		if (bid == 0 || bid > tex->max_blockid) continue;
 
 		// get neighbour block ids and data values
-		get_neighbour_values(chunk.bids, chunk.nbids, nbids, x, y, z, rotate);
-		get_neighbour_values(chunk.bdata, chunk.nbdata, nbdata, x, y, z, rotate);
+		get_neighbour_values(chunk.bids, chunk.nbids, nbids, rbx, y, rbz, rotate);
+		get_neighbour_values(chunk.bdata, chunk.nbdata, nbdata, rbx, y, rbz, rotate);
 
 		// get the type of this block and neighbouring blocks
 		const blocktype *btype = get_block_type(tex, bid, bdata);
@@ -238,7 +238,7 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 		{
 			unsigned char nclight[4];
 			get_neighbour_values(clight, (chunk.slight != NULL ? chunk.nslight :
-					(chunk.blight != NULL ? chunk.nblight : NULL)), nclight, x, y, z, rotate);
+					(chunk.blight != NULL ? chunk.nblight : NULL)), nclight, rbx, y, rbz, rotate);
 
 			float tclight = y == MAX_HEIGHT ? 0 : (float)clight[offset + CHUNK_BLOCK_AREA];
 			if (tclight < MAX_LIGHT)
@@ -267,8 +267,8 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 		}
 
 		// translate orthographic to isometric coordinates
-		int px = cpx + (x + MAX_LENGTH - z) * ISO_BLOCK_WIDTH / 2;
-		int py = cpy + (x + z) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
+		int px = cpx + (rbx + MAX_CHUNK_BLOCK - rbz) * ISO_BLOCK_WIDTH / 2;
+		int py = cpy + (rbx + rbz) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 
 		// draw pixels
 		for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
@@ -279,12 +279,12 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 				unsigned char pcolour = bshape.pixels[sy * ISO_BLOCK_WIDTH + sx];
 				if (pcolour == BLANK) continue;
 				{
-					int p = (py + sy) * image->width + px + sx;
+					int po = (py + sy) * image->width + px + sx;
 
 					if ((sy < ISO_BLOCK_TOP_HEIGHT) ||
 							(sx < ISO_BLOCK_WIDTH / 2 && draw_left) ||
 							(sx >= ISO_BLOCK_WIDTH / 2 && draw_right))
-						combine_alpha(colours[pcolour], &image->data[p * CHANNELS], 1);
+						combine_alpha(colours[pcolour], &image->data[po * CHANNELS], 1);
 				}
 			}
 		}
@@ -293,13 +293,13 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 
 
 static void render_ortho_block(image *image, const int cpx, const int cpy, const textures *tex,
-		chunkdata chunk, const int x, const int z, const char rotate)
+		chunkdata chunk, const int rbx, const int rbz, const char rotate)
 {
 	// get pixel buffer for this block's rotated position
-	unsigned char *pixel = &image->data[((cpy + z) * image->width + cpx + x) * CHANNELS];
+	unsigned char *pixel = &image->data[((cpy + rbz) * image->width + cpx + rbx) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
-	int hoffset = get_offset(0, x, z, rotate);
+	int hoffset = get_offset(0, rbx, rbz, rotate);
 
 	for (int y = MAX_HEIGHT; y >= 0; y--)
 	{
@@ -315,7 +315,7 @@ static void render_ortho_block(image *image, const int cpx, const int cpy, const
 
 		// contour highlights and shadows
 		unsigned char nbids[4];
-		get_neighbour_values(chunk.bids, chunk.nbids, nbids, x, y, z, rotate);
+		get_neighbour_values(chunk.bids, chunk.nbids, nbids, rbx, y, rbz, rotate);
 		char light = (nbids[0] == 0 || nbids[3] == 0);
 		char dark = (nbids[1] == 0 || nbids[2] == 0);
 		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);
@@ -372,14 +372,14 @@ void render_chunk_map(image *image, const int cpx, const int cpy,
 	}
 
 	// loop through rotated chunk's blocks
-	for (int z = 0; z <= MAX_LENGTH; z++)
+	for (int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
 	{
-		for (int x = 0; x <= MAX_LENGTH; x++)
+		for (int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
 		{
 			if (opts.isometric)
-				render_iso_column(image, cpx, cpy, tex, chunk, x, z, opts.rotate);
+				render_iso_column(image, cpx, cpy, tex, chunk, rbx, rbz, opts.rotate);
 			else
-				render_ortho_block(image, cpx, cpy, tex, chunk, x, z, opts.rotate);
+				render_ortho_block(image, cpx, cpy, tex, chunk, rbx, rbz, opts.rotate);
 		}
 	}
 
