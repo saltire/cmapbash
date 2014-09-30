@@ -17,15 +17,37 @@
 */
 
 
+#ifndef REGION_H
+#define REGION_H
+
+
 #include "chunk.h"
+#include "dims.h"
 #include "textures.h"
 
 
-void get_region_margins(const char *regionfile, int *margins, const char rotate);
+typedef struct region
+{
+	int x, z;
+	char path[REGIONFILE_PATH_MAXLEN];
+	unsigned int offsets[REGION_CHUNK_AREA];
+	unsigned char loaded;
+	FILE *file;
+}
+region;
 
-void render_tiny_region_map(image *image, const int rpx, const int rpy, const char *regionfile,
+
+region read_region(const char *regiondir, const int rx, const int rz);
+
+void get_region_margins(region *reg, int *margins, const char rotate);
+
+void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
 		const options opts);
-void render_region_map(image *image, const int rpx, const int rpy, const char *regionfile,
-		char *nfiles[4], const textures *tex, const options opts);
+void render_region_map(image *image, const int rpx, const int rpy, region *reg,
+		region *nregions[4], const textures *tex, const options opts);
 
-void save_region_map(const char *regionfile, const char *imagefile, const options opts);
+void save_region_map(const char *regiondir, const int rx, const int rz, const char *imagefile,
+		const options opts);
+
+
+#endif
