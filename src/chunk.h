@@ -57,9 +57,9 @@ options;
 
 
 void render_chunk_map(image *image, const int cpx, const int cpy,
-		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options opts);
+		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options *opts);
 
-void save_chunk_map(nbt_node *chunk, const char *imagefile, const options opts);
+void save_chunk_map(nbt_node *chunk, const char *imagefile, const options *opts);
 
 
 #endif

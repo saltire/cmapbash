@@ -39,15 +39,15 @@ region;
 
 region read_region(const char *regiondir, const int rx, const int rz);
 
-void get_region_margins(region *reg, int *margins, const char rotate, const char isometric);
+void get_region_margins(int *margins, region *reg, const char rotate, const char isometric);
 
 void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
-		const options opts);
+		const options *opts);
 void render_region_map(image *image, const int rpx, const int rpy, region *reg,
-		region *nregions[4], const textures *tex, const options opts);
+		region *nregions[4], const textures *tex, const options *opts);
 
 void save_region_map(const char *regiondir, const int rx, const int rz, const char *imagefile,
-		const options opts);
+		const options *opts);
 
 
 #endif

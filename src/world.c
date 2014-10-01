@@ -148,40 +148,40 @@ static world measure_world(char *worldpath, cuboid *limits, int rotate)
 }
 
 
-static void free_world(world world)
+static void free_world(world *world)
 {
-	free(world.regionmap);
-	free(world.regions);
+	free(world->regionmap);
+	free(world->regions);
 }
 
 
-static region *get_region_from_coords(const world world, const int rrx, const int rrz)
+static region *get_region_from_coords(const world *world, const int rrx, const int rrz)
 {
 	// check if region is out of bounds
-	if (rrx < 0 || rrx > world.rrxmax || rrz < 0 || rrz > world.rrzmax) return NULL;
+	if (rrx < 0 || rrx > world->rrxmax || rrz < 0 || rrz > world->rrzmax) return NULL;
 	// check if region exists
-	return world.regionmap[rrz * world.rrxsize + rrx];
+	return world->regionmap[rrz * world->rrxsize + rrx];
 }
 
 
-static void get_world_margins(world world, int *margins, const char isometric)
+static void get_world_margins(int *margins, const world *world, const char isometric)
 {
 	// initialize margins to maximum, and decrease them as regions are found
 	if (isometric)
 	{
-		margins[1] = margins[3] = (world.rrxsize + world.rrzsize) * ISO_REGION_X_MARGIN;
-		margins[0] = margins[2] = (world.rrxsize + world.rrzsize) * ISO_REGION_Y_MARGIN
+		margins[1] = margins[3] = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
+		margins[0] = margins[2] = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
 				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 	}
 	else
 		for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
 
-	for (int rrz = 0; rrz <= world.rrzmax; rrz++)
+	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
 	{
-		for (int rrx = 0; rrx <= world.rrxmax; rrx++)
+		for (int rrx = 0; rrx <= world->rrxmax; rrx++)
 		{
 			// skip regions not on the edge of the map
-			if (!isometric && rrx > 0 && rrx < world.rrxmax && rrz > 0 && rrz < world.rrzmax)
+			if (!isometric && rrx > 0 && rrx < world->rrxmax && rrz > 0 && rrz < world->rrzmax)
 				continue;
 
 			// get region, or skip if it doesn't exist
@@ -189,17 +189,17 @@ static void get_world_margins(world world, int *margins, const char isometric)
 			if (reg == NULL) continue;
 
 			int rmargins[4];
-			get_region_margins(reg, rmargins, world.rotate, isometric);
+			get_region_margins(rmargins, reg, world->rotate, isometric);
 
 			if (isometric)
 			{
 				// isometric offsets for this region
 				int rro[] =
 				{
-					(rrx + rrz)                               * ISO_REGION_Y_MARGIN, // top
-					(world.rrxmax - rrx + rrz)                * ISO_REGION_X_MARGIN, // right
-					(world.rrxmax - rrx + world.rrzmax - rrz) * ISO_REGION_Y_MARGIN, // bottom
-					(rrx + world.rrzmax - rrz)                * ISO_REGION_X_MARGIN, // left
+					(rrx + rrz)                                 * ISO_REGION_Y_MARGIN, // top
+					(world->rrxmax - rrx + rrz)                 * ISO_REGION_X_MARGIN, // right
+					(world->rrxmax - rrx + world->rrzmax - rrz) * ISO_REGION_Y_MARGIN, // bottom
+					(rrx + world->rrzmax - rrz)                 * ISO_REGION_X_MARGIN, // left
 				};
 
 				for (int i = 0; i < 4; i++)
@@ -212,29 +212,29 @@ static void get_world_margins(world world, int *margins, const char isometric)
 			else
 			{
 				// use margins for the specific edge(s) that this region touches
-				if (rrz == 0            && rmargins[0] < margins[0]) margins[0] = rmargins[0];
-				if (rrx == world.rrxmax && rmargins[1] < margins[1]) margins[1] = rmargins[1];
-				if (rrz == world.rrzmax && rmargins[2] < margins[2]) margins[2] = rmargins[2];
-				if (rrx == 0            && rmargins[3] < margins[3]) margins[3] = rmargins[3];
+				if (rrz == 0             && rmargins[0] < margins[0]) margins[0] = rmargins[0];
+				if (rrx == world->rrxmax && rmargins[1] < margins[1]) margins[1] = rmargins[1];
+				if (rrz == world->rrzmax && rmargins[2] < margins[2]) margins[2] = rmargins[2];
+				if (rrx == 0             && rmargins[3] < margins[3]) margins[3] = rmargins[3];
 			}
 		}
 	}
 }
 
 
-void render_tiny_world_map(image *image, int wpx, int wpy, world world, const options opts)
+void render_tiny_world_map(image *image, int wpx, int wpy, const world *world, const options *opts)
 {
 	int r = 0;
-	for (int rrz = 0; rrz <= world.rrzmax; rrz++)
+	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
 	{
-		for (int rrx = 0; rrx <= world.rrxmax; rrx++)
+		for (int rrx = 0; rrx <= world->rrxmax; rrx++)
 		{
 			// get region, or skip if it doesn't exist
 			region *reg = get_region_from_coords(world, rrx, rrz);
 			if (reg == NULL) continue;
 
 			r++;
-			printf("Rendering region %d/%d (%d,%d)...\n", r, world.rcount, reg->x, reg->z);
+			printf("Rendering region %d/%d (%d,%d)...\n", r, world->rcount, reg->x, reg->z);
 
 			int rpx = rrx * REGION_CHUNK_LENGTH + wpx;
 			int rpy = rrz * REGION_CHUNK_LENGTH + wpy;
@@ -245,14 +245,14 @@ void render_tiny_world_map(image *image, int wpx, int wpy, world world, const op
 }
 
 
-void render_world_map(image *image, int wpx, int wpy, world world, const textures *tex,
-		const options opts)
+void render_world_map(image *image, int wpx, int wpy, const world *world, const textures *tex,
+		const options *opts)
 {
 	int r = 0;
 	// we need to render the regions in order from top to bottom for isometric view
-	for (int rrz = 0; rrz <= world.rrzmax; rrz++)
+	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
 	{
-		for (int rrx = 0; rrx <= world.rrxmax; rrx++)
+		for (int rrx = 0; rrx <= world->rrxmax; rrx++)
 		{
 			// get region, or skip if it doesn't exist
 			region *reg = get_region_from_coords(world, rrx, rrz);
@@ -268,13 +268,13 @@ void render_world_map(image *image, int wpx, int wpy, world world, const texture
 			};
 
 			r++;
-			printf("Rendering region %d/%d (%d,%d)...\n", r, world.rcount, reg->x, reg->z);
+			printf("Rendering region %d/%d (%d,%d)...\n", r, world->rcount, reg->x, reg->z);
 
 			int rpx, rpy;
-			if (opts.isometric)
+			if (opts->isometric)
 			{
 				// translate orthographic region coordinates to isometric pixel coordinates
-				rpx = (rrx + world.rrzmax - rrz) * ISO_REGION_X_MARGIN + wpx;
+				rpx = (rrx + world->rrzmax - rrz) * ISO_REGION_X_MARGIN + wpx;
 				rpy = (rrx + rrz)                * ISO_REGION_Y_MARGIN + wpy;
 			}
 			else
@@ -289,9 +289,9 @@ void render_world_map(image *image, int wpx, int wpy, world world, const texture
 }
 
 
-void save_tiny_world_map(char *worlddir, const char *imagefile, const options opts)
+void save_tiny_world_map(char *worlddir, const char *imagefile, const options *opts)
 {
-	world world = measure_world(worlddir, opts.limits, opts.rotate);
+	world world = measure_world(worlddir, opts->limits, opts->rotate);
 	if (!world.rcount)
 	{
 		fprintf(stderr, "No regions found in directory: %s\n", worlddir);
@@ -299,7 +299,7 @@ void save_tiny_world_map(char *worlddir, const char *imagefile, const options op
 	}
 
 	int width, height, margins[4];
-	get_world_margins(world, margins, 0);
+	get_world_margins(margins, &world, 0);
 
 	// tiny map's scale is 1 chunk : 1 pixel
 	for (int i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
@@ -310,9 +310,9 @@ void save_tiny_world_map(char *worlddir, const char *imagefile, const options op
 	image wimage = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
 
-	render_tiny_world_map(&wimage, -margins[3], -margins[0], world, opts);
+	render_tiny_world_map(&wimage, -margins[3], -margins[0], &world, opts);
 
-	free_world(world);
+	free_world(&world);
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(wimage, imagefile);
@@ -321,9 +321,9 @@ void save_tiny_world_map(char *worlddir, const char *imagefile, const options op
 }
 
 
-void save_world_map(char *worldpath, const char *imagefile, const options opts)
+void save_world_map(char *worldpath, const char *imagefile, const options *opts)
 {
-	world world = measure_world(worldpath, opts.limits, opts.rotate);
+	world world = measure_world(worldpath, opts->limits, opts->rotate);
 
 	// check for errors
 	if (world.rcount == -1) return;
@@ -334,7 +334,7 @@ void save_world_map(char *worldpath, const char *imagefile, const options opts)
 	}
 
 	int width, height, margins[4];
-	if (opts.isometric)
+	if (opts->isometric)
 	{
 		width  = (world.rrxsize + world.rrzsize) * ISO_REGION_X_MARGIN;
 		height = (world.rrxsize + world.rrzsize) * ISO_REGION_Y_MARGIN
@@ -345,22 +345,22 @@ void save_world_map(char *worldpath, const char *imagefile, const options opts)
 		width  = world.rrxsize * REGION_BLOCK_LENGTH;
 		height = world.rrzsize * REGION_BLOCK_LENGTH;
 	}
-	get_world_margins(world, margins, opts.isometric);
+	get_world_margins(margins, &world, opts->isometric);
 	width  -= (margins[1] + margins[3]);
 	height -= (margins[0] + margins[2]);
 
 	image wimage = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
 
-	textures *tex = read_textures(opts.texpath, opts.shapepath);
+	textures *tex = read_textures(opts->texpath, opts->shapepath);
 
 	clock_t start = clock();
-	render_world_map(&wimage, -margins[3], -margins[0], world, tex, opts);
+	render_world_map(&wimage, -margins[3], -margins[0], &world, tex, opts);
 	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
 	free_textures(tex);
-	free_world(world);
+	free_world(&world);
 
 	printf("Saving image to %s ...\n", imagefile);
 	save_image(wimage, imagefile);

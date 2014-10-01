@@ -348,14 +348,14 @@ static void render_ortho_block(image *image, const int cpx, const int cpy, const
 
 
 void render_chunk_map(image *image, const int cpx, const int cpy,
-		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options opts)
+		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options *opts)
 {
 	// get block data for this chunk
 	chunkdata chunk;
 	chunk.bids = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
 	chunk.bdata = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
-	chunk.blight = opts.night ? (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
-	chunk.slight = opts.isometric && !opts.night && opts.shadows ?
+	chunk.blight = opts->night ? (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
+	chunk.slight = opts->isometric && !opts->night && opts->shadows ?
 			(unsigned char*)malloc(CHUNK_BLOCK_VOLUME) : NULL;
 	// initialize skylight to full rather than zero
 	if (chunk.slight != NULL) memset(chunk.slight, 255, CHUNK_BLOCK_VOLUME);
@@ -374,11 +374,11 @@ void render_chunk_map(image *image, const int cpx, const int cpy,
 		else
 		{
 			chunk.nbids[i] = (unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char));
-			chunk.nbdata[i] = opts.isometric ?
+			chunk.nbdata[i] = opts->isometric ?
 					(unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
-			chunk.nblight[i] = opts.isometric && opts.night ?
+			chunk.nblight[i] = opts->isometric && opts->night ?
 					(unsigned char*)calloc(CHUNK_BLOCK_VOLUME, sizeof(char)) : NULL;
-			chunk.nslight[i] = opts.isometric && !opts.night && opts.shadows ?
+			chunk.nslight[i] = opts->isometric && !opts->night && opts->shadows ?
 					(unsigned char*)malloc(CHUNK_BLOCK_VOLUME) : NULL;
 			if (chunk.nslight[i] != NULL) memset(chunk.nslight[i], 255, CHUNK_BLOCK_VOLUME);
 			get_chunk_data(nchunks_nbt[i], chunk.nbids[i], chunk.nbdata[i], chunk.nblight[i],
@@ -391,10 +391,10 @@ void render_chunk_map(image *image, const int cpx, const int cpy,
 	{
 		for (int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
 		{
-			if (opts.isometric)
-				render_iso_column(image, cpx, cpy, tex, chunk, rbx, rbz, opts.rotate);
+			if (opts->isometric)
+				render_iso_column(image, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
 			else
-				render_ortho_block(image, cpx, cpy, tex, chunk, rbx, rbz, opts.rotate);
+				render_ortho_block(image, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
 		}
 	}
 
@@ -412,13 +412,13 @@ void render_chunk_map(image *image, const int cpx, const int cpy,
 }
 
 
-void save_chunk_map(nbt_node *chunk, const char *imagefile, const options opts)
+void save_chunk_map(nbt_node *chunk, const char *imagefile, const options *opts)
 {
-	image cimage = opts.isometric ?
+	image cimage = opts->isometric ?
 			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
 			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
-	textures *tex = read_textures(opts.texpath, opts.shapepath);
+	textures *tex = read_textures(opts->texpath, opts->shapepath);
 
 	clock_t start = clock();
 	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, opts);

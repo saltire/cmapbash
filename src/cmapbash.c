@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 	if (opts.tiny)
 	{
 		printf("Rendering in tiny mode.\n");
-		save_tiny_world_map(inpath, outpath, opts);
+		save_tiny_world_map(inpath, outpath, &opts);
 	}
 	else
 	{
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 			printf("Night mode is on\n");
 		else if (opts.isometric && opts.shadows)
 			printf("Daytime shadows are on\n");
-		save_world_map(inpath, outpath, opts);
+		save_world_map(inpath, outpath, &opts);
 	}
 
 	return 0;

@@ -74,7 +74,7 @@ region read_region(const char *regiondir, const int rx, const int rz)
 }
 
 
-void get_region_margins(region *reg, int *margins, const char rotate, const char isometric)
+void get_region_margins(int *margins, region *reg, const char rotate, const char isometric)
 {
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
@@ -121,7 +121,7 @@ void get_region_margins(region *reg, int *margins, const char rotate, const char
 }
 
 
-static int get_chunk_offset(region *reg, int rcx, int rcz, const char rotate)
+static int get_chunk_offset(const region *reg, const int rcx, const int rcz, const char rotate)
 {
 	// get absolute chunk coordinates from rotated chunk coordinates
 	int cx, cz;
@@ -148,7 +148,7 @@ static int get_chunk_offset(region *reg, int rcx, int rcz, const char rotate)
 }
 
 
-static nbt_node *read_chunk(region *reg, int rcx, int rcz, const char rotate)
+static nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char rotate)
 {
 	// warning: this function assumes that the region's file is already open
 	if (reg == NULL || reg->file == NULL) return NULL;
@@ -179,7 +179,7 @@ static nbt_node *read_chunk(region *reg, int rcx, int rcz, const char rotate)
 
 
 void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
-		const options opts)
+		const options *opts)
 {
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
@@ -191,7 +191,7 @@ void render_tiny_region_map(image *image, const int rpx, const int rpy, region *
 		for (int rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
 		{
 			// check for the chunk's existence using its rotated coordinates
-			int offset = get_chunk_offset(reg, rcx, rcz, opts.rotate);
+			int offset = get_chunk_offset(reg, rcx, rcz, opts->rotate);
 			if (offset == 0) continue;
 
 			// if it exists, colour this pixel
@@ -207,7 +207,7 @@ void render_tiny_region_map(image *image, const int rpx, const int rpy, region *
 
 
 void render_region_map(image *image, const int rpx, const int rpy, region *reg,
-		region *nregions[4], const textures *tex, const options opts)
+		region *nregions[4], const textures *tex, const options *opts)
 {
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
@@ -223,7 +223,7 @@ void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 			// get the actual chunk from its rotated coordinates
 			// use the "new" chunk saved by the previous iteration if possible
 			chunk = rcx > 0 && prev_chunk != NULL ? new_chunk :
-					read_chunk(reg, rcx, rcz, opts.rotate);
+					read_chunk(reg, rcx, rcz, opts->rotate);
 			if (chunk == NULL)
 			{
 				if (rcx > 0) nbt_free(prev_chunk);
@@ -232,21 +232,21 @@ void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 			}
 
 			// get neighbouring chunks, either from this region or a neighbouring one
-			nchunks[0] = rcz > 0 ? read_chunk(reg, rcx, rcz - 1, opts.rotate) :
-					read_chunk(nregions[0], rcx, MAX_REGION_CHUNK, opts.rotate);
+			nchunks[0] = rcz > 0 ? read_chunk(reg, rcx, rcz - 1, opts->rotate) :
+					read_chunk(nregions[0], rcx, MAX_REGION_CHUNK, opts->rotate);
 
-			nchunks[1] = rcx < MAX_REGION_CHUNK ? read_chunk(reg, rcx + 1, rcz, opts.rotate) :
-					read_chunk(nregions[1], 0, rcz, opts.rotate);
+			nchunks[1] = rcx < MAX_REGION_CHUNK ? read_chunk(reg, rcx + 1, rcz, opts->rotate) :
+					read_chunk(nregions[1], 0, rcz, opts->rotate);
 
-			nchunks[2] = rcz < MAX_REGION_CHUNK ? read_chunk(reg, rcx, rcz + 1, opts.rotate) :
-					read_chunk(nregions[2], rcx, 0, opts.rotate);
+			nchunks[2] = rcz < MAX_REGION_CHUNK ? read_chunk(reg, rcx, rcz + 1, opts->rotate) :
+					read_chunk(nregions[2], rcx, 0, opts->rotate);
 
 			nchunks[3] = rcx > 0 ? prev_chunk :
-					read_chunk(nregions[3], MAX_REGION_CHUNK, rcz, opts.rotate);
+					read_chunk(nregions[3], MAX_REGION_CHUNK, rcz, opts->rotate);
 
 			// render chunk image onto region image
 			int cpx, cpy;
-			if (opts.isometric)
+			if (opts->isometric)
 			{
 				// translate orthographic to isometric coordinates
 				cpx = rpx + (rcx + MAX_REGION_CHUNK - rcz) * ISO_CHUNK_X_MARGIN;
@@ -282,15 +282,15 @@ void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 
 
 void save_region_map(const char *regiondir, const int rx, const int rz, const char *imagefile,
-		const options opts)
+		const options *opts)
 {
 	region reg = read_region(regiondir, rx, rz);
 
-	image rimage = opts.isometric ?
+	image rimage = opts->isometric ?
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
 			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
 
-	textures *tex = read_textures(opts.texpath, opts.shapepath);
+	textures *tex = read_textures(opts->texpath, opts->shapepath);
 
 	clock_t start = clock();
 	render_region_map(&rimage, 0, 0, &reg, NULL, tex, opts);
