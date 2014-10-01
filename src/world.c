@@ -32,7 +32,7 @@
 #include "world.h"
 
 
-static world measure_world(char *worldpath, cuboid *limits, int rotate)
+static world measure_world(char *worldpath, const options *opts)
 {
 	world world;
 	world.rcount = -1;
@@ -55,89 +55,104 @@ static world measure_world(char *worldpath, cuboid *limits, int rotate)
 		return world;
 	}
 
-	int rxmin, rzmin, rxmax, rzmax;
-	if (limits != NULL)
-	{
-		// similar to dividing by REGION_BLOCK_LENGTH, except that would round toward zero
-		// bitshifting will correctly give us the floor of the result instead
-		rxmin = limits->xmin >> 9;
-		rzmin = limits->zmin >> 9;
-		rxmax = limits->xmax >> 9;
-		rzmax = limits->zmax >> 9;
-	}
+	int wrlimits[4], allrclimits[4];
+	if (opts->use_limits)
+		for (int i = 0; i < 4; i++)
+		{
+			// dividing rounds toward zero, so bit shift to get the floor instead
+			wrlimits[i] = opts->limits[i] >> REGION_BLOCK_BITS;
+			allrclimits[i] = opts->limits[i] >> CHUNK_BLOCK_BITS & MAX_REGION_CHUNK;
+		}
 
 	world.rcount = 0;
 
 	// list directory to find the number of region files, and image dimensions
 	struct dirent *ent;
-	int rx, rz, length;
+	int rx, rz, rxmin, rxmax, rzmin, rzmax, length;
 	char ext[4]; // three-char extension + null char
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
-				!strcmp(ext, "mca") && length == strlen(ent->d_name) &&
-				(limits == NULL || (rx >= rxmin && rx <= rxmax && rz >= rzmin && rz <= rzmax)))
+				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
+			if (opts->use_limits &&
+					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
+				continue;
+
 			if (world.rcount == 0)
 			{
-				world.rxmin = world.rxmax = rx;
-				world.rzmin = world.rzmax = rz;
+				rxmin = rxmax = rx;
+				rzmin = rzmax = rz;
 			}
 			else
 			{
-				if (rx < world.rxmin) world.rxmin = rx;
-				if (rx > world.rxmax) world.rxmax = rx;
-				if (rz < world.rzmin) world.rzmin = rz;
-				if (rz > world.rzmax) world.rzmax = rz;
+				if (rx < rxmin) rxmin = rx;
+				if (rx > rxmax) rxmax = rx;
+				if (rz < rzmin) rzmin = rz;
+				if (rz > rzmax) rzmax = rz;
 			}
 			world.rcount++;
 		}
 	}
 	if (!world.rcount) return world;
 
-	int rxsize = world.rxmax - world.rxmin + 1;
-	int rzsize = world.rzmax - world.rzmin + 1;
-
-	world.rrxsize = rotate % 2 ? rzsize : rxsize;
-	world.rrzsize = rotate % 2 ? rxsize : rzsize;
-
+	int rxsize = rxmax - rxmin + 1;
+	int rzsize = rzmax - rzmin + 1;
+	world.rrxsize = opts->rotate % 2 ? rzsize : rxsize;
+	world.rrzsize = opts->rotate % 2 ? rxsize : rzsize;
 	world.rrxmax = world.rrxsize - 1;
 	world.rrzmax = world.rrzsize - 1;
-	world.rotate = rotate;
+	world.rotate = opts->rotate;
 
-	// be sure to free these pointers later
+	// now that we have counted the regions, allocate an array
+	// and loop through directory again to read the region data
 	world.regionmap = (region**)calloc(world.rrxsize * world.rrzsize, sizeof(region*));
 	world.regions = (region*)calloc(world.rcount, sizeof(region));
+
+	int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
 	int r = 0;
 	rewinddir(dir);
 	while ((ent = readdir(dir)) != NULL)
 		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
-				!strcmp(ext, "mca") && length == strlen(ent->d_name) &&
-				(limits == NULL || (rx >= rxmin && rx <= rxmax && rz >= rzmin && rz <= rzmax)))
+				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
+			if (opts->use_limits &&
+					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
+				continue;
+
 			// get rotated world-relative region coords from absolute coords
 			int rrx, rrz;
 			switch(world.rotate) {
 			case 0:
-				rrx = rx - world.rxmin;
-				rrz = rz - world.rzmin;
+				rrx = rx - rxmin;
+				rrz = rz - rzmin;
 				break;
 			case 1:
-				rrx = world.rzmax - rz;
-				rrz = rx - world.rxmin;
+				rrx = rzmax - rz;
+				rrz = rx - rxmin;
 				break;
 			case 2:
-				rrx = world.rxmax - rx;
-				rrz = world.rzmax - rz;
+				rrx = rxmax - rx;
+				rrz = rzmax - rz;
 				break;
 			case 3:
-				rrx = rz - world.rzmin;
-				rrz = world.rxmax - rx;
+				rrx = rz - rzmin;
+				rrz = rxmax - rx;
 				break;
 			}
-			world.regions[r] = read_region(world.regiondir, rx, rz);
+
+			// get chunk limits for this region
+			if (opts->use_limits)
+			{
+				rclimits[0] = (rz == wrlimits[0] ? allrclimits[0] : 0);
+				rclimits[1] = (rx == wrlimits[1] ? allrclimits[1] : MAX_REGION_CHUNK);
+				rclimits[2] = (rz == wrlimits[2] ? allrclimits[2] : MAX_REGION_CHUNK);
+				rclimits[3] = (rx == wrlimits[3] ? allrclimits[3] : 0);
+			}
+
+			world.regions[r] = read_region(world.regiondir, rx, rz, rclimits);
 			if (world.regions[r].loaded)
 				world.regionmap[rrz * world.rrxsize + rrx] = &world.regions[r];
 			r++;
@@ -291,7 +306,7 @@ void render_world_map(image *image, int wpx, int wpy, const world *world, const 
 
 void save_tiny_world_map(char *worlddir, const char *imagefile, const options *opts)
 {
-	world world = measure_world(worlddir, opts->limits, opts->rotate);
+	world world = measure_world(worlddir, opts);
 	if (!world.rcount)
 	{
 		fprintf(stderr, "No regions found in directory: %s\n", worlddir);
@@ -323,7 +338,7 @@ void save_tiny_world_map(char *worlddir, const char *imagefile, const options *o
 
 void save_world_map(char *worldpath, const char *imagefile, const options *opts)
 {
-	world world = measure_world(worldpath, opts->limits, opts->rotate);
+	world world = measure_world(worldpath, opts);
 
 	// check for errors
 	if (world.rcount == -1) return;

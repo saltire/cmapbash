@@ -37,7 +37,7 @@ typedef struct region
 region;
 
 
-region read_region(const char *regiondir, const int rx, const int rz);
+region read_region(const char *regiondir, const int rx, const int rz, const int rclimits[4]);
 
 void get_region_margins(int *margins, region *reg, const char rotate, const char isometric);
 

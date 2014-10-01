@@ -36,7 +36,6 @@ int main(int argc, char **argv)
 		.texpath   = "resources/textures.csv",
 		.shapepath = "resources/shapes.csv",
 	};
-	static cuboid limits;
 	unsigned int rotateint;
 	int fc = 0;
 	int f1, f2, f3, fx, fy, fz;
@@ -139,13 +138,13 @@ int main(int argc, char **argv)
 			tz = t2;
 		}
 
-		limits.xmin = MIN(fx,tx);
-		limits.ymin = MIN(fy,ty);
-		limits.zmin = MIN(fz,tz);
-		limits.xmax = MAX(fx,tx);
-		limits.ymax = MAX(fy,ty);
-		limits.zmax = MAX(fz,tz);
-		opts.limits = &limits;
+		opts.use_limits = 1;
+		opts.limits[0] = MIN(fz,tz);
+		opts.limits[1] = MAX(fx,tx);
+		opts.limits[2] = MAX(fz,tz);
+		opts.limits[3] = MIN(fx,tx);
+		opts.ymin = MAX(0, MIN(fy,ty));
+		opts.ymax = MIN(MAX_HEIGHT, MAX(fy,ty));
 
 		printf("Drawing from (X:%d, Y:%d, Z:%d) to (X:%d, Y:%d, Z:%d)\n",
 				fx, fy, fz, tx, ty, tz);

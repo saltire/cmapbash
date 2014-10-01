@@ -29,8 +29,9 @@
 #include "region.h"
 
 
-#define SECTOR_LENGTH 4096
-#define OFFSET_LENGTH 4
+#define SECTOR_BYTES 4096
+#define OFFSET_BYTES 4
+#define LENGTH_BYTES 4
 
 
 static FILE *open_region_file(region *reg)
@@ -50,7 +51,7 @@ static void close_region_file(region *reg)
 }
 
 
-region read_region(const char *regiondir, const int rx, const int rz)
+region read_region(const char *regiondir, const int rx, const int rz, const int rclimits[4])
 {
 	region reg;
 	reg.x = rx;
@@ -61,11 +62,17 @@ region read_region(const char *regiondir, const int rx, const int rz)
 	if (reg.file == NULL) reg.loaded = 0;
 	else
 	{
-		for (int c = 0; c < REGION_CHUNK_AREA; c++)
+		memset(reg.offsets, 0, sizeof(reg.offsets));
+		for (int cz = rclimits[0]; cz <= rclimits[2]; cz++)
 		{
-			unsigned char buffer[OFFSET_LENGTH];
-			fread(buffer, 1, OFFSET_LENGTH, reg.file);
-			reg.offsets[c] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+			for (int cx = rclimits[3]; cx <= rclimits[1]; cx++)
+			{
+				int co = cz * REGION_CHUNK_LENGTH + cx;
+				fseek(reg.file, co * OFFSET_BYTES, SEEK_SET);
+				unsigned char buffer[OFFSET_BYTES];
+				fread(buffer, 1, OFFSET_BYTES, reg.file);
+				reg.offsets[co] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+			}
 		}
 		reg.loaded = 1;
 	}
@@ -85,7 +92,7 @@ void get_region_margins(int *margins, region *reg, const char rotate, const char
 		else margins[i] = REGION_BLOCK_LENGTH;
 	}
 
-	unsigned char buffer[OFFSET_LENGTH];
+	unsigned char buffer[OFFSET_BYTES];
 	unsigned int offset;
 	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
@@ -94,11 +101,11 @@ void get_region_margins(int *margins, region *reg, const char rotate, const char
 			if (reg->offsets[cz * REGION_CHUNK_LENGTH + cx] > 0)
 			{
 				// chunk offsets for this chunk
-				int co[] =
+				int cco[] =
 				{
 					cz,
-					(MAX_REGION_CHUNK - cx),
-					(MAX_REGION_CHUNK - cz),
+					MAX_REGION_CHUNK - cx,
+					MAX_REGION_CHUNK - cz,
 					cx
 				};
 
@@ -107,9 +114,9 @@ void get_region_margins(int *margins, region *reg, const char rotate, const char
 				for (int i = 0; i < 4; i++)
 				{
 					int m = (i + rotate) % 4;
-					rcm[m] = isometric ? ((co[i] + co[(i + 3) % 4])
+					rcm[m] = isometric ? ((cco[i] + cco[(i + 3) % 4])
 							* (m % 2 ? ISO_CHUNK_X_MARGIN : ISO_CHUNK_Y_MARGIN))
-							: co[i] * CHUNK_BLOCK_LENGTH;
+							: cco[i] * CHUNK_BLOCK_LENGTH;
 
 					// assign to rotated region margins if lower
 					if (rcm[m] < margins[m]) margins[m] = rcm[m];
@@ -153,12 +160,12 @@ static nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, con
 	// warning: this function assumes that the region's file is already open
 	if (reg == NULL || reg->file == NULL) return NULL;
 
-	int offset = get_chunk_offset(reg, rcx, rcz, rotate);
+	unsigned int offset = get_chunk_offset(reg, rcx, rcz, rotate);
 	if (offset == 0) return NULL;
 
-	unsigned char buffer[OFFSET_LENGTH];
-	fseek(reg->file, offset * SECTOR_LENGTH, SEEK_SET);
-	fread(buffer, 1, OFFSET_LENGTH, reg->file);
+	unsigned char buffer[LENGTH_BYTES];
+	fseek(reg->file, offset * SECTOR_BYTES, SEEK_SET);
+	fread(buffer, 1, LENGTH_BYTES, reg->file);
 	int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
 
 	char *cdata = (char*)malloc(length);
@@ -191,7 +198,7 @@ void render_tiny_region_map(image *image, const int rpx, const int rpy, region *
 		for (int rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
 		{
 			// check for the chunk's existence using its rotated coordinates
-			int offset = get_chunk_offset(reg, rcx, rcz, opts->rotate);
+			unsigned int offset = get_chunk_offset(reg, rcx, rcz, opts->rotate);
 			if (offset == 0) continue;
 
 			// if it exists, colour this pixel
@@ -284,7 +291,11 @@ void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 void save_region_map(const char *regiondir, const int rx, const int rz, const char *imagefile,
 		const options *opts)
 {
-	region reg = read_region(regiondir, rx, rz);
+	int climits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
+	if (opts->use_limits)
+		for (int i = 0; i < 4; i++) climits[i] = MAX(0, MIN(REGION_CHUNK_LENGTH, opts->limits[i]));
+
+	region reg = read_region(regiondir, rx, rz, climits);
 
 	image rimage = opts->isometric ?
 			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :

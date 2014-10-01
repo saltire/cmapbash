@@ -31,7 +31,7 @@
 typedef struct world
 {
 	char regiondir[REGIONDIR_PATH_MAXLEN];
-	int rcount, rxmin, rxmax, rzmin, rzmax, rrxsize, rrzsize, rrxmax, rrzmax;
+	int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
 	unsigned char rotate;
 	region *regions;
 	region **regionmap;
