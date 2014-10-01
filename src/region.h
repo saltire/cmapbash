@@ -39,7 +39,7 @@ region;
 
 region read_region(const char *regiondir, const int rx, const int rz);
 
-void get_region_margins(region *reg, int *margins, const char rotate);
+void get_region_margins(region *reg, int *margins, const char rotate, const char isometric);
 
 void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
 		const options opts);

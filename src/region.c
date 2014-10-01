@@ -74,36 +74,45 @@ region read_region(const char *regiondir, const int rx, const int rz)
 }
 
 
-void get_region_margins(region *reg, int *margins, const char rotate)
+void get_region_margins(region *reg, int *margins, const char rotate, const char isometric)
 {
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
 
-	for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
+	for (int i = 0; i < 4; i++)
+	{
+		if (isometric) margins[i] = i % 2 ? ISO_REGION_WIDTH : ISO_REGION_TOP_HEIGHT;
+		else margins[i] = REGION_BLOCK_LENGTH;
+	}
 
 	unsigned char buffer[OFFSET_LENGTH];
 	unsigned int offset;
-	for (int z = 0; z < REGION_BLOCK_LENGTH; z += CHUNK_BLOCK_LENGTH)
+	for (int cz = 0; cz < REGION_CHUNK_LENGTH; cz++)
 	{
-		for (int x = 0; x < REGION_BLOCK_LENGTH; x += CHUNK_BLOCK_LENGTH)
+		for (int cx = 0; cx < REGION_CHUNK_LENGTH; cx++)
 		{
-			fread(buffer, 1, OFFSET_LENGTH, reg->file);
-			offset = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
-			if (offset > 0)
+			if (reg->offsets[cz * REGION_CHUNK_LENGTH + cx] > 0)
 			{
-				// margins for this chunk, measured in pixels
-				int cm[] =
+				// chunk offsets for this chunk
+				int co[] =
 				{
-					z,
-					REGION_BLOCK_LENGTH - x - CHUNK_BLOCK_LENGTH,
-					REGION_BLOCK_LENGTH - z - CHUNK_BLOCK_LENGTH,
-					x
+					cz,
+					(MAX_REGION_CHUNK - cx),
+					(MAX_REGION_CHUNK - cz),
+					cx
 				};
 
-				// assign to rotated region margins if lower
+				// rotated pixel margins for this chunk
+				int rcm[4];
 				for (int i = 0; i < 4; i++)
 				{
-					if (cm[i] < margins[(i + rotate) % 4]) margins[(i + rotate) % 4] = cm[i];
+					int m = (i + rotate) % 4;
+					rcm[m] = isometric ? ((co[i] + co[(i + 3) % 4])
+							* (m % 2 ? ISO_CHUNK_X_MARGIN : ISO_CHUNK_Y_MARGIN))
+							: co[i] * CHUNK_BLOCK_LENGTH;
+
+					// assign to rotated region margins if lower
+					if (rcm[m] < margins[m]) margins[m] = rcm[m];
 				}
 			}
 		}

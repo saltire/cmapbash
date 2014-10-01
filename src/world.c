@@ -169,9 +169,9 @@ static void get_world_margins(world world, int *margins, const char isometric)
 	// initialize margins to maximum, and decrease them as regions are found
 	if (isometric)
 	{
-		margins[1] = margins[3] = (world.rrxsize + world.rrzsize + 1) * ISO_REGION_X_MARGIN;
-		margins[0] = margins[2] = (world.rrxsize + world.rrzsize)     * ISO_REGION_Y_MARGIN
-				- ISO_BLOCK_TOP_HEIGHT;
+		margins[1] = margins[3] = (world.rrxsize + world.rrzsize) * ISO_REGION_X_MARGIN;
+		margins[0] = margins[2] = (world.rrxsize + world.rrzsize) * ISO_REGION_Y_MARGIN
+				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 	}
 	else
 		for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
@@ -189,7 +189,7 @@ static void get_world_margins(world world, int *margins, const char isometric)
 			if (reg == NULL) continue;
 
 			int rmargins[4];
-			get_region_margins(reg, rmargins, world.rotate);
+			get_region_margins(reg, rmargins, world.rotate, isometric);
 
 			if (isometric)
 			{
@@ -204,11 +204,8 @@ static void get_world_margins(world world, int *margins, const char isometric)
 
 				for (int i = 0; i < 4; i++)
 				{
-					// find isometric region margin, then add region offset in pixels
-					int rmargin = (rmargins[i] + rmargins[(i + 3) % 4])
-							* (i % 2 ? ISO_BLOCK_X_MARGIN : ISO_BLOCK_Y_MARGIN)
-							+ rro[i];
-					// if it's lower, update the final world margin
+					// add region offset in pixels; if it's lower, update the final world margin
+					int rmargin = rmargins[i] + rro[i];
 					if (rmargin < margins[i]) margins[i] = rmargin;
 				}
 			}
