@@ -33,6 +33,8 @@ int main(int argc, char **argv)
 	char *outpath = "map.png";
 	static options opts =
 	{
+		.limits    = NULL,
+		.ylimits   = NULL,
 		.texpath   = "resources/textures.csv",
 		.shapepath = "resources/shapes.csv",
 	};
@@ -125,29 +127,37 @@ int main(int argc, char **argv)
 		tx = t1;
 		if (fc == 3)
 		{
-			fy = f2;
-			ty = t2;
 			fz = f3;
 			tz = t3;
+
+			int ylimits[2] =
+			{
+				MAX(0, MIN(f2,t2)),
+				MIN(MAX_HEIGHT, MAX(f2,t2)),
+			};
+			opts.ylimits = ylimits;
 		}
 		else
 		{
-			fy = 0;
-			ty = MAX_HEIGHT;
 			fz = f2;
 			tz = t2;
 		}
 
-		opts.use_limits = 1;
-		opts.limits[0] = MIN(fz,tz);
-		opts.limits[1] = MAX(fx,tx);
-		opts.limits[2] = MAX(fz,tz);
-		opts.limits[3] = MIN(fx,tx);
-		opts.ymin = MAX(0, MIN(fy,ty));
-		opts.ymax = MIN(MAX_HEIGHT, MAX(fy,ty));
+		int limits[4] =
+		{
+			MIN(fz,tz),
+			MAX(fx,tx),
+			MAX(fz,tz),
+			MIN(fx,tx),
+		};
+		opts.limits = limits;
 
-		printf("Drawing from (X:%d, Y:%d, Z:%d) to (X:%d, Y:%d, Z:%d)\n",
-				fx, fy, fz, tx, ty, tz);
+		if (opts.ylimits == NULL)
+			printf("Drawing from (X:%d, Z:%d) to (X:%d, Z:%d)\n",
+					fx, fz, tx, tz);
+		else
+			printf("Drawing from (X:%d, Y:%d, Z:%d) to (X:%d, Y:%d, Z:%d)\n",
+					fx, opts.ylimits[0], fz, tx, opts.ylimits[1], tz);
 	}
 
 	if (opts.rotate)

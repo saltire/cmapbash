@@ -55,13 +55,13 @@ static world measure_world(char *worldpath, const options *opts)
 		return world;
 	}
 
-	int wrlimits[4], allrclimits[4];
-	if (opts->use_limits)
+	int wrlimits[4], wrblimits[4];
+	if (opts->limits != NULL)
 		for (int i = 0; i < 4; i++)
 		{
 			// dividing rounds toward zero, so bit shift to get the floor instead
 			wrlimits[i] = opts->limits[i] >> REGION_BLOCK_BITS;
-			allrclimits[i] = opts->limits[i] >> CHUNK_BLOCK_BITS & MAX_REGION_CHUNK;
+			wrblimits[i] = opts->limits[i] & MAX_REGION_BLOCK;
 		}
 
 	world.rcount = 0;
@@ -76,7 +76,7 @@ static world measure_world(char *worldpath, const options *opts)
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			if (opts->use_limits &&
+			if (opts->limits != NULL &&
 					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
 				continue;
 
@@ -110,7 +110,8 @@ static world measure_world(char *worldpath, const options *opts)
 	world.regionmap = (region**)calloc(world.rrxsize * world.rrzsize, sizeof(region*));
 	world.regions = (region*)calloc(world.rcount, sizeof(region));
 
-	int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
+	unsigned int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
+	unsigned int rblimits[4] = {0, MAX_REGION_BLOCK, MAX_REGION_BLOCK, 0};
 	int r = 0;
 	rewinddir(dir);
 	while ((ent = readdir(dir)) != NULL)
@@ -118,7 +119,7 @@ static world measure_world(char *worldpath, const options *opts)
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			if (opts->use_limits &&
+			if (opts->limits != NULL &&
 					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
 				continue;
 
@@ -144,15 +145,15 @@ static world measure_world(char *worldpath, const options *opts)
 			}
 
 			// get chunk limits for this region
-			if (opts->use_limits)
+			if (opts->limits != NULL)
 			{
-				rclimits[0] = (rz == wrlimits[0] ? allrclimits[0] : 0);
-				rclimits[1] = (rx == wrlimits[1] ? allrclimits[1] : MAX_REGION_CHUNK);
-				rclimits[2] = (rz == wrlimits[2] ? allrclimits[2] : MAX_REGION_CHUNK);
-				rclimits[3] = (rx == wrlimits[3] ? allrclimits[3] : 0);
+				rblimits[0] = (rz == wrlimits[0] ? wrblimits[0] : 0);
+				rblimits[1] = (rx == wrlimits[1] ? wrblimits[1] : MAX_REGION_BLOCK);
+				rblimits[2] = (rz == wrlimits[2] ? wrblimits[2] : MAX_REGION_BLOCK);
+				rblimits[3] = (rx == wrlimits[3] ? wrblimits[3] : 0);
 			}
 
-			world.regions[r] = read_region(world.regiondir, rx, rz, rclimits);
+			world.regions[r] = read_region(world.regiondir, rx, rz, rblimits);
 			if (world.regions[r].loaded)
 				world.regionmap[rrz * world.rrxsize + rrx] = &world.regions[r];
 			r++;
@@ -179,7 +180,7 @@ static region *get_region_from_coords(const world *world, const int rrx, const i
 }
 
 
-static void get_world_margins(int *margins, const world *world, const char isometric)
+static void get_world_margins(unsigned int *margins, const world *world, const char isometric)
 {
 	// initialize margins to maximum, and decrease them as regions are found
 	if (isometric)
@@ -191,9 +192,9 @@ static void get_world_margins(int *margins, const world *world, const char isome
 	else
 		for (int i = 0; i < 4; i++) margins[i] = REGION_BLOCK_LENGTH;
 
-	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
+	for (unsigned int rrz = 0; rrz <= world->rrzmax; rrz++)
 	{
-		for (int rrx = 0; rrx <= world->rrxmax; rrx++)
+		for (unsigned int rrx = 0; rrx <= world->rrxmax; rrx++)
 		{
 			// skip regions not on the edge of the map
 			if (!isometric && rrx > 0 && rrx < world->rrxmax && rrz > 0 && rrz < world->rrzmax)
@@ -220,7 +221,7 @@ static void get_world_margins(int *margins, const world *world, const char isome
 				for (int i = 0; i < 4; i++)
 				{
 					// add region offset in pixels; if it's lower, update the final world margin
-					int rmargin = rmargins[i] + rro[i];
+					unsigned int rmargin = rmargins[i] + rro[i];
 					if (rmargin < margins[i]) margins[i] = rmargin;
 				}
 			}
@@ -348,19 +349,25 @@ void save_world_map(char *worldpath, const char *imagefile, const options *opts)
 		return;
 	}
 
-	int width, height, margins[4];
+	unsigned int width, height, margins[4];
+	get_world_margins(margins, &world, opts->isometric);
 	if (opts->isometric)
 	{
 		width  = (world.rrxsize + world.rrzsize) * ISO_REGION_X_MARGIN;
 		height = (world.rrxsize + world.rrzsize) * ISO_REGION_Y_MARGIN
 				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
+		if (opts->ylimits != NULL)
+		{
+			printf("adding %d, %d\n", (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH, opts->ylimits[0] * ISO_BLOCK_DEPTH);
+			margins[0] += (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH;
+			margins[2] += opts->ylimits[0] * ISO_BLOCK_DEPTH;
+		}
 	}
 	else
 	{
 		width  = world.rrxsize * REGION_BLOCK_LENGTH;
 		height = world.rrzsize * REGION_BLOCK_LENGTH;
 	}
-	get_world_margins(margins, &world, opts->isometric);
 	width  -= (margins[1] + margins[3]);
 	height -= (margins[0] + margins[2]);
 

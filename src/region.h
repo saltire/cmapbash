@@ -32,14 +32,17 @@ typedef struct region
 	char path[REGIONFILE_PATH_MAXLEN];
 	unsigned int offsets[REGION_CHUNK_AREA];
 	unsigned char loaded;
+	unsigned int blimits[4], climits[4];
 	FILE *file;
 }
 region;
 
 
-region read_region(const char *regiondir, const int rx, const int rz, const int rclimits[4]);
+region read_region(const char *regiondir, const int rx, const int rz,
+		const unsigned int rblimits[4]);
 
-void get_region_margins(int *margins, region *reg, const char rotate, const char isometric);
+void get_region_margins(unsigned int *margins, region *reg, const char rotate,
+		const char isometric);
 
 void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
 		const options *opts);

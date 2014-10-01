@@ -33,8 +33,7 @@ typedef struct options
 
 	unsigned char rotate;
 
-	int limits[4];
-	unsigned char ymin, ymax;
+	int *limits, *ylimits;
 
 	char *texpath;
 	char *shapepath;
@@ -42,8 +41,9 @@ typedef struct options
 options;
 
 
-void render_chunk_map(image *image, const int cpx, const int cpy,
-		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options *opts);
+void render_chunk_map(image *image, const int cpx, const int cpy, nbt_node *chunk_nbt,
+		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
+		const options *opts);
 
 void save_chunk_map(nbt_node *chunk, const char *imagefile, const options *opts);
 

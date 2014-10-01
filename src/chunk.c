@@ -43,40 +43,66 @@ typedef struct chunkdata
 chunkdata;
 
 
-static void copy_section_bytes(nbt_node *section, const char *name, unsigned char *data,
-		const int8_t sy)
+static void copy_section_bytes(unsigned char *data, nbt_node *section, const char *name,
+		const unsigned int yo, const unsigned int syolimits[2], const unsigned int *cblimits)
 {
 	nbt_node *array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
 			array->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME)
 	{
 		fprintf(stderr, "Problem parsing section byte data.\n");
+		return;
 	}
-	memcpy(data + sy * SECTION_BLOCK_VOLUME, array->payload.tag_byte_array.data,
-			SECTION_BLOCK_VOLUME);
+
+	if (cblimits == NULL)
+		memcpy(data + yo + syolimits[0], array->payload.tag_byte_array.data,
+				syolimits[1] - syolimits[0]);
+	else
+		for (unsigned int syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
+			for (unsigned int z = cblimits[0]; z <= cblimits[2]; z++)
+				for (unsigned int x = cblimits[3]; x <= cblimits[1]; x++)
+				{
+					unsigned int b = syo + z * CHUNK_BLOCK_LENGTH + x;
+					data[yo + b] = array->payload.tag_byte_array.data[b];
+				}
 }
 
 
-static void copy_section_nybbles(nbt_node *section, const char *name, unsigned char *data,
-		const int8_t sy)
+static void copy_section_nybbles(unsigned char *data, nbt_node *section, const char *name,
+		const unsigned int yo, const unsigned int syolimits[2], const unsigned int *cblimits)
 {
 	nbt_node *array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
 			array->payload.tag_byte_array.length != SECTION_BLOCK_VOLUME / 2)
 	{
 		fprintf(stderr, "Problem parsing section byte data.\n");
+		return;
 	}
-	for (int i = 0; i < SECTION_BLOCK_VOLUME; i += 2)
-	{
-		unsigned char byte = array->payload.tag_byte_array.data[i / 2];
-		data[sy * SECTION_BLOCK_VOLUME + i] = byte % 16;
-		data[sy * SECTION_BLOCK_VOLUME + i + 1] = byte / 16;
-	}
+
+	// note: syolimits uses < instead of <=
+	if (cblimits == NULL)
+		for (unsigned int b = syolimits[0]; b < syolimits[1]; b += 2)
+		{
+			unsigned char byte = array->payload.tag_byte_array.data[b / 2];
+			data[yo + b] = byte & 0xf;
+			data[yo + b + 1] = byte >> 4;
+		}
+	else
+		for (unsigned int syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
+			for (unsigned int z = cblimits[0]; z <= cblimits[2]; z++)
+				for (unsigned int x = cblimits[3]; x <= cblimits[1]; x += 2)
+				{
+					unsigned int b = syo + z * CHUNK_BLOCK_LENGTH + x;
+					unsigned char byte = array->payload.tag_byte_array.data[b / 2];
+					data[yo + b] = byte & 0xf;
+					data[yo + b + 1] = byte >> 4;
+				}
 }
 
 
 static void get_chunk_data(nbt_node *chunk_nbt, unsigned char *bids, unsigned char *bdata,
-		unsigned char *blight, unsigned char *slight)
+		unsigned char *blight, unsigned char *slight, const unsigned int *cblimits,
+		const unsigned int *ylimits)
 {
 	nbt_node *sections = nbt_find_by_name(chunk_nbt, "Sections");
 	if (sections->type == TAG_LIST)
@@ -91,13 +117,31 @@ static void get_chunk_data(nbt_node *chunk_nbt, unsigned char *bids, unsigned ch
 				if (ynode->type != TAG_BYTE)
 				{
 					fprintf(stderr, "Problem parsing sections.\n");
+					return;
 				}
 				int8_t sy = ynode->payload.tag_byte;
 
-				copy_section_bytes(section->data, "Blocks", bids, sy);
-				if (bdata != NULL) copy_section_nybbles(section->data, "Data", bdata, sy);
-				if (blight != NULL) copy_section_nybbles(section->data, "BlockLight", blight, sy);
-				if (slight != NULL) copy_section_nybbles(section->data, "SkyLight", slight, sy);
+				if (ylimits != NULL && (sy < ylimits[0] / SECTION_BLOCK_HEIGHT ||
+						sy > ylimits[1] / SECTION_BLOCK_HEIGHT)) continue;
+
+				// get overall section offset, and start/end y offsets for this section
+				unsigned int yo = sy * SECTION_BLOCK_VOLUME;
+				unsigned int syolimits[2] = {0, SECTION_BLOCK_VOLUME};
+				if (ylimits != NULL)
+				{
+					if (ylimits[0] / SECTION_BLOCK_HEIGHT == sy)
+						syolimits[0] = (ylimits[0] % SECTION_BLOCK_HEIGHT) * CHUNK_BLOCK_AREA;
+					if (ylimits[1] / SECTION_BLOCK_HEIGHT == sy)
+						syolimits[1] = (ylimits[1] % SECTION_BLOCK_HEIGHT + 1) * CHUNK_BLOCK_AREA;
+				}
+
+				copy_section_bytes(bids, section->data, "Blocks", yo, syolimits, cblimits);
+				if (bdata != NULL) copy_section_nybbles(bdata, section->data, "Data",
+						yo, syolimits, cblimits);
+				if (blight != NULL) copy_section_nybbles(blight, section->data, "BlockLight",
+						yo, syolimits, cblimits);
+				if (slight != NULL) copy_section_nybbles(slight, section->data, "SkyLight",
+						yo, syolimits, cblimits);
 			}
 		}
 	}
@@ -105,7 +149,7 @@ static void get_chunk_data(nbt_node *chunk_nbt, unsigned char *bids, unsigned ch
 
 
 static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
-		unsigned char *data, const textures *tex, const int offset)
+		unsigned char *data, const textures *tex, const unsigned int offset)
 {
 	// copy the block colour into the pixel buffer
 	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset])->colours[COLOUR1], CHANNELS);
@@ -122,14 +166,15 @@ static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
 }
 
 
-static void add_height_shading(unsigned char *pixel, const int y)
+static void add_height_shading(unsigned char *pixel, const unsigned int y)
 {
 	if (pixel[ALPHA] == 0 || y >= HSHADE_BLOCK_HEIGHT) return;
 	adjust_colour_brightness(pixel, (((float)y / HSHADE_BLOCK_HEIGHT) - 1) * HSHADE_AMOUNT);
 }
 
 
-static int get_offset(const int y, const int rbx, const int rbz, const unsigned char rotate)
+static int get_offset(const unsigned int y, const unsigned int rbx, const unsigned int rbz,
+		const unsigned char rotate)
 {
 	int bx, bz;
 	switch(rotate) {
@@ -173,7 +218,7 @@ static void get_neighbour_values(unsigned char *data, unsigned char *ndata[4],
 
 
 static void set_light_levels(unsigned char colours[COLOUR_COUNT][CHANNELS], const shape *bshape,
-		const int offset, const unsigned char *clight, const unsigned char nlight[],
+		const unsigned int offset, const unsigned char *clight, const unsigned char nlight[],
 		const char draw_t, const char draw_l, const char draw_r, const unsigned char defval)
 {
 	int toffset = offset + CHUNK_BLOCK_AREA;
@@ -206,14 +251,14 @@ static void set_light_levels(unsigned char colours[COLOUR_COUNT][CHANNELS], cons
 
 
 static void render_iso_column(image *image, const int cpx, const int cpy, const textures *tex,
-		chunkdata chunk, const int rbx, const int rbz, const char rotate)
+		chunkdata chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
 {
 	// get unrotated 2d block offset from rotated coordinates
-	int hoffset = get_offset(0, rbx, rbz, rotate);
-	for (int y = 0; y <= MAX_HEIGHT; y++)
+	unsigned int hoffset = get_offset(0, rbx, rbz, rotate);
+	for (unsigned int y = 0; y <= MAX_HEIGHT; y++)
 	{
 		// get unrotated 3d block offset
-		int offset = y * CHUNK_BLOCK_AREA + hoffset;
+		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
 		unsigned char bid, bdata, blight, nbids[4], nbdata[4], nblight[4], nslight[4];
 		bid = chunk.bids[offset];
@@ -308,18 +353,18 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 
 
 static void render_ortho_block(image *image, const int cpx, const int cpy, const textures *tex,
-		chunkdata chunk, const int rbx, const int rbz, const char rotate)
+		chunkdata chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
 {
 	// get pixel buffer for this block's rotated position
 	unsigned char *pixel = &image->data[((cpy + rbz) * image->width + cpx + rbx) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
-	int hoffset = get_offset(0, rbx, rbz, rotate);
+	unsigned int hoffset = get_offset(0, rbx, rbz, rotate);
 
 	for (int y = MAX_HEIGHT; y >= 0; y--)
 	{
 		// get unrotated 3d block offset
-		int offset = y * CHUNK_BLOCK_AREA + hoffset;
+		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
 		// skip air blocks or invalid block ids
 		if (chunk.bids[offset] == 0 || chunk.bids[offset] >= tex->max_blockid) continue;
@@ -347,8 +392,9 @@ static void render_ortho_block(image *image, const int cpx, const int cpy, const
 }
 
 
-void render_chunk_map(image *image, const int cpx, const int cpy,
-		nbt_node *chunk_nbt, nbt_node *nchunks_nbt[4], const textures *tex, const options *opts)
+void render_chunk_map(image *image, const int cpx, const int cpy, nbt_node *chunk_nbt,
+		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
+		const options *opts)
 {
 	// get block data for this chunk
 	chunkdata chunk;
@@ -359,7 +405,8 @@ void render_chunk_map(image *image, const int cpx, const int cpy,
 			(unsigned char*)malloc(CHUNK_BLOCK_VOLUME) : NULL;
 	// initialize skylight to full rather than zero
 	if (chunk.slight != NULL) memset(chunk.slight, 255, CHUNK_BLOCK_VOLUME);
-	get_chunk_data(chunk_nbt, chunk.bids, chunk.bdata, chunk.blight, chunk.slight);
+	get_chunk_data(chunk_nbt, chunk.bids, chunk.bdata, chunk.blight, chunk.slight, cblimits,
+			opts->ylimits);
 
 	// get block data for neighbouring chunks
 	for (int i = 0; i < 4; i++)
@@ -382,21 +429,17 @@ void render_chunk_map(image *image, const int cpx, const int cpy,
 					(unsigned char*)malloc(CHUNK_BLOCK_VOLUME) : NULL;
 			if (chunk.nslight[i] != NULL) memset(chunk.nslight[i], 255, CHUNK_BLOCK_VOLUME);
 			get_chunk_data(nchunks_nbt[i], chunk.nbids[i], chunk.nbdata[i], chunk.nblight[i],
-					chunk.nslight[i]);
+					chunk.nslight[i], cblimits, opts->ylimits);
 		}
 	}
 
 	// loop through rotated chunk's blocks
-	for (int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
-	{
-		for (int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
-		{
+	for (unsigned int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
+		for (unsigned int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
 			if (opts->isometric)
 				render_iso_column(image, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
 			else
 				render_ortho_block(image, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
-		}
-	}
 
 	free(chunk.bids);
 	free(chunk.bdata);
@@ -418,10 +461,16 @@ void save_chunk_map(nbt_node *chunk, const char *imagefile, const options *opts)
 			create_image(ISO_CHUNK_WIDTH, ISO_CHUNK_HEIGHT) :
 			create_image(CHUNK_BLOCK_LENGTH, CHUNK_BLOCK_LENGTH);
 
+	unsigned int cblimits_arr[4];
+	if (opts->limits != NULL)
+		for (int i = 0; i < 4; i++)
+			cblimits_arr[i] = MAX(0, MIN(CHUNK_BLOCK_LENGTH, opts->limits[i]));
+	unsigned int *cblimits = (opts->limits != NULL ? cblimits_arr : NULL);
+
 	textures *tex = read_textures(opts->texpath, opts->shapepath);
 
 	clock_t start = clock();
-	render_chunk_map(&cimage, 0, 0, chunk, NULL, tex, opts);
+	render_chunk_map(&cimage, 0, 0, chunk, NULL, cblimits, tex, opts);
 	clock_t render_end = clock();
 	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
 
