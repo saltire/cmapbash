@@ -305,35 +305,3 @@ void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 	close_region_file(reg);
 	for (int i = 0; i < 4; i++) close_region_file(nregions[i]);
 }
-
-
-void save_region_map(const char *regiondir, const int rx, const int rz, const char *imagefile,
-		const options *opts)
-{
-	int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
-	if (opts->use_limits)
-		for (int i = 0; i < 4; i++) rclimits[i] = MAX(0, MIN(REGION_CHUNK_LENGTH, opts->limits[i]));
-
-	region reg = read_region(regiondir, rx, rz, rclimits);
-
-	image rimage = opts->isometric ?
-			create_image(ISO_REGION_WIDTH, ISO_REGION_HEIGHT) :
-			create_image(REGION_BLOCK_LENGTH, REGION_BLOCK_LENGTH);
-
-	textures *tex = read_textures(opts->texpath, opts->shapepath);
-
-	clock_t start = clock();
-	render_region_map(&rimage, 0, 0, &reg, NULL, tex, opts);
-	clock_t render_end = clock();
-	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
-
-	free_textures(tex);
-
-	if (rimage.data == NULL) return;
-
-	printf("Saving image to %s ...\n", imagefile);
-	save_image(rimage, imagefile);
-	printf("Total save time: %f seconds\n", (double)(clock() - render_end) / CLOCKS_PER_SEC);
-
-	free_image(rimage);
-}

@@ -49,8 +49,5 @@ void render_tiny_region_map(image *image, const int rpx, const int rpy, region *
 void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 		region *nregions[4], const textures *tex, const options *opts);
 
-void save_region_map(const char *regiondir, const int rx, const int rz, const char *imagefile,
-		const options *opts);
-
 
 #endif

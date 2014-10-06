@@ -45,7 +45,5 @@ void render_chunk_map(image *image, const int cpx, const int cpy, nbt_node *chun
 		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
 		const options *opts);
 
-void save_chunk_map(nbt_node *chunk, const char *imagefile, const options *opts);
-
 
 #endif
