@@ -32,10 +32,10 @@
 #include "world.h"
 
 
-static world measure_world(char *worldpath, const options *opts)
+static worldinfo *measure_world(char *worldpath, const options *opts)
 {
-	world world;
-	world.rcount = -1;
+	worldinfo *world = (worldinfo*)malloc(sizeof(worldinfo));
+	world->rcount = -1;
 
 	// check for errors, strip trailing slash and append region directory
 	size_t dirlen = strlen(worldpath);
@@ -46,12 +46,12 @@ static world measure_world(char *worldpath, const options *opts)
 	}
 	if (worldpath[dirlen - 1] == '/')
 		worldpath[dirlen - 1] = 0;
-	sprintf(world.regiondir, "%s/region", worldpath);
+	sprintf(world->regiondir, "%s/region", worldpath);
 
-	DIR *dir = opendir(world.regiondir);
+	DIR *dir = opendir(world->regiondir);
 	if (dir == NULL)
 	{
-		fprintf(stderr, "Error %d reading region directory: %s\n", errno, world.regiondir);
+		fprintf(stderr, "Error %d reading region directory: %s\n", errno, world->regiondir);
 		return world;
 	}
 
@@ -64,7 +64,7 @@ static world measure_world(char *worldpath, const options *opts)
 			wrblimits[i] = opts->limits[i] & MAX_REGION_BLOCK;
 		}
 
-	world.rcount = 0;
+	world->rcount = 0;
 
 	// list directory to find the number of region files, and image dimensions
 	struct dirent *ent;
@@ -80,7 +80,7 @@ static world measure_world(char *worldpath, const options *opts)
 					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
 				continue;
 
-			if (world.rcount == 0)
+			if (world->rcount == 0)
 			{
 				rxmin = rxmax = rx;
 				rzmin = rzmax = rz;
@@ -92,23 +92,23 @@ static world measure_world(char *worldpath, const options *opts)
 				if (rz < rzmin) rzmin = rz;
 				if (rz > rzmax) rzmax = rz;
 			}
-			world.rcount++;
+			world->rcount++;
 		}
 	}
-	if (!world.rcount) return world;
+	if (!world->rcount) return world;
 
 	int rxsize = rxmax - rxmin + 1;
 	int rzsize = rzmax - rzmin + 1;
-	world.rrxsize = opts->rotate % 2 ? rzsize : rxsize;
-	world.rrzsize = opts->rotate % 2 ? rxsize : rzsize;
-	world.rrxmax = world.rrxsize - 1;
-	world.rrzmax = world.rrzsize - 1;
-	world.rotate = opts->rotate;
+	world->rrxsize = opts->rotate % 2 ? rzsize : rxsize;
+	world->rrzsize = opts->rotate % 2 ? rxsize : rzsize;
+	world->rrxmax = world->rrxsize - 1;
+	world->rrzmax = world->rrzsize - 1;
+	world->rotate = opts->rotate;
 
 	// now that we have counted the regions, allocate an array
 	// and loop through directory again to read the region data
-	world.regionmap = (region**)calloc(world.rrxsize * world.rrzsize, sizeof(region*));
-	world.regions = (region*)calloc(world.rcount, sizeof(region));
+	world->regionmap = (region**)calloc(world->rrxsize * world->rrzsize, sizeof(region*));
+	world->regions = (region*)calloc(world->rcount, sizeof(region));
 
 	unsigned int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
 	unsigned int rblimits[4] = {0, MAX_REGION_BLOCK, MAX_REGION_BLOCK, 0};
@@ -125,7 +125,7 @@ static world measure_world(char *worldpath, const options *opts)
 
 			// get rotated world-relative region coords from absolute coords
 			int rrx, rrz;
-			switch(world.rotate) {
+			switch(world->rotate) {
 			case 0:
 				rrx = rx - rxmin;
 				rrz = rz - rzmin;
@@ -153,9 +153,9 @@ static world measure_world(char *worldpath, const options *opts)
 				rblimits[3] = (rx == wrlimits[3] ? wrblimits[3] : 0);
 			}
 
-			world.regions[r] = read_region(world.regiondir, rx, rz, rblimits);
-			if (world.regions[r].loaded)
-				world.regionmap[rrz * world.rrxsize + rrx] = &world.regions[r];
+			world->regions[r] = read_region(world->regiondir, rx, rz, rblimits);
+			if (world->regions[r].loaded)
+				world->regionmap[rrz * world->rrxsize + rrx] = &world->regions[r];
 			r++;
 		}
 	closedir(dir);
@@ -164,14 +164,15 @@ static world measure_world(char *worldpath, const options *opts)
 }
 
 
-static void free_world(world *world)
+static void free_world(worldinfo *world)
 {
 	free(world->regionmap);
 	free(world->regions);
+	free(world);
 }
 
 
-static region *get_region_from_coords(const world *world, const int rrx, const int rrz)
+static region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz)
 {
 	// check if region is out of bounds
 	if (rrx < 0 || rrx > world->rrxmax || rrz < 0 || rrz > world->rrzmax) return NULL;
@@ -180,7 +181,7 @@ static region *get_region_from_coords(const world *world, const int rrx, const i
 }
 
 
-static void get_world_margins(unsigned int *margins, const world *world, const char isometric)
+static void get_world_margins(unsigned int *margins, const worldinfo *world, const char isometric)
 {
 	// initialize margins to maximum, and decrease them as regions are found
 	if (isometric)
@@ -238,7 +239,8 @@ static void get_world_margins(unsigned int *margins, const world *world, const c
 }
 
 
-void render_tiny_world_map(image *image, int wpx, int wpy, const world *world, const options *opts)
+void render_tiny_world_map(image *image, int wpx, int wpy, const worldinfo *world,
+		const options *opts)
 {
 	int r = 0;
 	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
@@ -261,7 +263,7 @@ void render_tiny_world_map(image *image, int wpx, int wpy, const world *world, c
 }
 
 
-void render_world_map(image *image, int wpx, int wpy, const world *world, const textures *tex,
+void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const textures *tex,
 		const options *opts)
 {
 	int r = 0;
@@ -307,86 +309,85 @@ void render_world_map(image *image, int wpx, int wpy, const world *world, const 
 
 void save_tiny_world_map(char *worlddir, const char *imagefile, const options *opts)
 {
-	world world = measure_world(worlddir, opts);
-	if (!world.rcount)
+	worldinfo *world = measure_world(worlddir, opts);
+	if (!world->rcount)
 	{
 		fprintf(stderr, "No regions found in directory: %s\n", worlddir);
 		return;
 	}
 
 	int width, height, margins[4];
-	get_world_margins(margins, &world, 0);
+	get_world_margins(margins, world, 0);
 
 	// tiny map's scale is 1 chunk : 1 pixel
 	for (int i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
 
-	width  = world.rrxsize * REGION_CHUNK_LENGTH - margins[1] - margins[3];
-	height = world.rrzsize * REGION_CHUNK_LENGTH - margins[0] - margins[2];
+	width  = world->rrxsize * REGION_CHUNK_LENGTH - margins[1] - margins[3];
+	height = world->rrzsize * REGION_CHUNK_LENGTH - margins[0] - margins[2];
 
-	image wimage = create_image(width, height);
-	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
+	image *img = create_image(width, height);
+	printf("Read %d regions. Image dimensions: %d x %d\n", world->rcount, width, height);
 
-	render_tiny_world_map(&wimage, -margins[3], -margins[0], &world, opts);
+	render_tiny_world_map(img, -margins[3], -margins[0], world, opts);
 
-	free_world(&world);
+	free_world(world);
 
 	printf("Saving image to %s ...\n", imagefile);
-	save_image(wimage, imagefile);
+	save_image(img, imagefile);
 
-	free_image(wimage);
+	free_image(img);
 }
 
 
-void save_world_map(char *worldpath, const char *imagefile, const options *opts)
+void save_world_map(char *worldpath, const char *imgfile, const options *opts)
 {
-	world world = measure_world(worldpath, opts);
+	worldinfo *world = measure_world(worldpath, opts);
 
 	// check for errors
-	if (world.rcount == -1) return;
-	if (world.rcount == 0)
+	if (world->rcount == -1) return;
+	if (world->rcount == 0)
 	{
-		fprintf(stderr, "No regions found in world region directory: %s\n", world.regiondir);
+		fprintf(stderr, "No regions found in world region directory: %s\n", world->regiondir);
 		return;
 	}
 
 	unsigned int width, height, margins[4];
-	get_world_margins(margins, &world, opts->isometric);
+	get_world_margins(margins, world, opts->isometric);
 	if (opts->isometric)
 	{
-		width  = (world.rrxsize + world.rrzsize) * ISO_REGION_X_MARGIN;
-		height = (world.rrxsize + world.rrzsize) * ISO_REGION_Y_MARGIN
+		width  = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
+		height = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
 				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 		if (opts->ylimits != NULL)
 		{
-			printf("adding %d, %d\n", (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH, opts->ylimits[0] * ISO_BLOCK_DEPTH);
 			margins[0] += (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH;
 			margins[2] += opts->ylimits[0] * ISO_BLOCK_DEPTH;
 		}
 	}
 	else
 	{
-		width  = world.rrxsize * REGION_BLOCK_LENGTH;
-		height = world.rrzsize * REGION_BLOCK_LENGTH;
+		width  = world->rrxsize * REGION_BLOCK_LENGTH;
+		height = world->rrzsize * REGION_BLOCK_LENGTH;
 	}
 	width  -= (margins[1] + margins[3]);
 	height -= (margins[0] + margins[2]);
 
-	image wimage = create_image(width, height);
-	printf("Read %d regions. Image dimensions: %d x %d\n", world.rcount, width, height);
+	image *img = create_image(width, height);
+	printf("Read %d regions. Image dimensions: %d x %d\n", world->rcount, width, height);
 
 	textures *tex = read_textures(opts->texpath, opts->shapepath);
 
 	clock_t start = clock();
-	render_world_map(&wimage, -margins[3], -margins[0], &world, tex, opts);
-	clock_t render_end = clock();
-	printf("Total render time: %f seconds\n", (double)(render_end - start) / CLOCKS_PER_SEC);
+	render_world_map(img, -margins[3], -margins[0], world, tex, opts);
+	printf("Total render time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
 
 	free_textures(tex);
-	free_world(&world);
+	free_world(world);
 
-	printf("Saving image to %s ...\n", imagefile);
-	save_image(wimage, imagefile);
-	printf("Total save time: %f seconds\n", (double)(clock() - render_end) / CLOCKS_PER_SEC);
+	printf("Saving image to %s ...\n", imgfile);
+	start = clock();
+	save_image(img, imgfile);
+	printf("Total save time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
 
-	free_image(wimage);
+	free_image(img);
 }

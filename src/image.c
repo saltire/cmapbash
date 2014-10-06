@@ -17,6 +17,7 @@
 */
 
 
+#include <stdio.h>
 #include <stdlib.h>
 
 
@@ -25,24 +26,24 @@
 #include "image.h"
 
 
-image create_image(const unsigned int width, const unsigned int height)
+image *create_image(const unsigned int width, const unsigned int height)
 {
-	image image = {
-			.width = width,
-			.height = height,
-			.data = (unsigned char*)calloc(width * height * CHANNELS, sizeof(char))
-	};
-	return image;
+	image *img = (image*)malloc(sizeof(image));
+	img->width = width;
+	img->height = height;
+	img->data = (unsigned char*)calloc(width * height * CHANNELS, sizeof(char));
+	return img;
 }
 
 
-void save_image(const image image, const char *outfile)
+void save_image(const image *img, const char *imgfile)
 {
-	lodepng_encode32_file(outfile, image.data, image.width, image.height);
+	lodepng_encode32_file(imgfile, img->data, img->width, img->height);
 }
 
 
-void free_image(image image)
+void free_image(image *img)
 {
-	free(image.data);
+	free(img->data);
+	free(img);
 }

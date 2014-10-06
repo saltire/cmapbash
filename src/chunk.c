@@ -233,7 +233,7 @@ static void set_light_levels(unsigned char colours[COLOUR_COUNT][CHANNELS], cons
 }
 
 
-static void render_iso_column(image *image, const int cpx, const int cpy, const textures *tex,
+static void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
 		chunkdata chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
 {
 	// get unrotated 2d block offset from rotated coordinates
@@ -322,12 +322,12 @@ static void render_iso_column(image *image, const int cpx, const int cpy, const 
 				unsigned char pcolour = bshape->pixels[sy * ISO_BLOCK_WIDTH + sx];
 				if (pcolour == BLANK) continue;
 				{
-					int po = (py + sy) * image->width + px + sx;
+					int po = (py + sy) * img->width + px + sx;
 
 					if ((sy < ISO_BLOCK_TOP_HEIGHT) ||
 							(sx < ISO_BLOCK_WIDTH / 2 && draw_left) ||
 							(sx >= ISO_BLOCK_WIDTH / 2 && draw_right))
-						combine_alpha(colours[pcolour], &image->data[po * CHANNELS], 1);
+						combine_alpha(colours[pcolour], &img->data[po * CHANNELS], 1);
 				}
 			}
 		}
@@ -353,11 +353,11 @@ static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
 }
 
 
-static void render_ortho_block(image *image, const int cpx, const int cpy, const textures *tex,
+static void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
 		chunkdata chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
 {
 	// get pixel buffer for this block's rotated position
-	unsigned char *pixel = &image->data[((cpy + rbz) * image->width + cpx + rbx) * CHANNELS];
+	unsigned char *pixel = &img->data[((cpy + rbz) * img->width + cpx + rbx) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
 	unsigned int hoffset = get_offset(0, rbx, rbz, rotate);
@@ -393,7 +393,7 @@ static void render_ortho_block(image *image, const int cpx, const int cpy, const
 }
 
 
-void render_chunk_map(image *image, const int cpx, const int cpy, nbt_node *chunk_nbt,
+void render_chunk_map(image *img, const int cpx, const int cpy, nbt_node *chunk_nbt,
 		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
 		const options *opts)
 {
@@ -430,9 +430,9 @@ void render_chunk_map(image *image, const int cpx, const int cpy, nbt_node *chun
 	for (unsigned int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
 		for (unsigned int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
 			if (opts->isometric)
-				render_iso_column(image, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
+				render_iso_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
 			else
-				render_ortho_block(image, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
+				render_ortho_block(img, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
 
 	free(chunk.bids);
 	free(chunk.bdata);

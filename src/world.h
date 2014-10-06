@@ -28,7 +28,7 @@
 #include "textures.h"
 
 
-typedef struct world
+typedef struct worldinfo
 {
 	char regiondir[REGIONDIR_PATH_MAXLEN];
 	int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
@@ -36,11 +36,12 @@ typedef struct world
 	region *regions;
 	region **regionmap;
 }
-world;
+worldinfo;
 
 
-void render_tiny_world_map(image *image, int wpx, int wpy, const world *world, const options *opts);
-void render_world_map(image *image, int wpx, int wpy, const world *world, const textures *tex,
+void render_tiny_world_map(image *image, int wpx, int wpy, const worldinfo *world,
+		const options *opts);
+void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const textures *tex,
 		const options *opts);
 
 void save_tiny_world_map(char *worlddir, const char *imagefile, const options *opts);

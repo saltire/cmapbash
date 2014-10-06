@@ -183,7 +183,7 @@ static nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, con
 }
 
 
-void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
+void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
 		const options *opts)
 {
 	open_region_file(reg);
@@ -202,7 +202,7 @@ void render_tiny_region_map(image *image, const int rpx, const int rpy, region *
 			// if it exists, colour this pixel
 			int cpx = rpx + rcx;
 			int cpy = rpy + rcz;
-			unsigned char *pixel = &image->data[(cpy * image->width + cpx) * CHANNELS];
+			unsigned char *pixel = &img->data[(cpy * img->width + cpx) * CHANNELS];
 			memcpy(pixel, colour, CHANNELS);
 		}
 	}
@@ -211,7 +211,7 @@ void render_tiny_region_map(image *image, const int rpx, const int rpy, region *
 }
 
 
-void render_region_map(image *image, const int rpx, const int rpy, region *reg,
+void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 		region *nregions[4], const textures *tex, const options *opts)
 {
 	open_region_file(reg);
@@ -283,7 +283,7 @@ void render_region_map(image *image, const int rpx, const int rpy, region *reg,
 				cpx = rpx + rcx * CHUNK_BLOCK_LENGTH;
 				cpy = rpy + rcz * CHUNK_BLOCK_LENGTH;
 			}
-			render_chunk_map(image, cpx, cpy, chunk, nchunks, cblimits, tex, opts);
+			render_chunk_map(img, cpx, cpy, chunk, nchunks, cblimits, tex, opts);
 
 			// free chunks, or save them for the next iteration if we're not at the end of a row
 			nbt_free(nchunks[0]);

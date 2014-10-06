@@ -41,7 +41,7 @@ typedef struct options
 options;
 
 
-void render_chunk_map(image *image, const int cpx, const int cpy, nbt_node *chunk_nbt,
+void render_chunk_map(image *img, const int cpx, const int cpy, nbt_node *chunk_nbt,
 		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
 		const options *opts);
 

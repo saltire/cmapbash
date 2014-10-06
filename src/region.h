@@ -44,9 +44,9 @@ region read_region(const char *regiondir, const int rx, const int rz,
 void get_region_margins(unsigned int *margins, region *reg, const char rotate,
 		const char isometric);
 
-void render_tiny_region_map(image *image, const int rpx, const int rpy, region *reg,
+void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
 		const options *opts);
-void render_region_map(image *image, const int rpx, const int rpy, region *reg,
+void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 		region *nregions[4], const textures *tex, const options *opts);
 
 
