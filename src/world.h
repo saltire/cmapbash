@@ -31,7 +31,7 @@
 typedef struct worldinfo
 {
 	char regiondir[REGIONDIR_PATH_MAXLEN];
-	int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
+	unsigned int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
 	unsigned char rotate;
 	region *regions;
 	region **regionmap;
@@ -39,12 +39,8 @@ typedef struct worldinfo
 worldinfo;
 
 
-void render_tiny_world_map(image *image, int wpx, int wpy, const worldinfo *world,
-		const options *opts);
-void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const textures *tex,
-		const options *opts);
+void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts);
 
-void save_tiny_world_map(char *worlddir, const char *imagefile, const options *opts);
 void save_world_map(char *worlddir, const char *imagefile, const options *opts);
 
 

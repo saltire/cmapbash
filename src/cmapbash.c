@@ -160,23 +160,22 @@ int main(int argc, char **argv)
 					fx, opts.ylimits[0], fz, tx, opts.ylimits[1], tz);
 	}
 
-	if (opts.rotate)
-		printf("Rotating %d degrees clockwise\n", opts.rotate * 90);
+	if (opts.rotate) printf("Rotating %d degrees clockwise\n", opts.rotate * 90);
 
 	if (opts.tiny)
 	{
 		printf("Rendering in tiny mode.\n");
-		save_tiny_world_map(inpath, outpath, &opts);
+		opts.isometric = 0;
 	}
 	else
 	{
 		printf("Rendering in %s mode\n", opts.isometric ? "isometric" : "orthographic");
-		if (opts.night)
-			printf("Night mode is on\n");
-		else if (opts.isometric && opts.shadows)
-			printf("Daytime shadows are on\n");
-		save_world_map(inpath, outpath, &opts);
+
+		if (opts.night) printf("Night mode is on\n");
+		else if (opts.isometric && opts.shadows) printf("Daytime shadows are on\n");
 	}
+
+	save_world_map(inpath, outpath, &opts);
 
 	return 0;
 }

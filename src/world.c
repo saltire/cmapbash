@@ -35,7 +35,7 @@
 static worldinfo *measure_world(char *worldpath, const options *opts)
 {
 	worldinfo *world = (worldinfo*)malloc(sizeof(worldinfo));
-	world->rcount = -1;
+	world->rcount = 0;
 
 	// check for errors, strip trailing slash and append region directory
 	size_t dirlen = strlen(worldpath);
@@ -63,8 +63,6 @@ static worldinfo *measure_world(char *worldpath, const options *opts)
 			wrlimits[i] = opts->limits[i] >> REGION_BLOCK_BITS;
 			wrblimits[i] = opts->limits[i] & MAX_REGION_BLOCK;
 		}
-
-	world->rcount = 0;
 
 	// list directory to find the number of region files, and image dimensions
 	struct dirent *ent;
@@ -95,7 +93,11 @@ static worldinfo *measure_world(char *worldpath, const options *opts)
 			world->rcount++;
 		}
 	}
-	if (!world->rcount) return world;
+	if (!world->rcount)
+	{
+		fprintf(stderr, "No regions found in world region directory: %s\n", world->regiondir);
+		return world;
+	}
 
 	int rxsize = rxmax - rxmin + 1;
 	int rzsize = rzmax - rzmin + 1;
@@ -239,33 +241,10 @@ static void get_world_margins(unsigned int *margins, const worldinfo *world, con
 }
 
 
-void render_tiny_world_map(image *image, int wpx, int wpy, const worldinfo *world,
-		const options *opts)
+void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts)
 {
-	int r = 0;
-	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
-	{
-		for (int rrx = 0; rrx <= world->rrxmax; rrx++)
-		{
-			// get region, or skip if it doesn't exist
-			region *reg = get_region_from_coords(world, rrx, rrz);
-			if (reg == NULL) continue;
+	textures *tex = opts->tiny ? NULL : read_textures(opts->texpath, opts->shapepath);
 
-			r++;
-			printf("Rendering region %d/%d (%d,%d)...\n", r, world->rcount, reg->x, reg->z);
-
-			int rpx = rrx * REGION_CHUNK_LENGTH + wpx;
-			int rpy = rrz * REGION_CHUNK_LENGTH + wpy;
-
-			render_tiny_region_map(image, rpx, rpy, reg, opts);
-		}
-	}
-}
-
-
-void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const textures *tex,
-		const options *opts)
-{
 	int r = 0;
 	// we need to render the regions in order from top to bottom for isometric view
 	for (int rrz = 0; rrz <= world->rrzmax; rrz++)
@@ -276,84 +255,65 @@ void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, co
 			region *reg = get_region_from_coords(world, rrx, rrz);
 			if (reg == NULL) continue;
 
-			// get rotated neighbouring region paths
-			region *nregions[4] =
-			{
-				get_region_from_coords(world, rrx, rrz - 1),
-				get_region_from_coords(world, rrx + 1, rrz),
-				get_region_from_coords(world, rrx, rrz + 1),
-				get_region_from_coords(world, rrx - 1, rrz),
-			};
-
 			r++;
 			printf("Rendering region %d/%d (%d,%d)...\n", r, world->rcount, reg->x, reg->z);
 
 			int rpx, rpy;
-			if (opts->isometric)
+
+			if (opts->tiny)
 			{
-				// translate orthographic region coordinates to isometric pixel coordinates
-				rpx = (rrx + world->rrzmax - rrz) * ISO_REGION_X_MARGIN + wpx;
-				rpy = (rrx + rrz)                * ISO_REGION_Y_MARGIN + wpy;
+				rpx = rrx * REGION_CHUNK_LENGTH + wpx;
+				rpy = rrz * REGION_CHUNK_LENGTH + wpy;
+				render_tiny_region_map(image, rpx, rpy, reg, opts);
 			}
 			else
 			{
-				rpx = rrx * REGION_BLOCK_LENGTH + wpx;
-				rpy = rrz * REGION_BLOCK_LENGTH + wpy;
-			}
+				if (opts->isometric)
+				{
+					// translate orthographic region coordinates to isometric pixel coordinates
+					rpx = (rrx + world->rrzmax - rrz) * ISO_REGION_X_MARGIN + wpx;
+					rpy = (rrx + rrz)                * ISO_REGION_Y_MARGIN + wpy;
+				}
+				else
+				{
+					rpx = rrx * REGION_BLOCK_LENGTH + wpx;
+					rpy = rrz * REGION_BLOCK_LENGTH + wpy;
+				}
 
-			render_region_map(image, rpx, rpy, reg, nregions, tex, opts);
+				// get rotated neighbouring region paths
+				region *nregions[4] =
+				{
+					get_region_from_coords(world, rrx, rrz - 1),
+					get_region_from_coords(world, rrx + 1, rrz),
+					get_region_from_coords(world, rrx, rrz + 1),
+					get_region_from_coords(world, rrx - 1, rrz),
+				};
+
+				render_region_map(image, rpx, rpy, reg, nregions, tex, opts);
+			}
 		}
 	}
-}
 
-
-void save_tiny_world_map(char *worlddir, const char *imagefile, const options *opts)
-{
-	worldinfo *world = measure_world(worlddir, opts);
-	if (!world->rcount)
-	{
-		fprintf(stderr, "No regions found in directory: %s\n", worlddir);
-		return;
-	}
-
-	int width, height, margins[4];
-	get_world_margins(margins, world, 0);
-
-	// tiny map's scale is 1 chunk : 1 pixel
-	for (int i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
-
-	width  = world->rrxsize * REGION_CHUNK_LENGTH - margins[1] - margins[3];
-	height = world->rrzsize * REGION_CHUNK_LENGTH - margins[0] - margins[2];
-
-	image *img = create_image(width, height);
-	printf("Read %d regions. Image dimensions: %d x %d\n", world->rcount, width, height);
-
-	render_tiny_world_map(img, -margins[3], -margins[0], world, opts);
-
-	free_world(world);
-
-	printf("Saving image to %s ...\n", imagefile);
-	save_image(img, imagefile);
-
-	free_image(img);
+	if (!opts->tiny) free_textures(tex);
 }
 
 
 void save_world_map(char *worldpath, const char *imgfile, const options *opts)
 {
 	worldinfo *world = measure_world(worldpath, opts);
-
-	// check for errors
-	if (world->rcount == -1) return;
-	if (world->rcount == 0)
-	{
-		fprintf(stderr, "No regions found in world region directory: %s\n", world->regiondir);
-		return;
-	}
+	if (!world->rcount) return;
 
 	unsigned int width, height, margins[4];
 	get_world_margins(margins, world, opts->isometric);
-	if (opts->isometric)
+
+	if (opts->tiny)
+	{
+		width  = world->rrxsize * REGION_CHUNK_LENGTH;
+		height = world->rrzsize * REGION_CHUNK_LENGTH;
+		// tiny map's scale is 1 pixel per chunk
+		for (int i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
+	}
+	else if (opts->isometric)
 	{
 		width  = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
 		height = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
@@ -375,13 +335,10 @@ void save_world_map(char *worldpath, const char *imgfile, const options *opts)
 	image *img = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n", world->rcount, width, height);
 
-	textures *tex = read_textures(opts->texpath, opts->shapepath);
-
 	clock_t start = clock();
-	render_world_map(img, -margins[3], -margins[0], world, tex, opts);
+	render_world_map(img, -margins[3], -margins[0], world, opts);
 	printf("Total render time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
 
-	free_textures(tex);
 	free_world(world);
 
 	printf("Saving image to %s ...\n", imgfile);
