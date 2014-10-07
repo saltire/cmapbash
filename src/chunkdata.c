@@ -37,7 +37,7 @@ static void copy_section_bytes(unsigned char *data, nbt_node *section, const cha
 	}
 
 	if (cblimits == NULL)
-		memcpy(data + yo + syolimits[0], array->payload.tag_byte_array.data,
+		memcpy(data + yo + syolimits[0], array->payload.tag_byte_array.data + syolimits[0],
 				syolimits[1] - syolimits[0]);
 	else
 		for (unsigned int syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
