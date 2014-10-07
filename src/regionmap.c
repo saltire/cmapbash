@@ -17,72 +17,13 @@
 */
 
 
-#include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
-#include "chunk.h"
+#include "chunkmap.h"
 #include "dims.h"
 #include "image.h"
-#include "region.h"
-
-
-#define SECTOR_BYTES 4096
-#define OFFSET_BYTES 4
-#define LENGTH_BYTES 4
-
-
-static FILE *open_region_file(region *reg)
-{
-	if (reg == NULL) return NULL;
-	reg->file = fopen(reg->path, "rb");
-	if (reg->file == NULL) fprintf(stderr, "Error %d reading region file: %s\n", errno, reg->path);
-	return reg->file;
-}
-
-
-static void close_region_file(region *reg)
-{
-	if (reg == NULL || reg->file == NULL) return;
-	fclose(reg->file);
-	reg->file = NULL;
-}
-
-
-region read_region(const char *regiondir, const int rx, const int rz,
-		const unsigned int rblimits[4])
-{
-	region reg;
-	reg.x = rx;
-	reg.z = rz;
-	sprintf(reg.path, "%s/r.%d.%d.mca", regiondir, rx, rz);
-
-	open_region_file(&reg);
-	if (reg.file == NULL) reg.loaded = 0;
-	else
-	{
-		memcpy(&reg.blimits, rblimits, sizeof(reg.blimits));
-		for (int i = 0; i < 4; i++) reg.climits[i] = rblimits[i] >> CHUNK_BLOCK_BITS;
-
-		memset(reg.offsets, 0, sizeof(reg.offsets));
-		for (unsigned int cz = reg.climits[0]; cz <= reg.climits[2]; cz++)
-		{
-			for (unsigned int cx = reg.climits[3]; cx <= reg.climits[1]; cx++)
-			{
-				unsigned int co = cz * REGION_CHUNK_LENGTH + cx;
-				fseek(reg.file, co * OFFSET_BYTES, SEEK_SET);
-				unsigned char buffer[OFFSET_BYTES];
-				fread(buffer, 1, OFFSET_BYTES, reg.file);
-				reg.offsets[co] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
-			}
-		}
-		reg.loaded = 1;
-	}
-	close_region_file(&reg);
-	return reg;
-}
+#include "regiondata.h"
 
 
 void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,
@@ -124,65 +65,6 @@ void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,
 }
 
 
-static unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
-		const char rotate)
-{
-	// get absolute chunk coordinates from rotated chunk coordinates
-	unsigned int cx, cz;
-	switch(rotate) {
-	case 0:
-		cx = rcx;
-		cz = rcz;
-		break;
-	case 1:
-		cx = rcz;
-		cz = MAX_REGION_CHUNK - rcx;
-		break;
-	case 2:
-		cx = MAX_REGION_CHUNK - rcx;
-		cz = MAX_REGION_CHUNK - rcz;
-		break;
-	case 3:
-		cx = MAX_REGION_CHUNK - rcz;
-		cz = rcx;
-		break;
-	}
-
-	return cz * REGION_CHUNK_LENGTH + cx;
-}
-
-
-static nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char rotate)
-{
-	// warning: this function assumes that the region's file is already open
-	if (reg == NULL || reg->file == NULL) return NULL;
-
-	// get the byte offset of this chunk's data in the region file
-	unsigned int offset = reg->offsets[get_chunk_offset(rcx, rcz, rotate)];
-	if (offset == 0) return NULL;
-
-	unsigned char buffer[LENGTH_BYTES];
-	fseek(reg->file, offset * SECTOR_BYTES, SEEK_SET);
-	fread(buffer, 1, LENGTH_BYTES, reg->file);
-	int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
-
-	char *cdata = (char*)malloc(length);
-	fseek(reg->file, 1, SEEK_CUR);
-	//printf("Reading %d bytes at %#lx.\n", length, ftell(rfile));
-	fread(cdata, length, 1, reg->file);
-
-	nbt_node *chunk_nbt = nbt_parse_compressed(cdata, length);
-	if (errno != NBT_OK)
-	{
-		fprintf(stderr, "Error %d parsing chunk\n", errno);
-		return NULL;
-	}
-	free(cdata);
-
-	return chunk_nbt;
-}
-
-
 void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
 		const options *opts)
 {
@@ -195,11 +77,9 @@ void render_tiny_region_map(image *img, const int rpx, const int rpy, region *re
 	{
 		for (unsigned int rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
 		{
-			// check for the chunk's existence using its rotated coordinates
-			unsigned int offset = reg->offsets[get_chunk_offset(rcx, rcz, opts->rotate)];
-			if (offset == 0) continue;
+			if (!chunk_exists(reg, rcx, rcz, opts->rotate)) continue;
 
-			// if it exists, colour this pixel
+			// colour this pixel
 			int cpx = rpx + rcx;
 			int cpy = rpy + rcz;
 			unsigned char *pixel = &img->data[(cpy * img->width + cpx) * CHANNELS];

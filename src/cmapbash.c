@@ -20,11 +20,10 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "chunk.h"
+#include "chunkmap.h"
 #include "dims.h"
-#include "world.h"
+#include "worldmap.h"
 
 
 int main(int argc, char **argv)

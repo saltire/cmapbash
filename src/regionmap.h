@@ -17,31 +17,22 @@
 */
 
 
-#ifndef WORLD_H
-#define WORLD_H
+#ifndef REGIONMAP_H
+#define REGIONMAP_H
 
 
-#include "chunk.h"
-#include "dims.h"
+#include "chunkmap.h"
 #include "image.h"
-#include "region.h"
 #include "textures.h"
 
 
-typedef struct worldinfo
-{
-	char regiondir[REGIONDIR_PATH_MAXLEN];
-	unsigned int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
-	unsigned char rotate;
-	region *regions;
-	region **regionmap;
-}
-worldinfo;
+void get_region_margins(unsigned int *margins, region *reg, const char rotate,
+		const char isometric);
 
-
-void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts);
-
-void save_world_map(char *worlddir, const char *imagefile, const options *opts);
+void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
+		const options *opts);
+void render_region_map(image *img, const int rpx, const int rpy, region *reg,
+		region *nregions[4], const textures *tex, const options *opts);
 
 
 #endif

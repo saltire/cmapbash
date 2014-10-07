@@ -17,33 +17,37 @@
 */
 
 
-#ifndef CHUNK_H
-#define CHUNK_H
+#ifndef REGIONDATA_H_
+#define REGIONDATA_H_
 
 
-#include "nbt.h"
-
-#include "image.h"
-#include "textures.h"
+#include "dims.h"
 
 
-typedef struct options
+typedef struct region
 {
-	int isometric, night, shadows, tiny, use_limits;
-
-	unsigned char rotate;
-
-	int *limits, *ylimits;
-
-	char *texpath;
-	char *shapepath;
+	int x, z;
+	char path[REGIONFILE_PATH_MAXLEN];
+	unsigned int offsets[REGION_CHUNK_AREA];
+	unsigned char loaded;
+	unsigned int blimits[4], climits[4];
+	FILE *file;
 }
-options;
+region;
 
 
-void render_chunk_map(image *img, const int cpx, const int cpy, nbt_node *chunk_nbt,
-		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
-		const options *opts);
+FILE *open_region_file(region *reg);
+void close_region_file(region *reg);
+
+region read_region(const char *regiondir, const int rx, const int rz,
+		const unsigned int rblimits[4]);
+
+unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
+		const char rotate);
+
+char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
+		const unsigned char rotate);
+nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char rotate);
 
 
 #endif

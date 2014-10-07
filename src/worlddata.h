@@ -17,37 +17,29 @@
 */
 
 
-#ifndef REGION_H
-#define REGION_H
+#ifndef WORLDDATA_H_
+#define WORLDDATA_H_
 
 
-#include "chunk.h"
 #include "dims.h"
-#include "textures.h"
+#include "regiondata.h"
 
 
-typedef struct region
+typedef struct worldinfo
 {
-	int x, z;
-	char path[REGIONFILE_PATH_MAXLEN];
-	unsigned int offsets[REGION_CHUNK_AREA];
-	unsigned char loaded;
-	unsigned int blimits[4], climits[4];
-	FILE *file;
+	char regiondir[REGIONDIR_PATH_MAXLEN];
+	unsigned int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
+	unsigned char rotate;
+	region *regions;
+	region **regionmap;
 }
-region;
+worldinfo;
 
 
-region read_region(const char *regiondir, const int rx, const int rz,
-		const unsigned int rblimits[4]);
+worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int *wblimits);
+void free_world(worldinfo *world);
 
-void get_region_margins(unsigned int *margins, region *reg, const char rotate,
-		const char isometric);
-
-void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
-		const options *opts);
-void render_region_map(image *img, const int rpx, const int rpy, region *reg,
-		region *nregions[4], const textures *tex, const options *opts);
+region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz);
 
 
 #endif
