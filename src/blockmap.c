@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "chunkdata.h"
+#include "data.h"
 #include "dims.h"
 #include "image.h"
 #include "textures.h"
@@ -34,7 +34,7 @@
 #define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
 
 
-unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
+static unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
 		const unsigned int rbz, const unsigned char rotate)
 {
 	return get_offset(y, rbx, rbz, CHUNK_BLOCK_LENGTH, rotate);

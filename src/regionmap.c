@@ -20,11 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "blockmap.h"
+#include "data.h"
 #include "dims.h"
 #include "image.h"
-#include "regiondata.h"
-#include "regionmap.h"
+#include "map.h"
 
 
 void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,

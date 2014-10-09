@@ -23,9 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "data.h"
 #include "dims.h"
-#include "regiondata.h"
-#include "worlddata.h"
 
 
 worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int *wblimits)

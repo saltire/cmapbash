@@ -21,12 +21,10 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "data.h"
 #include "dims.h"
-#include "regiondata.h"
-#include "regionmap.h"
+#include "map.h"
 #include "textures.h"
-#include "worldmap.h"
-#include "worlddata.h"
 
 
 static void get_world_margins(unsigned int *margins, const worldinfo *world, const char isometric)

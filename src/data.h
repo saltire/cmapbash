@@ -17,12 +17,30 @@
 */
 
 
-#ifndef REGIONDATA_H_
-#define REGIONDATA_H_
+#ifndef DATA_H_
+#define DATA_H_
 
 
-#include "chunkdata.h"
+#include "nbt.h"
+
 #include "dims.h"
+
+
+typedef struct chunk_data
+{
+	nbt_node *nbt;
+	unsigned int *blimits;
+	unsigned char *bids, *bdata, *blight, *slight;
+	unsigned char *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
+}
+chunk_data;
+
+
+typedef struct chunk_flags
+{
+	char bids, bdata, blight, slight;
+}
+chunk_flags;
 
 
 typedef struct region
@@ -36,18 +54,26 @@ typedef struct region
 region;
 
 
-typedef struct chunk_flags
+typedef struct worldinfo
 {
-	char bids, bdata, blight, slight;
+	char regiondir[REGIONDIR_PATH_MAXLEN];
+	unsigned int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
+	unsigned char rotate;
+	region **regionmap;
 }
-chunk_flags;
+worldinfo;
 
+
+unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char half,
+		const char defval, const unsigned int *ylimits);
 
 FILE *open_region_file(region *reg);
+
 void close_region_file(region *reg);
 
 region *read_region(const char *regiondir, const int rx, const int rz,
 		const unsigned int *rblimits);
+
 void free_region(region *reg);
 
 char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
@@ -55,7 +81,13 @@ char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int 
 
 chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
 		const char rotate, const chunk_flags *flags, const unsigned int *ylimits);
+
 void free_chunk(chunk_data *chunk);
+
+worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int *wblimits);
+void free_world(worldinfo *world);
+
+region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz);
 
 
 #endif

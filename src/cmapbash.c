@@ -22,8 +22,7 @@
 #include <stdlib.h>
 
 #include "dims.h"
-#include "regionmap.h"
-#include "worldmap.h"
+#include "map.h"
 
 
 int main(int argc, char **argv)

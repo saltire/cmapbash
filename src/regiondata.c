@@ -24,9 +24,8 @@
 
 #include "nbt.h"
 
-#include "chunkdata.h"
+#include "data.h"
 #include "dims.h"
-#include "regiondata.h"
 
 
 #define SECTOR_BYTES 4096
