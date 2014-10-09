@@ -17,29 +17,20 @@
 */
 
 
-#ifndef CHUNKMAP_H
-#define CHUNKMAP_H
+#ifndef BLOCKMAP_H
+#define BLOCKMAP_H
 
 
-#include "nbt.h"
-
+#include "chunkdata.h"
 #include "image.h"
 #include "textures.h"
 
 
-typedef struct options
-{
-	int isometric, night, shadows, tiny, use_limits;
-	unsigned char rotate;
-	int *limits, *ylimits;
-	char *texpath, *shapepath;
-}
-options;
+void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate);
 
-
-void render_chunk_map(image *img, const int cpx, const int cpy, nbt_node *chunk_nbt,
-		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
-		const options *opts);
+void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate);
 
 
 #endif

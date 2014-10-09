@@ -96,4 +96,8 @@
 	_a > _b ? _a : _b; })
 
 
+unsigned int get_offset(const unsigned int y, const unsigned int rx, const unsigned int rz,
+		const unsigned int length, const unsigned char rotate);
+
+
 #endif

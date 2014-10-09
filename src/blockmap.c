@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "chunkdata.h"
-#include "chunkmap.h"
 #include "dims.h"
 #include "image.h"
 #include "textures.h"
@@ -35,47 +34,30 @@
 #define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
 
 
-static int get_offset(const unsigned int y, const unsigned int rbx, const unsigned int rbz,
-		const unsigned char rotate)
+unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
+		const unsigned int rbz, const unsigned char rotate)
 {
-	int bx, bz;
-	switch(rotate) {
-	case 0:
-		bx = rbx;
-		bz = rbz;
-		break;
-	case 1:
-		bx = rbz;
-		bz = MAX_CHUNK_BLOCK - rbx;
-		break;
-	case 2:
-		bx = MAX_CHUNK_BLOCK - rbx;
-		bz = MAX_CHUNK_BLOCK - rbz;
-		break;
-	case 3:
-		bx = MAX_CHUNK_BLOCK - rbz;
-		bz = rbx;
-		break;
-	}
-	return y * CHUNK_BLOCK_AREA + bz * CHUNK_BLOCK_LENGTH + bx;
+	return get_offset(y, rbx, rbz, CHUNK_BLOCK_LENGTH, rotate);
 }
 
 
-static void get_neighbour_values(unsigned char *data, unsigned char *ndata[4],
-		unsigned char nvalues[4], const int rbx, const int y, const int rbz, const char rotate,
+static void get_neighbour_values(unsigned char nvalues[4], unsigned char *data,
+		unsigned char *ndata[4], const int rbx, const int y, const int rbz, const char rotate,
 		unsigned char defval)
 {
-	nvalues[0] = rbz > 0 ? data[get_offset(y, rbx, rbz - 1, rotate)] :
-			(ndata[0] == NULL ? defval : ndata[0][get_offset(y, rbx, MAX_CHUNK_BLOCK, rotate)]);
+	nvalues[0] = rbz > 0 ? data[get_block_offset(y, rbx, rbz - 1, rotate)] :
+			(ndata[0] == NULL ? defval :
+					ndata[0][get_block_offset(y, rbx, MAX_CHUNK_BLOCK, rotate)]);
 
-	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_offset(y, rbx + 1, rbz, rotate)] :
-			(ndata[1] == NULL ? defval : ndata[1][get_offset(y, 0, rbz, rotate)]);
+	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx + 1, rbz, rotate)] :
+			(ndata[1] == NULL ? defval : ndata[1][get_block_offset(y, 0, rbz, rotate)]);
 
-	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_offset(y, rbx, rbz + 1, rotate)] :
-			(ndata[2] == NULL ? defval : ndata[2][get_offset(y, rbx, 0, rotate)]);
+	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx, rbz + 1, rotate)] :
+			(ndata[2] == NULL ? defval : ndata[2][get_block_offset(y, rbx, 0, rotate)]);
 
-	nvalues[3] = rbx > 0 ? data[get_offset(y, rbx - 1, rbz, rotate)] :
-			(ndata[3] == NULL ? defval : ndata[3][get_offset(y, MAX_CHUNK_BLOCK, rbz, rotate)]);
+	nvalues[3] = rbx > 0 ? data[get_block_offset(y, rbx - 1, rbz, rotate)] :
+			(ndata[3] == NULL ? defval :
+					ndata[3][get_block_offset(y, MAX_CHUNK_BLOCK, rbz, rotate)]);
 }
 
 
@@ -119,31 +101,31 @@ static void set_light_levels(unsigned char colours[COLOUR_COUNT][CHANNELS], cons
 }
 
 
-static void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
-		chunkdata chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
+void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
 {
 	// get unrotated 2d block offset from rotated coordinates
-	unsigned int hoffset = get_offset(0, rbx, rbz, rotate);
+	unsigned int hoffset = get_block_offset(0, rbx, rbz, rotate);
 	for (unsigned int y = 0; y <= MAX_HEIGHT; y++)
 	{
 		// get unrotated 3d block offset
 		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
 		unsigned char bid, bdata, blight, nbids[4], nbdata[4], nblight[4], nslight[4];
-		bid = chunk.bids[offset];
-		bdata = chunk.bdata[offset];
+		bid = chunk->bids[offset];
+		bdata = chunk->bdata[offset];
 
 		// skip air blocks or invalid block ids
 		if (bid == 0 || bid > tex->max_blockid) continue;
 
 		// get neighbour block ids and data values
-		get_neighbour_values(chunk.bids, chunk.nbids, nbids, rbx, y, rbz, rotate, 0);
-		get_neighbour_values(chunk.bdata, chunk.nbdata, nbdata, rbx, y, rbz, rotate, 0);
+		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, rotate, 0);
+		get_neighbour_values(nbdata, chunk->bdata, chunk->nbdata, rbx, y, rbz, rotate, 0);
 
 		// get the type of this block and neighbouring blocks
 		const blocktype *btype = get_block_type(tex, bid, bdata);
 		const blocktype *tbtype = y == MAX_HEIGHT ? NULL : get_block_type(tex,
-				chunk.bids[offset + CHUNK_BLOCK_AREA], chunk.bdata[offset + CHUNK_BLOCK_AREA]);
+				chunk->bids[offset + CHUNK_BLOCK_AREA], chunk->bdata[offset + CHUNK_BLOCK_AREA]);
 		const blocktype *lbtype = get_block_type(tex, nbids[2], nbdata[2]);
 		const blocktype *rbtype = get_block_type(tex, nbids[1], nbdata[1]);
 
@@ -182,16 +164,16 @@ static void render_iso_column(image *img, const int cpx, const int cpy, const te
 
 		// darken colours according to sky light (day) or block light (night)
 		unsigned char nlight[4];
-		if (chunk.slight != NULL)
+		if (chunk->slight != NULL)
 		{
-			get_neighbour_values(chunk.slight, chunk.nslight, nlight, rbx, y, rbz, rotate, 255);
-			set_light_levels(colours, bshape, offset, chunk.slight, nlight,
+			get_neighbour_values(nlight, chunk->slight, chunk->nslight, rbx, y, rbz, rotate, 255);
+			set_light_levels(colours, bshape, offset, chunk->slight, nlight,
 					draw_top, draw_left, draw_right, 255);
 		}
-		else if (chunk.blight != NULL)
+		else if (chunk->blight != NULL)
 		{
-			get_neighbour_values(chunk.blight, chunk.nblight, nlight, rbx, y, rbz, rotate, 0);
-			set_light_levels(colours, bshape, offset, chunk.blight, nlight,
+			get_neighbour_values(nlight, chunk->blight, chunk->nblight, rbx, y, rbz, rotate, 0);
+			set_light_levels(colours, bshape, offset, chunk->blight, nlight,
 					draw_top, draw_left, draw_right, 0);
 		}
 
@@ -239,14 +221,14 @@ static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
 }
 
 
-static void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
-		chunkdata chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
+void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
 {
 	// get pixel buffer for this block's rotated position
 	unsigned char *pixel = &img->data[((cpy + rbz) * img->width + cpx + rbx) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
-	unsigned int hoffset = get_offset(0, rbx, rbz, rotate);
+	unsigned int hoffset = get_block_offset(0, rbx, rbz, rotate);
 
 	for (int y = MAX_HEIGHT; y >= 0; y--)
 	{
@@ -254,81 +236,26 @@ static void render_ortho_block(image *img, const int cpx, const int cpy, const t
 		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
 		// skip air blocks or invalid block ids
-		if (chunk.bids[offset] == 0 || chunk.bids[offset] >= tex->max_blockid) continue;
+		if (chunk->bids[offset] == 0 || chunk->bids[offset] >= tex->max_blockid) continue;
 
 		// get block colour
-		get_block_alpha_colour(pixel, chunk.bids, chunk.bdata, tex, offset);
+		get_block_alpha_colour(pixel, chunk->bids, chunk->bdata, tex, offset);
 		add_height_shading(pixel, y);
 
 		// contour highlights and shadows
 		unsigned char nbids[4];
-		get_neighbour_values(chunk.bids, chunk.nbids, nbids, rbx, y, rbz, rotate, 0);
+		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, rotate, 0);
 		char light = (nbids[0] == 0 || nbids[3] == 0);
 		char dark = (nbids[1] == 0 || nbids[2] == 0);
 		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);
 		if (dark && !light) adjust_colour_brightness(pixel, SHADOW_AMOUNT);
 
 		// night mode: darken colours according to block light
-		if (chunk.blight != NULL) {
-			float tbl = y < MAX_HEIGHT ? chunk.blight[offset + CHUNK_BLOCK_AREA] : 0;
+		if (chunk->blight != NULL) {
+			float tbl = y < MAX_HEIGHT ? chunk->blight[offset + CHUNK_BLOCK_AREA] : 0;
 			if (tbl < MAX_LIGHT) set_colour_brightness(pixel, tbl / MAX_LIGHT, NIGHT_AMBIENCE);
 		}
 
 		break;
-	}
-}
-
-
-void render_chunk_map(image *img, const int cpx, const int cpy, nbt_node *chunk_nbt,
-		nbt_node *nchunks_nbt[4], const unsigned int *cblimits, const textures *tex,
-		const options *opts)
-{
-	// get block data for this chunk
-	chunkdata chunk;
-	chunk.bids = get_chunk_data(chunk_nbt, "Blocks", 0, 0, cblimits, opts->ylimits);
-	chunk.bdata = get_chunk_data(chunk_nbt, "Data", 1, 0, cblimits, opts->ylimits);
-	chunk.blight = opts->night ?
-			get_chunk_data(chunk_nbt, "BlockLight", 1, 0, cblimits, opts->ylimits) : NULL;
-	chunk.slight = (opts->isometric && !opts->night && opts->shadows) ?
-			get_chunk_data(chunk_nbt, "SkyLight", 1, 255, cblimits, opts->ylimits) : NULL;
-
-	// get block data for neighbouring chunks
-	for (int i = 0; i < 4; i++)
-	{
-		if (nchunks_nbt[i] == NULL)
-		{
-			chunk.nbids[i] = NULL;
-			chunk.nbdata[i] = NULL;
-			chunk.nblight[i] = NULL;
-			chunk.nslight[i] = NULL;
-			continue;
-		}
-		chunk.nbids[i] = get_chunk_data(nchunks_nbt[i], "Blocks", 0, 0, cblimits, opts->ylimits);
-		chunk.nbdata[i] = opts->isometric ?
-				get_chunk_data(nchunks_nbt[i], "Data", 1, 0, cblimits, opts->ylimits) : NULL;
-		chunk.nblight[i] = (opts->isometric && opts->night) ?
-				get_chunk_data(nchunks_nbt[i], "BlockLight", 1, 0, cblimits, opts->ylimits) : NULL;
-		chunk.nslight[i] = (opts->isometric && !opts->night && opts->shadows) ?
-				get_chunk_data(nchunks_nbt[i], "SkyLight", 1, 255, cblimits, opts->ylimits) : NULL;
-	}
-
-	// loop through rotated chunk's blocks
-	for (unsigned int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
-		for (unsigned int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
-			if (opts->isometric)
-				render_iso_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
-			else
-				render_ortho_block(img, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
-
-	free(chunk.bids);
-	free(chunk.bdata);
-	free(chunk.blight);
-	free(chunk.slight);
-	for (int i = 0; i < 4; i++)
-	{
-		free(chunk.nbids[i]);
-		free(chunk.nbdata[i]);
-		free(chunk.nblight[i]);
-		free(chunk.nslight[i]);
 	}
 }

@@ -17,18 +17,28 @@
 */
 
 
-#ifndef WORLDMAP_H
-#define WORLDMAP_H
-
-
-#include "image.h"
-#include "regionmap.h"
-#include "worlddata.h"
-
-
-void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts);
-
-void save_world_map(char *worlddir, const char *imagefile, const options *opts);
-
-
-#endif
+unsigned int get_offset(const unsigned int y, const unsigned int rx, const unsigned int rz,
+		const unsigned int length, const unsigned char rotate)
+{
+	int x, z;
+	int max = length - 1;
+	switch(rotate) {
+	case 0:
+		x = rx;
+		z = rz;
+		break;
+	case 1:
+		x = rz;
+		z = max - rx;
+		break;
+	case 2:
+		x = max - rx;
+		z = max - rz;
+		break;
+	case 3:
+		x = max - rz;
+		z = rx;
+		break;
+	}
+	return (y * length + z) * length + x;
+}

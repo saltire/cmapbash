@@ -24,15 +24,18 @@
 #include "nbt.h"
 
 
-typedef struct chunkdata
+typedef struct chunk_data
 {
-	unsigned char *bids, *bdata, *blight, *slight, *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
+	nbt_node *nbt;
+	unsigned int *blimits;
+	unsigned char *bids, *bdata, *blight, *slight;
+	unsigned char *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
 }
-chunkdata;
+chunk_data;
 
 
-unsigned char *get_chunk_data(nbt_node *chunk_nbt, unsigned char *tag, char half,
-		char defval, const unsigned int *cblimits, const unsigned int *ylimits);
+unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char half,
+		const char defval, const unsigned int *ylimits);
 
 
 #endif

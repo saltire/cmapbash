@@ -17,11 +17,13 @@
 */
 
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "nbt.h"
 
+#include "chunkdata.h"
 #include "dims.h"
 
 
@@ -82,13 +84,13 @@ static void copy_section_nybbles(unsigned char *data, nbt_node *section, const c
 }
 
 
-unsigned char *get_chunk_data(nbt_node *chunk_nbt, unsigned char *tag, char half,
-		char defval, const unsigned int *cblimits, const unsigned int *ylimits)
+unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char half,
+		const char defval, const unsigned int *ylimits)
 {
 	unsigned char *data = (unsigned char*)malloc(CHUNK_BLOCK_VOLUME);
 	memset(data, defval, CHUNK_BLOCK_VOLUME);
 
-	nbt_node *sections = nbt_find_by_name(chunk_nbt, "Sections");
+	nbt_node *sections = nbt_find_by_name(chunk->nbt, "Sections");
 	if (sections->type == TAG_LIST)
 	{
 		struct list_head *pos;
@@ -120,9 +122,9 @@ unsigned char *get_chunk_data(nbt_node *chunk_nbt, unsigned char *tag, char half
 				}
 
 				if (half)
-					copy_section_nybbles(data, section->data, tag, yo, syolimits, cblimits);
+					copy_section_nybbles(data, section->data, tag, yo, syolimits, chunk->blimits);
 				else
-					copy_section_bytes(data, section->data, tag, yo, syolimits, cblimits);
+					copy_section_bytes(data, section->data, tag, yo, syolimits, chunk->blimits);
 			}
 		}
 	}

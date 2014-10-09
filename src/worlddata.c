@@ -23,8 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "chunkmap.h"
 #include "dims.h"
+#include "regiondata.h"
 #include "worlddata.h"
 
 
@@ -106,20 +106,33 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 	// now that we have counted the regions, allocate an array
 	// and loop through directory again to read the region data
 	world->regionmap = (region**)calloc(world->rrxsize * world->rrzsize, sizeof(region*));
-	world->regions = (region*)calloc(world->rcount, sizeof(region));
 
-	unsigned int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
-	unsigned int rblimits[4] = {0, MAX_REGION_BLOCK, MAX_REGION_BLOCK, 0};
-	int r = 0;
 	rewinddir(dir);
 	while ((ent = readdir(dir)) != NULL)
 		// use %n to check filename length to prevent matching filenames with trailing characters
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			if (wblimits != NULL &&
-					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
-				continue;
+			unsigned int *rblimits;
+
+			// get chunk limits for this region
+			if (wblimits != NULL)
+			{
+				if (rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3])
+					continue;
+
+				rblimits = (unsigned int*)malloc(4 * sizeof(int));
+				rblimits[0] = (rz == wrlimits[0] ? wrblimits[0] : 0);
+				rblimits[1] = (rx == wrlimits[1] ? wrblimits[1] : MAX_REGION_BLOCK);
+				rblimits[2] = (rz == wrlimits[2] ? wrblimits[2] : MAX_REGION_BLOCK);
+				rblimits[3] = (rx == wrlimits[3] ? wrblimits[3] : 0);
+			}
+			else rblimits = NULL;
+
+			region *reg = read_region(world->regiondir, rx, rz, rblimits);
+			free(rblimits);
+
+			if (reg == NULL) continue;
 
 			// get rotated world-relative region coords from absolute coords
 			int rrx, rrz;
@@ -141,20 +154,7 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 				rrz = rxmax - rx;
 				break;
 			}
-
-			// get chunk limits for this region
-			if (wblimits != NULL)
-			{
-				rblimits[0] = (rz == wrlimits[0] ? wrblimits[0] : 0);
-				rblimits[1] = (rx == wrlimits[1] ? wrblimits[1] : MAX_REGION_BLOCK);
-				rblimits[2] = (rz == wrlimits[2] ? wrblimits[2] : MAX_REGION_BLOCK);
-				rblimits[3] = (rx == wrlimits[3] ? wrblimits[3] : 0);
-			}
-
-			world->regions[r] = read_region(world->regiondir, rx, rz, rblimits);
-			if (world->regions[r].loaded)
-				world->regionmap[rrz * world->rrxsize + rrx] = &world->regions[r];
-			r++;
+			world->regionmap[rrz * world->rrxsize + rrx] = reg;
 		}
 	closedir(dir);
 
@@ -164,8 +164,9 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 
 void free_world(worldinfo *world)
 {
+	for (int i = 0; i < world->rrxsize * world->rrzsize; i++)
+		free_region(world->regionmap[i]);
 	free(world->regionmap);
-	free(world->regions);
 	free(world);
 }
 

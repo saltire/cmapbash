@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "chunkmap.h"
 #include "dims.h"
 #include "regiondata.h"
 #include "regionmap.h"

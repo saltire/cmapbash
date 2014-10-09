@@ -21,6 +21,7 @@
 #define REGIONDATA_H_
 
 
+#include "chunkdata.h"
 #include "dims.h"
 
 
@@ -29,25 +30,32 @@ typedef struct region
 	int x, z;
 	char path[REGIONFILE_PATH_MAXLEN];
 	unsigned int offsets[REGION_CHUNK_AREA];
-	unsigned char loaded;
-	unsigned int blimits[4], climits[4];
+	unsigned int *blimits, *cblimits[REGION_CHUNK_AREA];
 	FILE *file;
 }
 region;
 
 
+typedef struct chunk_flags
+{
+	char bids, bdata, blight, slight;
+}
+chunk_flags;
+
+
 FILE *open_region_file(region *reg);
 void close_region_file(region *reg);
 
-region read_region(const char *regiondir, const int rx, const int rz,
-		const unsigned int rblimits[4]);
-
-unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
-		const char rotate);
+region *read_region(const char *regiondir, const int rx, const int rz,
+		const unsigned int *rblimits);
+void free_region(region *reg);
 
 char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
 		const unsigned char rotate);
-nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char rotate);
+
+chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
+		const char rotate, const chunk_flags *flags, const unsigned int *ylimits);
+void free_chunk(chunk_data *chunk);
 
 
 #endif

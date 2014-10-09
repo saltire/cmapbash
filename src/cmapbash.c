@@ -21,8 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "chunkmap.h"
 #include "dims.h"
+#include "regionmap.h"
 #include "worldmap.h"
 
 

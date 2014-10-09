@@ -24,6 +24,7 @@
 
 #include "nbt.h"
 
+#include "chunkdata.h"
 #include "dims.h"
 #include "regiondata.h"
 
@@ -50,65 +51,90 @@ void close_region_file(region *reg)
 }
 
 
-region read_region(const char *regiondir, const int rx, const int rz,
-		const unsigned int rblimits[4])
+region *read_region(const char *regiondir, const int rx, const int rz,
+		const unsigned int *rblimits)
 {
-	region reg;
-	reg.x = rx;
-	reg.z = rz;
-	sprintf(reg.path, "%s/r.%d.%d.mca", regiondir, rx, rz);
+	region *reg = (region*)malloc(sizeof(region));
+	reg->x = rx;
+	reg->z = rz;
+	sprintf(reg->path, "%s/r.%d.%d.mca", regiondir, rx, rz);
 
-	open_region_file(&reg);
-	if (reg.file == NULL) reg.loaded = 0;
-	else
-	{
-		memcpy(&reg.blimits, rblimits, sizeof(reg.blimits));
-		for (int i = 0; i < 4; i++) reg.climits[i] = rblimits[i] >> CHUNK_BLOCK_BITS;
+	open_region_file(reg);
+	if (reg->file == NULL) return NULL;
 
-		memset(reg.offsets, 0, sizeof(reg.offsets));
-		for (unsigned int cz = reg.climits[0]; cz <= reg.climits[2]; cz++)
+	memset(reg->offsets, 0, sizeof(reg->offsets));
+	memset(reg->cblimits, 0, sizeof(reg->cblimits));
+
+	// default chunk limits, for looping below
+	unsigned int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
+
+	// store block/chunk limits for the region
+	if (rblimits == NULL) reg->blimits = NULL;
+	else {
+		reg->blimits = (unsigned int*)malloc(4 * sizeof(int));
+		for (int i = 0; i < 4; i++)
 		{
-			for (unsigned int cx = reg.climits[3]; cx <= reg.climits[1]; cx++)
+			reg->blimits[i] = rblimits[i];
+			rclimits[i] = rblimits[i] >> CHUNK_BLOCK_BITS;
+		}
+	}
+
+	for (unsigned int cz = rclimits[0]; cz <= rclimits[2]; cz++)
+	{
+		for (unsigned int cx = rclimits[3]; cx <= rclimits[1]; cx++)
+		{
+			unsigned int co = cz * REGION_CHUNK_LENGTH + cx;
+
+			// store this chunk's byte offset in the region file
+			fseek(reg->file, co * OFFSET_BYTES, SEEK_SET);
+			unsigned char buffer[OFFSET_BYTES];
+			fread(buffer, 1, OFFSET_BYTES, reg->file);
+			reg->offsets[co] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+
+			// store block limits for this chunk
+			if (reg->blimits != NULL)
 			{
-				unsigned int co = cz * REGION_CHUNK_LENGTH + cx;
-				fseek(reg.file, co * OFFSET_BYTES, SEEK_SET);
-				unsigned char buffer[OFFSET_BYTES];
-				fread(buffer, 1, OFFSET_BYTES, reg.file);
-				reg.offsets[co] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+				// default limits, for chunk edges that aren't on a region edge
+				unsigned int cblimits[4] = {0, MAX_CHUNK_BLOCK, MAX_CHUNK_BLOCK, 0};
+				int edge = 0;
+
+				// check if this chunk is on any edge of this region
+				for (int i = 0; i < 4; i++)
+					if ((i % 2 ? cx : cz) == rclimits[i])
+					{
+						edge = 1;
+						// set the chunk's limit to the region's limit for this edge
+						cblimits[i] = reg->blimits[i] & MAX_CHUNK_BLOCK;
+					}
+
+				// if no edges (all defaults), set chunk limits to null
+				if (edge)
+				{
+					reg->cblimits[co] = (unsigned int*)malloc(4 * sizeof(int));
+					memcpy(reg->cblimits[co], cblimits, 4 * sizeof(int));
+				}
+				else reg->cblimits[co] = NULL;
 			}
 		}
-		reg.loaded = 1;
 	}
-	close_region_file(&reg);
+
+	close_region_file(reg);
 	return reg;
 }
 
 
-unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
+void free_region(region *reg)
+{
+	free(reg->blimits);
+	for (int i = 0; i < REGION_CHUNK_AREA; i++) free(reg->cblimits[i]);
+	free(reg);
+}
+
+
+static unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
 		const char rotate)
 {
-	// get absolute chunk coordinates from rotated chunk coordinates
-	unsigned int cx, cz;
-	switch(rotate) {
-	case 0:
-		cx = rcx;
-		cz = rcz;
-		break;
-	case 1:
-		cx = rcz;
-		cz = MAX_REGION_CHUNK - rcx;
-		break;
-	case 2:
-		cx = MAX_REGION_CHUNK - rcx;
-		cz = MAX_REGION_CHUNK - rcz;
-		break;
-	case 3:
-		cx = MAX_REGION_CHUNK - rcz;
-		cz = rcx;
-		break;
-	}
-
-	return cz * REGION_CHUNK_LENGTH + cx;
+	return get_offset(0, rcx, rcz, REGION_CHUNK_LENGTH, rotate);
 }
 
 
@@ -119,13 +145,15 @@ char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int 
 }
 
 
-nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char rotate)
+chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
+		const char rotate, const chunk_flags *flags, const unsigned int *ylimits)
 {
 	// warning: this function assumes that the region's file is already open
 	if (reg == NULL || reg->file == NULL) return NULL;
 
 	// get the byte offset of this chunk's data in the region file
-	unsigned int offset = reg->offsets[get_chunk_offset(rcx, rcz, rotate)];
+	unsigned int co = get_chunk_offset(rcx, rcz, rotate);
+	unsigned int offset = reg->offsets[co];
 	if (offset == 0) return NULL;
 
 	unsigned char buffer[LENGTH_BYTES];
@@ -138,7 +166,8 @@ nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char
 	//printf("Reading %d bytes at %#lx.\n", length, ftell(rfile));
 	fread(cdata, length, 1, reg->file);
 
-	nbt_node *chunk_nbt = nbt_parse_compressed(cdata, length);
+	chunk_data *chunk = (chunk_data*)malloc(sizeof(chunk_data));
+	chunk->nbt = nbt_parse_compressed(cdata, length);
 	if (errno != NBT_OK)
 	{
 		fprintf(stderr, "Error %d parsing chunk\n", errno);
@@ -146,5 +175,26 @@ nbt_node *read_chunk(const region *reg, const int rcx, const int rcz, const char
 	}
 	free(cdata);
 
-	return chunk_nbt;
+	// get chunk's block limits from the region if they exist
+	chunk->blimits = reg->cblimits[co];
+
+	// get chunk's byte data
+	chunk->bids = flags->bids ? get_chunk_data(chunk, "Blocks", 0, 0, ylimits) : NULL;
+	chunk->bdata = flags->bdata ? get_chunk_data(chunk, "Data", 1, 0, ylimits) : NULL;
+	chunk->blight = flags->blight ? get_chunk_data(chunk, "BlockLight", 1, 0, ylimits) : NULL;
+	chunk->slight = flags->slight ? get_chunk_data(chunk, "SkyLight", 1, 255, ylimits) : NULL;
+
+	return chunk;
+}
+
+
+void free_chunk(chunk_data *chunk)
+{
+	if (chunk == NULL) return;
+	nbt_free(chunk->nbt);
+	free(chunk->bids);
+	free(chunk->bdata);
+	free(chunk->blight);
+	free(chunk->slight);
+	free(chunk);
 }

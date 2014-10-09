@@ -30,7 +30,6 @@ typedef struct worldinfo
 	char regiondir[REGIONDIR_PATH_MAXLEN];
 	unsigned int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
 	unsigned char rotate;
-	region *regions;
 	region **regionmap;
 }
 worldinfo;

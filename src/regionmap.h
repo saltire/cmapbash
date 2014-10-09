@@ -21,9 +21,19 @@
 #define REGIONMAP_H
 
 
-#include "chunkmap.h"
 #include "image.h"
+#include "regiondata.h"
 #include "textures.h"
+
+
+typedef struct options
+{
+	int isometric, night, shadows, tiny, use_limits;
+	unsigned char rotate;
+	int *limits, *ylimits;
+	char *texpath, *shapepath;
+}
+options;
 
 
 void get_region_margins(unsigned int *margins, region *reg, const char rotate,
