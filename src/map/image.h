@@ -31,7 +31,9 @@ typedef struct image {
 
 
 image *create_image(const unsigned int width, const unsigned int height);
+
 void save_image(const image *img, const char *imgfile);
+
 void free_image(image *img);
 
 

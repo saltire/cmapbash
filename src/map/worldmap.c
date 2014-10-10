@@ -22,7 +22,6 @@
 #include <time.h>
 
 #include "data.h"
-#include "dims.h"
 #include "map.h"
 #include "textures.h"
 

@@ -24,7 +24,15 @@
 #include <string.h>
 
 #include "data.h"
-#include "dims.h"
+
+
+region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz)
+{
+	// check if region is out of bounds
+	if (rrx < 0 || rrx > world->rrxmax || rrz < 0 || rrz > world->rrzmax) return NULL;
+	// check if region exists
+	return world->regionmap[rrz * world->rrxsize + rrx];
+}
 
 
 worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int *wblimits)
@@ -167,13 +175,4 @@ void free_world(worldinfo *world)
 		free_region(world->regionmap[i]);
 	free(world->regionmap);
 	free(world);
-}
-
-
-region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz)
-{
-	// check if region is out of bounds
-	if (rrx < 0 || rrx > world->rrxmax || rrz < 0 || rrz > world->rrzmax) return NULL;
-	// check if region exists
-	return world->regionmap[rrz * world->rrxsize + rrx];
 }

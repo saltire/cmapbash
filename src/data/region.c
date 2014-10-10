@@ -25,12 +25,41 @@
 #include "nbt.h"
 
 #include "data.h"
-#include "dims.h"
 
 
-#define SECTOR_BYTES 4096
-#define OFFSET_BYTES 4
-#define LENGTH_BYTES 4
+chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
+		const char rotate, const chunk_flags *flags, const unsigned int *ylimits)
+{
+	// warning: this function assumes that the region's file is already open
+	if (reg == NULL || reg->file == NULL) return NULL;
+
+	// get the byte offset of this chunk's data in the region file
+	unsigned int co = get_chunk_offset(rcx, rcz, rotate);
+	unsigned int offset = reg->offsets[co];
+	if (offset == 0) return NULL;
+
+	unsigned char buffer[LENGTH_BYTES];
+	fseek(reg->file, offset * SECTOR_BYTES, SEEK_SET);
+	fread(buffer, 1, LENGTH_BYTES, reg->file);
+	unsigned int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
+
+	char *cdata = (char*)malloc(length);
+	fseek(reg->file, 1, SEEK_CUR);
+	//printf("Reading %d bytes at %#lx.\n", length, ftell(rfile));
+	fread(cdata, length, 1, reg->file);
+
+	chunk_data *chunk = parse_chunk_nbt(cdata, length, flags, reg->cblimits[co], ylimits);
+	free(cdata);
+
+	return chunk;
+}
+
+
+char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
+		const unsigned char rotate)
+{
+	return reg->offsets[get_chunk_offset(rcx, rcz, rotate)] != 0;
+}
 
 
 FILE *open_region_file(region *reg)
@@ -127,73 +156,4 @@ void free_region(region *reg)
 	free(reg->blimits);
 	for (int i = 0; i < REGION_CHUNK_AREA; i++) free(reg->cblimits[i]);
 	free(reg);
-}
-
-
-static unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
-		const char rotate)
-{
-	return get_offset(0, rcx, rcz, REGION_CHUNK_LENGTH, rotate);
-}
-
-
-char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
-		const unsigned char rotate)
-{
-	return reg->offsets[get_chunk_offset(rcx, rcz, rotate)] != 0;
-}
-
-
-chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
-		const char rotate, const chunk_flags *flags, const unsigned int *ylimits)
-{
-	// warning: this function assumes that the region's file is already open
-	if (reg == NULL || reg->file == NULL) return NULL;
-
-	// get the byte offset of this chunk's data in the region file
-	unsigned int co = get_chunk_offset(rcx, rcz, rotate);
-	unsigned int offset = reg->offsets[co];
-	if (offset == 0) return NULL;
-
-	unsigned char buffer[LENGTH_BYTES];
-	fseek(reg->file, offset * SECTOR_BYTES, SEEK_SET);
-	fread(buffer, 1, LENGTH_BYTES, reg->file);
-	int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
-
-	char *cdata = (char*)malloc(length);
-	fseek(reg->file, 1, SEEK_CUR);
-	//printf("Reading %d bytes at %#lx.\n", length, ftell(rfile));
-	fread(cdata, length, 1, reg->file);
-
-	chunk_data *chunk = (chunk_data*)malloc(sizeof(chunk_data));
-	chunk->nbt = nbt_parse_compressed(cdata, length);
-	if (errno != NBT_OK)
-	{
-		fprintf(stderr, "Error %d parsing chunk\n", errno);
-		return NULL;
-	}
-	free(cdata);
-
-	// get chunk's block limits from the region if they exist
-	chunk->blimits = reg->cblimits[co];
-
-	// get chunk's byte data
-	chunk->bids = flags->bids ? get_chunk_data(chunk, "Blocks", 0, 0, ylimits) : NULL;
-	chunk->bdata = flags->bdata ? get_chunk_data(chunk, "Data", 1, 0, ylimits) : NULL;
-	chunk->blight = flags->blight ? get_chunk_data(chunk, "BlockLight", 1, 0, ylimits) : NULL;
-	chunk->slight = flags->slight ? get_chunk_data(chunk, "SkyLight", 1, 255, ylimits) : NULL;
-
-	return chunk;
-}
-
-
-void free_chunk(chunk_data *chunk)
-{
-	if (chunk == NULL) return;
-	nbt_free(chunk->nbt);
-	free(chunk->bids);
-	free(chunk->bdata);
-	free(chunk->blight);
-	free(chunk->slight);
-	free(chunk);
 }

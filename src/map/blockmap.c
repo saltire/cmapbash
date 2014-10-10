@@ -21,44 +21,9 @@
 #include <string.h>
 
 #include "data.h"
-#include "dims.h"
 #include "image.h"
+#include "map.h"
 #include "textures.h"
-
-
-// configurable render options
-#define HSHADE_HEIGHT 0.3 // height below which to add shadows
-#define HSHADE_AMOUNT 0.7 // amount of shadow to add
-#define NIGHT_AMBIENCE 0.2 // base light level for night renders
-
-#define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
-
-
-static unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
-		const unsigned int rbz, const unsigned char rotate)
-{
-	return get_offset(y, rbx, rbz, CHUNK_BLOCK_LENGTH, rotate);
-}
-
-
-static void get_neighbour_values(unsigned char nvalues[4], unsigned char *data,
-		unsigned char *ndata[4], const int rbx, const int y, const int rbz, const char rotate,
-		unsigned char defval)
-{
-	nvalues[0] = rbz > 0 ? data[get_block_offset(y, rbx, rbz - 1, rotate)] :
-			(ndata[0] == NULL ? defval :
-					ndata[0][get_block_offset(y, rbx, MAX_CHUNK_BLOCK, rotate)]);
-
-	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx + 1, rbz, rotate)] :
-			(ndata[1] == NULL ? defval : ndata[1][get_block_offset(y, 0, rbz, rotate)]);
-
-	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx, rbz + 1, rotate)] :
-			(ndata[2] == NULL ? defval : ndata[2][get_block_offset(y, rbx, 0, rotate)]);
-
-	nvalues[3] = rbx > 0 ? data[get_block_offset(y, rbx - 1, rbz, rotate)] :
-			(ndata[3] == NULL ? defval :
-					ndata[3][get_block_offset(y, MAX_CHUNK_BLOCK, rbz, rotate)]);
-}
 
 
 static void add_height_shading(unsigned char *pixel, const unsigned int y)

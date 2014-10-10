@@ -21,9 +21,9 @@
 #include <string.h>
 
 #include "data.h"
-#include "dims.h"
 #include "image.h"
 #include "map.h"
+#include "textures.h"
 
 
 void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,

@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "dims.h"
+#include "data.h"
 #include "map.h"
 
 

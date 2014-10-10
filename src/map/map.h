@@ -26,6 +26,36 @@
 #include "textures.h"
 
 
+// configurable render options
+
+#define HILIGHT_AMOUNT 0.125 // amount to lighten isometric block highlights
+#define SHADOW_AMOUNT -0.125 // amount to darken isometric block shadows
+#define HSHADE_HEIGHT 0.3 // height below which to add shadows
+#define HSHADE_AMOUNT 0.7 // amount of shadow to add
+#define NIGHT_AMBIENCE 0.2 // base light level for night renders
+
+#define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
+
+
+// data constants
+
+#define LIGHT_LEVELS 16
+#define MAX_LIGHT (LIGHT_LEVELS - 1)
+
+
+// min/max macros
+
+#define MIN(a,b) ({ \
+	__typeof__(a) _a = (a); \
+	__typeof__(b) _b = (b); \
+	_a < _b ? _a : _b; })
+
+#define MAX(a,b) ({ \
+	__typeof__(a) _a = (a); \
+	__typeof__(b) _b = (b); \
+	_a > _b ? _a : _b; })
+
+
 typedef struct options
 {
 	int isometric, night, shadows, tiny, use_limits;

@@ -24,7 +24,66 @@
 #include "nbt.h"
 
 #include "data.h"
-#include "dims.h"
+
+
+static unsigned int get_offset(const unsigned int y, const unsigned int rx, const unsigned int rz,
+		const unsigned int length, const unsigned char rotate)
+{
+	int x, z;
+	int max = length - 1;
+	switch(rotate) {
+	case 0:
+		x = rx;
+		z = rz;
+		break;
+	case 1:
+		x = rz;
+		z = max - rx;
+		break;
+	case 2:
+		x = max - rx;
+		z = max - rz;
+		break;
+	case 3:
+		x = max - rz;
+		z = rx;
+		break;
+	}
+	return (y * length + z) * length + x;
+}
+
+
+unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
+		const unsigned int rbz, const unsigned char rotate)
+{
+	return get_offset(y, rbx, rbz, CHUNK_BLOCK_LENGTH, rotate);
+}
+
+
+unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
+		const char rotate)
+{
+	return get_offset(0, rcx, rcz, REGION_CHUNK_LENGTH, rotate);
+}
+
+
+void get_neighbour_values(unsigned char nvalues[4], unsigned char *data, unsigned char *ndata[4],
+		const int rbx, const int y, const int rbz, const char rotate, unsigned char defval)
+{
+	nvalues[0] = rbz > 0 ? data[get_block_offset(y, rbx, rbz - 1, rotate)] :
+			(ndata[0] == NULL ? defval :
+					ndata[0][get_block_offset(y, rbx, MAX_CHUNK_BLOCK, rotate)]);
+
+	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx + 1, rbz, rotate)] :
+			(ndata[1] == NULL ? defval : ndata[1][get_block_offset(y, 0, rbz, rotate)]);
+
+	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx, rbz + 1, rotate)] :
+			(ndata[2] == NULL ? defval : ndata[2][get_block_offset(y, rbx, 0, rotate)]);
+
+	nvalues[3] = rbx > 0 ? data[get_block_offset(y, rbx - 1, rbz, rotate)] :
+			(ndata[3] == NULL ? defval :
+					ndata[3][get_block_offset(y, MAX_CHUNK_BLOCK, rbz, rotate)]);
+}
 
 
 static void copy_section_bytes(unsigned char *data, nbt_node *section, const char *name,
@@ -130,4 +189,40 @@ unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char 
 	}
 
 	return data;
+}
+
+
+chunk_data *parse_chunk_nbt(const char *cdata, const unsigned int length, const chunk_flags *flags,
+		unsigned int *cblimits, const unsigned int *ylimits)
+{
+	chunk_data *chunk = (chunk_data*)malloc(sizeof(chunk_data));
+	chunk->nbt = nbt_parse_compressed(cdata, length);
+	if (errno != NBT_OK)
+	{
+		fprintf(stderr, "Error %d parsing chunk\n", errno);
+		return NULL;
+	}
+
+	// get chunk's block limits from the region if they exist
+	chunk->blimits = cblimits;
+
+	// get chunk's byte data
+	chunk->bids = flags->bids ? get_chunk_data(chunk, "Blocks", 0, 0, ylimits) : NULL;
+	chunk->bdata = flags->bdata ? get_chunk_data(chunk, "Data", 1, 0, ylimits) : NULL;
+	chunk->blight = flags->blight ? get_chunk_data(chunk, "BlockLight", 1, 0, ylimits) : NULL;
+	chunk->slight = flags->slight ? get_chunk_data(chunk, "SkyLight", 1, 255, ylimits) : NULL;
+
+	return chunk;
+}
+
+
+void free_chunk(chunk_data *chunk)
+{
+	if (chunk == NULL) return;
+	nbt_free(chunk->nbt);
+	free(chunk->bids);
+	free(chunk->bdata);
+	free(chunk->blight);
+	free(chunk->slight);
+	free(chunk);
 }

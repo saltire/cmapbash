@@ -2,31 +2,29 @@ CC     ?= gcc
 CFLAGS  = -std=c99
 
 
-sources = $(wildcard src/*.c) \
-	$(addprefix src/cNBT/, buffer.c nbt_loading.c nbt_parsing.c nbt_treeops.c nbt_util.c) \
-	src/lodepng/lodepng.c
-objects = $(sources:src/%.c=obj/%.o)
-deps = cNBT lodepng
+datasrc = $(wildcard src/data/*.c) \
+	$(addprefix src/data/cNBT/, buffer.c nbt_loading.c nbt_parsing.c nbt_treeops.c nbt_util.c)
+dataobj = $(datasrc:src/%.c=obj/%.o)
+	
+mapsrc = $(wildcard src/map/*.c) \
+	src/map/lodepng/lodepng.c
+mapobj = $(mapsrc:src/%.c=obj/%.o)
 
 dir_guard = @mkdir -p $(@D)
 
 
-.PHONY: clean debug linux windows
+.PHONY: clean debug data
 
 
-bin/cmapbash: $(objects)
+bin/cmapbash: $(mapobj) $(dataobj)
 	$(dir_guard)
-	$(CC) $(CFLAGS) $(objects) -lz -o bin/cmapbash
+	$(CC) $(CFLAGS) $(mapobj) $(dataobj) -lz -o bin/cmapbash
 	@cp -r resources bin
 
 obj/%.o: src/%.c
 	$(dir_guard)
-	$(CC) $(CFLAGS) $< -c -o $@ $(foreach dep,$(deps),-Isrc/$(dep))
+	$(CC) $(CFLAGS) $< -c -o $@ -Isrc/map/lodepng -Isrc/data -Isrc/data/cNBT
 
-$(foreach dep,$(deps),obj/$(dep)/%.o): $(foreach dep,$(deps),obj/$(dep)/%.c)
-	$(dir_guard)
-	$(CC) $(CFLAGS) $< -c -o $@
-	
 
 clean:
 	@rm -rf bin obj

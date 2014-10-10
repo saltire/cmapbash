@@ -22,8 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dims.h"
 #include "image.h"
+#include "map.h"
 #include "textures.h"
 
 

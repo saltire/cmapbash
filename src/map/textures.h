@@ -21,13 +21,33 @@
 #define TEXTURES_H
 
 
-#include "dims.h"
+#include "data.h"
 #include "image.h"
 
 
-// configurable render options
-#define HILIGHT_AMOUNT 0.125
-#define SHADOW_AMOUNT -0.125
+// pixel dimensions for isometric rendering
+
+#define ISO_BLOCK_WIDTH 4
+#define ISO_BLOCK_TOP_HEIGHT 1
+#define ISO_BLOCK_DEPTH 3
+#define ISO_BLOCK_HEIGHT (ISO_BLOCK_TOP_HEIGHT + ISO_BLOCK_DEPTH)
+#define ISO_BLOCK_AREA (ISO_BLOCK_WIDTH * ISO_BLOCK_HEIGHT)
+#define ISO_BLOCK_X_MARGIN (ISO_BLOCK_WIDTH / 2)
+#define ISO_BLOCK_Y_MARGIN ISO_BLOCK_TOP_HEIGHT
+
+#define ISO_CHUNK_WIDTH (CHUNK_BLOCK_LENGTH * ISO_BLOCK_WIDTH)
+#define ISO_CHUNK_TOP_HEIGHT ((CHUNK_BLOCK_LENGTH * 2 - 1) * ISO_BLOCK_TOP_HEIGHT)
+#define ISO_CHUNK_DEPTH (ISO_BLOCK_DEPTH * CHUNK_BLOCK_HEIGHT)
+#define ISO_CHUNK_HEIGHT (ISO_CHUNK_TOP_HEIGHT + ISO_CHUNK_DEPTH)
+#define ISO_CHUNK_X_MARGIN (ISO_CHUNK_WIDTH / 2)
+#define ISO_CHUNK_Y_MARGIN (CHUNK_BLOCK_LENGTH * ISO_BLOCK_TOP_HEIGHT)
+
+#define ISO_REGION_WIDTH (ISO_CHUNK_WIDTH * REGION_CHUNK_LENGTH)
+#define ISO_REGION_TOP_HEIGHT ((REGION_BLOCK_LENGTH * 2 - 1) * ISO_BLOCK_TOP_HEIGHT)
+#define ISO_REGION_HEIGHT (ISO_REGION_TOP_HEIGHT + ISO_CHUNK_DEPTH)
+#define ISO_REGION_X_MARGIN (ISO_REGION_WIDTH / 2)
+#define ISO_REGION_Y_MARGIN (REGION_BLOCK_LENGTH * ISO_BLOCK_TOP_HEIGHT)
+
 
 typedef enum
 {
@@ -76,13 +96,16 @@ textures;
 
 
 textures *read_textures(const char *texturefile, const char *shapefile);
+
 void free_textures(textures *tex);
 
 const blocktype *get_block_type(const textures *tex,
 		const unsigned char blockid, const unsigned char dataval);
 
 void set_colour_brightness(unsigned char *pixel, float brightness, float ambience);
+
 void adjust_colour_brightness(unsigned char *pixel, float mod);
+
 void combine_alpha(unsigned char *top, unsigned char *bottom, int down);
 
 
