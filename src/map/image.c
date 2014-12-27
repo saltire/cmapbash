@@ -47,3 +47,33 @@ void free_image(image *img)
 	free(img->data);
 	free(img);
 }
+
+
+int scale_image_half(const image *img)
+{
+	image *simg = create_image((img->width + 1) / 2, (img->height + 1) / 2);
+
+	for (unsigned int y = 0; y < img->height; y += 2)
+	{
+		for (unsigned int x = 0; x < img->width; x += 2)
+		{
+			unsigned int p = y * img->width + x;
+			unsigned int sp = y * img->width / 4 + x / 2;
+
+			for (int c = 0; c < CHANNELS; c++)
+			{
+				simg->data[sp * CHANNELS + c] = (
+					img[p * CHANNELS + c] +
+					(x + 1 == img->width ? 0 :
+						img[(p + 1) * CHANNELS + c]) +
+					(y + 1 == img->height ? 0 :
+						img[(p + img->width) * CHANNELS + c]) +
+					(x + 1 == img->width || y + 1 == img->height ? 0 :
+						img[(p + img->width + 1) * CHANNELS + c])
+				) / 4;
+			}
+		}
+	}
+
+	return simg;
+}
