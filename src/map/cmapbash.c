@@ -29,6 +29,7 @@ int main(int argc, char **argv)
 {
 	char *inpath = NULL;
 	char *outpath = "map.png";
+	char *action = "generate";
 	static options opts =
 	{
 		.limits    = NULL,
@@ -60,55 +61,79 @@ int main(int argc, char **argv)
 	};
 
 	int c;
+	int first = 1;
 	while (1)
 	{
-		int option_index = 0;
-		c = getopt_long(argc, argv, "instr:w:o:F:T:", long_options, &option_index);
+		int option_index = 2;
+		c = getopt_long(argc, argv, "-instr:w:o:F:T:", long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c)
 		{
 		case 0: // flag set with long option
+		case '?': // unknown option
 			break;
+
+		case '\1': // non-option
+			if (first) action = optarg;
+			break;
+
 		case 'i':
 			opts.isometric = 1;
 			break;
+
 		case 'n':
 			opts.night = 1;
 			break;
+
 		case 's':
 			opts.shadows = 1;
 			break;
+
 		case 't':
 			opts.tiny = 1;
 			break;
+
 		case 'r':
 			if (sscanf(optarg, "%d", &rotateint))
 				opts.rotate = (unsigned char)rotateint % 4;
 			else
 				fprintf(stderr, "Invalid rotate argument: %s\n", optarg);
 			break;
+
 		case 'w':
 			inpath = optarg;
 			break;
+
 		case 'o':
 			outpath = optarg;
 			break;
+
 		case 'F':
 			fc = sscanf(optarg, "%d,%d,%d", &f1, &f2, &f3);
 			if (fc < 2)
 				fprintf(stderr, "Invalid 'from' coordinates: %s\n", optarg);
 			break;
+
 		case 'T':
 			tc = sscanf(optarg, "%d,%d,%d", &t1, &t2, &t3);
 			if (tc < 2)
 				fprintf(stderr, "Invalid 'to' coordinates: %s\n", optarg);
 			break;
-		case '?': // unknown option
-			break;
+
 		default:
 			abort();
 		}
+
+		first = 0;
+	}
+
+	if (action == "generate")
+		printf("Generating map.\n");
+	else
+	{
+		printf("Unknown action.\n");
+		return 1;
 	}
 
 	if (inpath == NULL)
