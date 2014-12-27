@@ -36,6 +36,14 @@ image *create_image(const unsigned int width, const unsigned int height)
 }
 
 
+image *load_image(const char *imgfile)
+{
+	image *img = (image*)malloc(sizeof(image));
+	lodepng_decode32_file(&img->data, &img->width, &img->height, imgfile);
+	return img;
+}
+
+
 void save_image(const image *img, const char *imgfile)
 {
 	lodepng_encode32_file(imgfile, img->data, img->width, img->height);
@@ -49,7 +57,7 @@ void free_image(image *img)
 }
 
 
-int scale_image_half(const image *img)
+image *scale_image_half(const image *img)
 {
 	image *simg = create_image((img->width + 1) / 2, (img->height + 1) / 2);
 
@@ -63,17 +71,59 @@ int scale_image_half(const image *img)
 			for (int c = 0; c < CHANNELS; c++)
 			{
 				simg->data[sp * CHANNELS + c] = (
-					img[p * CHANNELS + c] +
+					img->data[p * CHANNELS + c] +
 					(x + 1 == img->width ? 0 :
-						img[(p + 1) * CHANNELS + c]) +
+						img->data[(p + 1) * CHANNELS + c]) +
 					(y + 1 == img->height ? 0 :
-						img[(p + img->width) * CHANNELS + c]) +
+						img->data[(p + img->width) * CHANNELS + c]) +
 					(x + 1 == img->width || y + 1 == img->height ? 0 :
-						img[(p + img->width + 1) * CHANNELS + c])
+						img->data[(p + img->width + 1) * CHANNELS + c])
 				) / 4;
 			}
 		}
 	}
 
 	return simg;
+}
+
+
+void slice_image(const image *img, const unsigned int tilesize, const char *tiledir)
+{
+	unsigned int t = 0;
+	unsigned int count = (
+		(img->width + tilesize - 1) / tilesize *
+		(img->height + tilesize - 1) / tilesize
+	);
+
+	for (unsigned int y = 0; y < img->width; y += tilesize)
+	{
+		for (unsigned int x = 0; x < img->height; x += tilesize)
+		{
+			t++;
+			printf("Saving tile %d/%d...\n", t, count);
+
+			image *tile = create_image(tilesize, tilesize);
+
+			for (unsigned int ty = 0; ty < tilesize; ty++)
+			{
+				// if we're past the bottom of the main image, stop rendering this tile
+				if (y + ty == img->height) break;
+
+				unsigned char *row = &img->data[((y + ty) * img->width + x) * CHANNELS];
+				unsigned char *trow = &tile->data[ty * tilesize * CHANNELS];
+
+				// copy the lesser of the tile width, or the remainder of the image width
+				unsigned int length = (x + tilesize > img->width) ? img->width - x : tilesize;
+
+				memcpy(trow, row, length * CHANNELS);
+			}
+
+			char tilepath[255];
+			sprintf(tilepath, "%s/%d.%d.png", tiledir, x / tilesize, y / tilesize);
+
+			save_image(tile, tilepath);
+
+			free_image(tile);
+		}
+	}
 }

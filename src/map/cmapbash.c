@@ -177,3 +177,14 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
+int slice_test(int argc, char **argv)
+{
+	image *img = load_image("map-ortho-day.png");
+
+	slice_image(img, 512, "tiles");
+
+	free_image(img);
+
+	return 0;
+}

@@ -32,9 +32,15 @@ typedef struct image {
 
 image *create_image(const unsigned int width, const unsigned int height);
 
+image *load_image(const char *imgfile);
+
 void save_image(const image *img, const char *imgfile);
 
 void free_image(image *img);
+
+image *scale_image_half(const image *img);
+
+void slice_image(const image *img, const unsigned int tilesize, const char *tiledir);
 
 
 #endif
