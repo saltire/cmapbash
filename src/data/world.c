@@ -172,7 +172,7 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 void free_world(worldinfo *world)
 {
 	for (int i = 0; i < world->rrxsize * world->rrzsize; i++)
-		free_region(world->regionmap[i]);
+		if (world->regionmap[i] != NULL) free_region(world->regionmap[i]);
 	free(world->regionmap);
 	free(world);
 }
