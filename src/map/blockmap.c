@@ -67,25 +67,28 @@ static void set_light_levels(unsigned char colours[COLOUR_COUNT][CHANNELS], cons
 
 
 void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts)
 {
 	// get unrotated 2d block offset from rotated coordinates
-	unsigned int hoffset = get_block_offset(0, rbx, rbz, rotate);
+	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
+
+	biome *biome = &tex->biomes[chunk->biomes[hoffset]];
+
 	for (unsigned int y = 0; y <= MAX_HEIGHT; y++)
 	{
 		// get unrotated 3d block offset
 		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
 
-		unsigned char bid, bdata, blight, nbids[4], nbdata[4], nblight[4], nslight[4];
-		bid = chunk->bids[offset];
-		bdata = chunk->bdata[offset];
+		unsigned char bid = chunk->bids[offset];
+		unsigned char bdata = chunk->bdata[offset];
 
 		// skip air blocks or invalid block ids
 		if (bid == 0 || bid > tex->max_blockid) continue;
 
 		// get neighbour block ids and data values
-		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, rotate, 0);
-		get_neighbour_values(nbdata, chunk->bdata, chunk->nbdata, rbx, y, rbz, rotate, 0);
+		unsigned char nbids[4], nbdata[4];
+		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, opts->rotate, 0);
+		get_neighbour_values(nbdata, chunk->bdata, chunk->nbdata, rbx, y, rbz, opts->rotate, 0);
 
 		// get the type of this block and neighbouring blocks
 		const blocktype *btype = get_block_type(tex, bid, bdata);
@@ -97,31 +100,38 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		// if the block above is the same type or opaque, don't draw the top of this one
 		char draw_top = !(y < MAX_HEIGHT && (
 				(tbtype->id == btype->id && tbtype->subtype == btype->subtype) ||
-				(tbtype->shapes[rotate].is_solid && tbtype->is_opaque)));
+				(tbtype->shapes[opts->rotate].is_solid && tbtype->is_opaque)));
 
 		// if block in front of left or right side is solid and opaque, don't draw that side
-		char draw_left = !(lbtype->shapes[rotate].is_solid && lbtype->is_opaque);
-		char draw_right = !(rbtype->shapes[rotate].is_solid && rbtype->is_opaque);
+		char draw_left = !(lbtype->shapes[opts->rotate].is_solid && lbtype->is_opaque);
+		char draw_right = !(rbtype->shapes[opts->rotate].is_solid && rbtype->is_opaque);
 
 		// skip this block if we aren't drawing any of the faces
 		if (!draw_top && !draw_left && !draw_right) continue;
 
 		// get block shape for this rotation
-		const shape *bshape = &btype->shapes[rotate];
+		const shape *bshape = &btype->shapes[opts->rotate];
 
-		// get block colours and adjust for height
+		// get block colours
 		unsigned char colours[COLOUR_COUNT][CHANNELS];
 		memcpy(&colours, btype->colours, COLOUR_COUNT * CHANNELS);
+
+		// use biome colour if applicable
+		if (opts->biomes && btype->biome_colour)
+			combine_alpha(btype->biome_colour == 1 ? biome->foliage : biome->grass,
+					(unsigned char*)&colours[COLOUR1], 1);
+
+		// adjust for height
 		for (int i = 0; i < COLOUR_COUNT; i++)
 			if (bshape->has[i]) add_height_shading(colours[i], y);
 
 		// replace highlight and/or shadow with unshaded colour if that side is blocked
-		if (lbtype->shapes[rotate].is_solid)
+		if (lbtype->shapes[opts->rotate].is_solid)
 		{
 			if (bshape->has[HILIGHT1]) memcpy(&colours[HILIGHT1], &colours[COLOUR1], CHANNELS);
 			if (bshape->has[HILIGHT2]) memcpy(&colours[HILIGHT2], &colours[COLOUR2], CHANNELS);
 		}
-		if (rbtype->shapes[rotate].is_solid)
+		if (rbtype->shapes[opts->rotate].is_solid)
 		{
 			if (bshape->has[SHADOW1]) memcpy(&colours[SHADOW1], &colours[COLOUR1], CHANNELS);
 			if (bshape->has[SHADOW2]) memcpy(&colours[SHADOW2], &colours[COLOUR2], CHANNELS);
@@ -131,13 +141,15 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		unsigned char nlight[4];
 		if (chunk->slight != NULL)
 		{
-			get_neighbour_values(nlight, chunk->slight, chunk->nslight, rbx, y, rbz, rotate, 255);
+			get_neighbour_values(nlight, chunk->slight, chunk->nslight,
+					rbx, y, rbz, opts->rotate, 255);
 			set_light_levels(colours, bshape, offset, chunk->slight, nlight,
 					draw_top, draw_left, draw_right, 255);
 		}
 		else if (chunk->blight != NULL)
 		{
-			get_neighbour_values(nlight, chunk->blight, chunk->nblight, rbx, y, rbz, rotate, 0);
+			get_neighbour_values(nlight, chunk->blight, chunk->nblight,
+					rbx, y, rbz, opts->rotate, 0);
 			set_light_levels(colours, bshape, offset, chunk->blight, nlight,
 					draw_top, draw_left, draw_right, 0);
 		}
@@ -168,11 +180,16 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 }
 
 
-static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
-		unsigned char *data, const textures *tex, const unsigned int offset)
+static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, const textures *tex,
+		const unsigned int offset, biome *biome)
 {
+	const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
+
 	// copy the block colour into the pixel buffer
-	memcpy(pixel, get_block_type(tex, blocks[offset], data[offset])->colours[COLOUR1], CHANNELS);
+	memcpy(pixel, btype->colours[COLOUR1], CHANNELS);
+
+	if (biome != NULL && btype->biome_colour)
+		combine_alpha(btype->biome_colour == 1 ? biome->foliage : biome->grass, pixel, 1);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -180,20 +197,22 @@ static void get_block_alpha_colour(unsigned char *pixel, unsigned char *blocks,
 		// get the next block down, or use black if this is the bottom block
 		unsigned char next[CHANNELS] = {0};
 		if (offset > CHUNK_BLOCK_AREA)
-			get_block_alpha_colour(next, blocks, data, tex, offset - CHUNK_BLOCK_AREA);
+			get_block_alpha_colour(next, chunk, tex, offset - CHUNK_BLOCK_AREA, biome);
 		combine_alpha(pixel, next, 0);
 	}
 }
 
 
 void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate)
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts)
 {
 	// get pixel buffer for this block's rotated position
 	unsigned char *pixel = &img->data[((cpy + rbz) * img->width + cpx + rbx) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
-	unsigned int hoffset = get_block_offset(0, rbx, rbz, rotate);
+	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
+
+	biome *biome = opts->biomes ? &tex->biomes[chunk->biomes[hoffset]] : NULL;
 
 	for (int y = MAX_HEIGHT; y >= 0; y--)
 	{
@@ -204,12 +223,12 @@ void render_ortho_block(image *img, const int cpx, const int cpy, const textures
 		if (chunk->bids[offset] == 0 || chunk->bids[offset] >= tex->max_blockid) continue;
 
 		// get block colour
-		get_block_alpha_colour(pixel, chunk->bids, chunk->bdata, tex, offset);
+		get_block_alpha_colour(pixel, chunk, tex, offset, biome);
 		add_height_shading(pixel, y);
 
 		// contour highlights and shadows
 		unsigned char nbids[4];
-		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, rotate, 0);
+		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, opts->rotate, 0);
 		char light = (nbids[0] == 0 || nbids[3] == 0);
 		char dark = (nbids[1] == 0 || nbids[2] == 0);
 		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);

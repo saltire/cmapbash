@@ -36,6 +36,7 @@ int main(int argc, char **argv)
 		.ylimits   = NULL,
 		.texpath   = "resources/textures.csv",
 		.shapepath = "resources/shapes.csv",
+		.biomepath = "resources/biomes.csv",
 	};
 	unsigned int rotateint;
 	int fc = 0;
@@ -51,6 +52,7 @@ int main(int argc, char **argv)
 		{"isometric", no_argument, &opts.isometric, 1},
 		{"night",     no_argument, &opts.night,     1},
 		{"shadows",   no_argument, &opts.shadows,   1},
+		{"biomes",    no_argument, &opts.biomes,    1},
 		{"tiny",      no_argument, &opts.tiny,      1},
 		{"rotate",    required_argument, 0, 'r'},
 		{"world",     required_argument, 0, 'w'},
@@ -65,7 +67,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		int option_index = 2;
-		c = getopt_long(argc, argv, "-instr:w:o:F:T:", long_options, &option_index);
+		c = getopt_long(argc, argv, "-insbtr:w:o:F:T:", long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c)
@@ -88,6 +90,10 @@ int main(int argc, char **argv)
 
 		case 's':
 			opts.shadows = 1;
+			break;
+
+		case 'b':
+			opts.biomes = 1;
 			break;
 
 		case 't':
@@ -196,6 +202,8 @@ int main(int argc, char **argv)
 
 		if (opts.night) printf("Night mode is on\n");
 		else if (opts.isometric && opts.shadows) printf("Daytime shadows are on\n");
+
+		if (opts.biomes) printf("Biomes are on\n");
 	}
 
 	save_world_map(inpath, outpath, &opts);

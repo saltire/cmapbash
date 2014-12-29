@@ -211,6 +211,8 @@ chunk_data *parse_chunk_nbt(const char *cdata, const unsigned int length, const 
 	chunk->bdata = flags->bdata ? get_chunk_data(chunk, "Data", 1, 0, ylimits) : NULL;
 	chunk->blight = flags->blight ? get_chunk_data(chunk, "BlockLight", 1, 0, ylimits) : NULL;
 	chunk->slight = flags->slight ? get_chunk_data(chunk, "SkyLight", 1, 255, ylimits) : NULL;
+	chunk->biomes = flags->biomes ?
+			nbt_find_by_name(chunk->nbt, "Biomes")->payload.tag_byte_array.data : NULL;
 
 	return chunk;
 }

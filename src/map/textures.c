@@ -47,25 +47,40 @@ typedef enum
 	SHAPE_E,
 	SHAPE_S,
 	SHAPE_W,
-	COLUMN_COUNT
+	BIOME_COLOUR,
+	TEXCOL_COUNT
 }
-columns;
+texcols;
 
-
-textures *read_textures(const char *texturefile, const char *shapefile)
+typedef enum
 {
-	textures *tex = (textures*)calloc(1, sizeof(textures));
+	BIOMEID,
+	TEMPERATURE,
+	RAINFALL,
+	FOLIAGE_R,
+	FOLIAGE_G,
+	FOLIAGE_B,
+	FOLIAGE_A,
+	GRASS_R,
+	GRASS_G,
+	GRASS_B,
+	GRASS_A,
+	BIOMECOL_COUNT
+}
+biomecols;
 
-	char line[LINE_BUFFER];
 
+static void read_shapes(shape **shapes, const char *shapepath)
+{
 	// shape file
-	FILE *scsv = fopen(shapefile, "r");
-	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapefile);
+	FILE *scsv = fopen(shapepath, "r");
+	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapepath);
+	char line[LINE_BUFFER];
 
 	// count shapes and allocate array
 	int c, scount = 0;
 	while ((c = getc(scsv)) != EOF) if (c == '\n') scount++;
-	shape shapes[scount];
+	*shapes = (shape*)calloc(scount, sizeof(shape));
 
 	// read shape pixel maps
 	int s = 0;
@@ -76,31 +91,88 @@ textures *read_textures(const char *texturefile, const char *shapefile)
 		{
 			// convert ascii value to numeric value
 			unsigned char pcolour = line[p] - '0';
-			shapes[s].pixels[p] = pcolour;
-			shapes[s].has[pcolour] = 1;
+			(*shapes)[s].pixels[p] = pcolour;
+			(*shapes)[s].has[pcolour] = 1;
 		}
-		shapes[s].is_solid = !(shapes[s].has[BLANK] == 1);
+		(*shapes)[s].is_solid = !((*shapes)[s].has[BLANK] == 1);
 		s++;
 	}
 	fclose(scsv);
+}
+
+
+static void read_biomes(biome **biomes, const char *biomepath)
+{
+	// biome file
+	FILE *bcsv = fopen(biomepath, "r");
+	if (bcsv == NULL) printf("Error %d reading biome file: %s\n", errno, biomepath);
+	char line[LINE_BUFFER];
+
+	// find highest biome id and allocate biomes array
+	int max_biomeid = -1;
+	while (fgets(line, LINE_BUFFER, bcsv))
+		max_biomeid = (int)strtol(strtok(line, ","), NULL, 0);
+	*biomes = (biome*)calloc(max_biomeid + 1, sizeof(biome));
+
+	// read biome colours
+	fseek(bcsv, 0, SEEK_SET);
+	while (fgets(line, LINE_BUFFER, bcsv))
+	{
+		unsigned char id;
+		char *pos = line;
+		for (int i = 0; i < BIOMECOL_COUNT; i++)
+		{
+			// read the length of the next value
+			size_t len = (pos < line + LINE_BUFFER) ? strcspn(pos, ",") : 0;
+
+			// read the value string
+			char value[LINE_BUFFER];
+			strncpy(value, pos, len);
+			*(value + len) = '\0';
+
+			// remember id
+			if (i == BIOMEID) id = (unsigned char)strtol(value, NULL, 0);
+
+			// store foliage/grass colour values
+			else if (i >= FOLIAGE_R && i <= FOLIAGE_A)
+				(*biomes)[id].foliage[i - FOLIAGE_R] = (unsigned char)strtol(value, NULL, 0);
+			else if (i >= GRASS_R && i <= GRASS_A)
+				(*biomes)[id].grass[i - GRASS_R] = (unsigned char)strtol(value, NULL, 0);
+
+			// advance the pointer, unless we are at the end of the buffer
+			if (pos < line + LINE_BUFFER) pos += len + 1;
+		}
+	}
+}
+
+
+textures *read_textures(const char *texpath, const char *shapepath, const char *biomepath)
+{
+	textures *tex = (textures*)calloc(1, sizeof(textures));
+
+	shape *shapes;
+	if (shapepath != NULL) read_shapes(&shapes, shapepath);
+
+	if (biomepath != NULL) read_biomes(&tex->biomes, biomepath);
 
 	// colour file
-	FILE *tcsv = fopen(texturefile, "r");
-	if (tcsv == NULL) printf("Error %d reading texture file: %s\n", errno, texturefile);
+	FILE *tcsv = fopen(texpath, "r");
+	if (tcsv == NULL) printf("Error %d reading texture file: %s\n", errno, texpath);
+	char line[LINE_BUFFER];
 
 	// find highest block id and allocate blocktypes array
-	unsigned char blockid = -1;
-	while (fgets(line, LINE_BUFFER, tcsv)) blockid = (char)strtol(strtok(line, ","), NULL, 0);
-	tex->max_blockid = blockid;
+	tex->max_blockid = -1;
+	while (fgets(line, LINE_BUFFER, tcsv))
+		tex->max_blockid = (int)strtol(strtok(line, ","), NULL, 0);
 	tex->blockids = (blockID*)calloc(tex->max_blockid + 1, sizeof(blockID));
 
 	// read block textures
 	fseek(tcsv, 0, SEEK_SET);
 	while (fgets(line, LINE_BUFFER, tcsv))
 	{
-		unsigned char row[COLUMN_COUNT];
+		unsigned char row[TEXCOL_COUNT];
 		char *pos = line;
-		for (int i = 0; i < COLUMN_COUNT; i++)
+		for (int i = 0; i < TEXCOL_COUNT; i++)
 		{
 			// read the length of the next value
 			size_t len = (pos < line + LINE_BUFFER) ? strcspn(pos, ",") : 0;
@@ -109,7 +181,7 @@ textures *read_textures(const char *texturefile, const char *shapefile)
 			char value[LINE_BUFFER];
 			strncpy(value, pos, len);
 			*(value + len) = '\0';
-			row[i] = strcmp(value, "") ? (char)strtol(value, NULL, 0) : 0;
+			row[i] = strcmp(value, "") ? (unsigned char)strtol(value, NULL, 0) : 0;
 
 			// advance the pointer, unless we are at the end of the buffer
 			if (pos < line + LINE_BUFFER) pos += len + 1;
@@ -123,12 +195,16 @@ textures *read_textures(const char *texturefile, const char *shapefile)
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
+		btype->biome_colour = row[BIOME_COLOUR];
 
-		// copy shapes for each rotation; if any of the last 3 are blank or zero, use the first
-		btype->shapes[0] = shapes[row[SHAPE_N]];
-		btype->shapes[1] = row[SHAPE_E] != 0 ? shapes[row[SHAPE_E]] : shapes[row[SHAPE_N]];
-		btype->shapes[2] = row[SHAPE_S] != 0 ? shapes[row[SHAPE_S]] : shapes[row[SHAPE_N]];
-		btype->shapes[3] = row[SHAPE_W] != 0 ? shapes[row[SHAPE_W]] : shapes[row[SHAPE_N]];
+		if (shapepath != NULL)
+		{
+			// copy shapes for each rotation; if any of the last 3 are blank or zero, use the first
+			btype->shapes[0] = shapes[row[SHAPE_N]];
+			btype->shapes[1] = shapes[row[SHAPE_E] || row[SHAPE_N]];
+			btype->shapes[2] = shapes[row[SHAPE_S] || row[SHAPE_N]];
+			btype->shapes[3] = shapes[row[SHAPE_W] || row[SHAPE_N]];
+		}
 
 		// copy and adjust colours
 		memcpy(&btype->colours[COLOUR1], &row[RED1], CHANNELS);
@@ -144,6 +220,8 @@ textures *read_textures(const char *texturefile, const char *shapefile)
 	}
 	fclose(tcsv);
 
+	free(shapes);
+
 	return tex;
 }
 
@@ -151,6 +229,7 @@ textures *read_textures(const char *texturefile, const char *shapefile)
 void free_textures(textures *tex)
 {
 	free(tex->blockids);
+	free(tex->biomes);
 	free(tex);
 }
 

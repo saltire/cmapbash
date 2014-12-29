@@ -70,12 +70,20 @@ typedef struct shape
 }
 shape;
 
+typedef struct biome
+{
+	unsigned char foliage[CHANNELS];
+	unsigned char grass[CHANNELS];
+}
+biome;
+
 typedef struct blocktype
 {
 	unsigned char id;
 	unsigned char subtype;
 	unsigned char colours[COLOUR_COUNT][CHANNELS];
 	char is_opaque;
+	char biome_colour;
 	shape shapes[4];
 }
 blocktype;
@@ -90,12 +98,13 @@ blockID;
 typedef struct textures
 {
 	int max_blockid;
-	blockID* blockids;
+	blockID *blockids;
+	biome *biomes;
 }
 textures;
 
 
-textures *read_textures(const char *texturefile, const char *shapefile);
+textures *read_textures(const char *texpath, const char *shapepath, const char *biomepath);
 
 void free_textures(textures *tex);
 

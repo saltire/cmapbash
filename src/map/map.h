@@ -58,19 +58,19 @@
 
 typedef struct options
 {
-	int isometric, night, shadows, tiny, use_limits;
+	int isometric, night, shadows, biomes, tiny, use_limits;
 	unsigned char rotate;
 	int *limits, *ylimits;
-	char *texpath, *shapepath;
+	char *texpath, *shapepath, *biomepath;
 }
 options;
 
 
 void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate);
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts);
 
 void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const char rotate);
+		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts);
 
 void get_region_margins(unsigned int *margins, region *reg, const char rotate,
 		const char isometric);

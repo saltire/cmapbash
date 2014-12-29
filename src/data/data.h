@@ -71,7 +71,7 @@ typedef struct chunk_data
 {
 	nbt_node *nbt;
 	unsigned int *blimits;
-	unsigned char *bids, *bdata, *blight, *slight;
+	unsigned char *bids, *bdata, *blight, *slight, *biomes;
 	unsigned char *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
 }
 chunk_data;
@@ -79,7 +79,7 @@ chunk_data;
 
 typedef struct chunk_flags
 {
-	char bids, bdata, blight, slight;
+	char bids, bdata, blight, slight, biomes;
 }
 chunk_flags;
 

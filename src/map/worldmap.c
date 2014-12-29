@@ -86,7 +86,8 @@ static void get_world_margins(unsigned int *margins, const worldinfo *world, con
 
 void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts)
 {
-	textures *tex = opts->tiny ? NULL : read_textures(opts->texpath, opts->shapepath);
+	textures *tex = (opts->tiny ? NULL :
+			read_textures(opts->texpath, opts->shapepath, opts->biomepath));
 
 	int r = 0;
 	// we need to render the regions in order from top to bottom for isometric view

@@ -111,9 +111,20 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 	for (int i = 0; i < 4; i++) open_region_file(nregions[i]);
 
 	chunk_data *chunk, *prev_chunk, *new_chunk, *nchunks[4];
-	chunk_flags flags = {1, 1, opts->night, opts->isometric && !opts->night && opts->shadows};
-	chunk_flags nflags = {1, opts->isometric, opts->isometric && opts->night,
-			opts->isometric && !opts->night && opts->shadows};
+	chunk_flags flags = {
+		1,
+		1,
+		opts->night,
+		opts->isometric && !opts->night && opts->shadows,
+		opts->biomes
+	};
+	chunk_flags nflags = {
+		1,
+		opts->isometric,
+		opts->isometric && opts->night,
+		opts->isometric && !opts->night && opts->shadows,
+		0
+	};
 
 	// use rotated chunk coordinates, since we need to draw them top to bottom for isometric
 	for (unsigned int rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
@@ -184,9 +195,9 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 			for (unsigned int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
 				for (unsigned int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
 					if (opts->isometric)
-						render_iso_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
+						render_iso_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
 					else
-						render_ortho_block(img, cpx, cpy, tex, chunk, rbx, rbz, opts->rotate);
+						render_ortho_block(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
 
 			// free chunks, or save them for the next iteration if we're not at the end of a row
 			free_chunk(nchunks[0]);
