@@ -116,10 +116,11 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		unsigned char colours[COLOUR_COUNT][CHANNELS];
 		memcpy(&colours, btype->colours, COLOUR_COUNT * CHANNELS);
 
-		// use biome colour if applicable
-		if (opts->biomes && btype->biome_colour)
-			combine_alpha(btype->biome_colour == 1 ? biome->foliage : biome->grass,
-					(unsigned char*)&colours[COLOUR1], 1);
+		// use biome colours if applicable
+		if (opts->biomes && btype->biome_colour1)
+			memcpy(&colours[COLOUR1], &btype->biome_colours[COLOUR1], CHANNELS * 3);
+		if (opts->biomes && btype->biome_colour2)
+			memcpy(&colours[COLOUR2], &btype->biome_colours[COLOUR2], CHANNELS * 3);
 
 		// adjust for height
 		for (int i = 0; i < COLOUR_COUNT; i++)
@@ -181,15 +182,15 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 
 
 static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, const textures *tex,
-		const unsigned int offset, biome *biome)
+		const unsigned int offset, unsigned char biome)
 {
 	const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
 
 	// copy the block colour into the pixel buffer
-	memcpy(pixel, btype->colours[COLOUR1], CHANNELS);
-
-	if (biome != NULL && btype->biome_colour)
-		combine_alpha(btype->biome_colour == 1 ? biome->foliage : biome->grass, pixel, 1);
+	if (biome != NULL && btype->biome_colour1)
+		memcpy(pixel, btype->biome_colours[biome][COLOUR1 * CHANNELS], CHANNELS);
+	else
+		memcpy(pixel, btype->colours[COLOUR1], CHANNELS);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -212,7 +213,7 @@ void render_ortho_block(image *img, const int cpx, const int cpy, const textures
 	// get unrotated 2d block offset from rotated coordinates
 	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
 
-	biome *biome = opts->biomes ? &tex->biomes[chunk->biomes[hoffset]] : NULL;
+	unsigned char biome = opts->biomes ? chunk->biomes[hoffset] : NULL;
 
 	for (int y = MAX_HEIGHT; y >= 0; y--)
 	{

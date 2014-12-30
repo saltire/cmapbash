@@ -45,15 +45,27 @@
 
 // min/max macros
 
-#define MIN(a,b) ({ \
-	__typeof__(a) _a = (a); \
-	__typeof__(b) _b = (b); \
-	_a < _b ? _a : _b; })
+#define MIN(x, y) ({ \
+	__typeof__(x) _x = (x); \
+	__typeof__(y) _y = (y); \
+	_x < _y ? _x : _y; })
 
-#define MAX(a,b) ({ \
-	__typeof__(a) _a = (a); \
-	__typeof__(b) _b = (b); \
-	_a > _b ? _a : _b; })
+#define MAX(x, y) ({ \
+	__typeof__(x) _x = (x); \
+	__typeof__(y) _y = (y); \
+	_x > _y ? _x : _y; })
+
+#define MIN3(x, y, z) ({ \
+	__typeof__(x) _x = (x); \
+	__typeof__(y) _y = (y); \
+	__typeof__(z) _z = (z); \
+	_y < _z ? (_x < _y ? _x : _y) : (_x < _z ? _x : _z); })
+
+#define MAX3(x, y, z) ({ \
+	__typeof__(x) _x = (x); \
+	__typeof__(y) _y = (y); \
+	__typeof__(z) _z = (z); \
+	_y > _z ? (_x > _y ? _x : _y) : (_x > _z ? _x : _z); })
 
 
 typedef struct options

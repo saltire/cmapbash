@@ -86,8 +86,8 @@ static void get_world_margins(unsigned int *margins, const worldinfo *world, con
 
 void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts)
 {
-	textures *tex = (opts->tiny ? NULL :
-			read_textures(opts->texpath, opts->shapepath, opts->biomepath));
+	textures *tex = (opts->tiny ? NULL : read_textures(opts->texpath,
+			opts->isometric ? opts->shapepath : NULL, opts->biomes ? opts->biomepath : NULL));
 
 	int r = 0;
 	// we need to render the regions in order from top to bottom for isometric view
@@ -116,7 +116,7 @@ void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, co
 				{
 					// translate orthographic region coordinates to isometric pixel coordinates
 					rpx = (rrx + world->rrzmax - rrz) * ISO_REGION_X_MARGIN + wpx;
-					rpy = (rrx + rrz)                * ISO_REGION_Y_MARGIN + wpy;
+					rpy = (rrx + rrz)                 * ISO_REGION_Y_MARGIN + wpy;
 				}
 				else
 				{

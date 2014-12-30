@@ -39,15 +39,16 @@ typedef enum
 	GREEN1,
 	BLUE1,
 	ALPHA1,
+	BIOME_COLOUR1,
 	RED2,
 	GREEN2,
 	BLUE2,
 	ALPHA2,
+	BIOME_COLOUR2,
 	SHAPE_N,
 	SHAPE_E,
 	SHAPE_S,
 	SHAPE_W,
-	BIOME_COLOUR,
 	TEXCOL_COUNT
 }
 texcols;
@@ -101,7 +102,7 @@ static void read_shapes(shape **shapes, const char *shapepath)
 }
 
 
-static void read_biomes(biome **biomes, const char *biomepath)
+static int read_biomes(biome **biomes, const char *biomepath)
 {
 	// biome file
 	FILE *bcsv = fopen(biomepath, "r");
@@ -131,7 +132,11 @@ static void read_biomes(biome **biomes, const char *biomepath)
 			*(value + len) = '\0';
 
 			// remember id
-			if (i == BIOMEID) id = (unsigned char)strtol(value, NULL, 0);
+			if (i == BIOMEID)
+			{
+				id = (unsigned char)strtol(value, NULL, 0);
+				(*biomes)[id].exists = 1;
+			}
 
 			// store foliage/grass colour values
 			else if (i >= FOLIAGE_R && i <= FOLIAGE_A)
@@ -143,6 +148,8 @@ static void read_biomes(biome **biomes, const char *biomepath)
 			if (pos < line + LINE_BUFFER) pos += len + 1;
 		}
 	}
+
+	return max_biomeid + 1;
 }
 
 
@@ -153,7 +160,8 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 	shape *shapes;
 	if (shapepath != NULL) read_shapes(&shapes, shapepath);
 
-	if (biomepath != NULL) read_biomes(&tex->biomes, biomepath);
+	int biomecount = -1;
+	if (biomepath != NULL) biomecount = read_biomes(&tex->biomes, biomepath);
 
 	// colour file
 	FILE *tcsv = fopen(texpath, "r");
@@ -195,7 +203,7 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
-		btype->biome_colour = row[BIOME_COLOUR];
+		//btype->biome_colour = row[BIOME_COLOUR];
 
 		if (shapepath != NULL)
 		{
@@ -204,25 +212,64 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 			btype->shapes[1] = shapes[row[SHAPE_E] || row[SHAPE_N]];
 			btype->shapes[2] = shapes[row[SHAPE_S] || row[SHAPE_N]];
 			btype->shapes[3] = shapes[row[SHAPE_W] || row[SHAPE_N]];
+
+			for (int i = 0; i < COLOUR_COUNT; i++)
+			{
+				btype->has[i] = (btype->shapes[0]->has[i] & btype->shapes[1]->has[i] &
+						btype->shapes[2]->has[i] & btype->shapes[3]->has[i]);
+			}
 		}
 
-		// copy and adjust colours
+		// copy colours and adjust
 		memcpy(&btype->colours[COLOUR1], &row[RED1], CHANNELS);
-		memcpy(&btype->colours[HILIGHT1], &row[RED1], CHANNELS);
-		memcpy(&btype->colours[SHADOW1], &row[RED1], CHANNELS);
-		adjust_colour_brightness(btype->colours[HILIGHT1], HILIGHT_AMOUNT);
-		adjust_colour_brightness(btype->colours[SHADOW1], SHADOW_AMOUNT);
 		memcpy(&btype->colours[COLOUR2], &row[RED2], CHANNELS);
-		memcpy(&btype->colours[HILIGHT2], &row[RED2], CHANNELS);
-		memcpy(&btype->colours[SHADOW2], &row[RED2], CHANNELS);
-		adjust_colour_brightness(btype->colours[HILIGHT2], HILIGHT_AMOUNT);
-		adjust_colour_brightness(btype->colours[SHADOW2], SHADOW_AMOUNT);
+		add_hilight_and_shadow(&btype->colours[COLOUR1]);
+		add_hilight_and_shadow(&btype->colours[COLOUR2]);
+
+		if (biomepath != NULL)
+		{
+			// allocate biome colours array for this block type
+			btype->biome_colours = (unsigned char**)calloc(biomecount, sizeof(char**));
+
+			for (int b = 0; b < biomecount; b++)
+				if (tex->biomes[b].exists)
+				{
+					btype->biome_colours[b] = (unsigned char*)calloc(
+							COLOUR_COUNT * CHANNELS * sizeof(char));
+					unsigned char *colour1 = &btype->biome_colours[b][COLOUR1 * CHANNELS];
+					unsigned char *colour2 = &btype->biome_colours[b][COLOUR2 * CHANNELS];
+
+					if (row[BIOME_COLOUR1] > 0)
+					{
+						memcpy(colour1, &row[RED1], CHANNELS);
+						combine_alpha(row[BIOME_COLOUR1] == 1 ?
+								tex->biomes[b].foliage : tex->biomes[b].grass, colour1, 1);
+						add_colour_and_shadow(colour2);
+					}
+					if (row[BIOME_COLOUR2] > 0)
+					{
+						memcpy(colour2, &row[RED2], CHANNELS);
+						combine_alpha(row[BIOME_COLOUR2] == 1 ?
+								tex->biomes[b].foliage : tex->biomes[b].grass, colour2, 1);
+						add_colour_and_shadow(colour2);
+					}
+				}
+		}
 	}
 	fclose(tcsv);
 
 	free(shapes);
 
 	return tex;
+}
+
+
+void add_hilight_and_shadow(unsigned char *colour)
+{
+	memcpy(colour + CHANNELS, colour, CHANNELS);
+	memcpy(colour + (CHANNELS * 2), colour, CHANNELS);
+	adjust_colour_brightness(colour + CHANNELS, HILIGHT_AMOUNT);
+	adjust_colour_brightness(colour + (CHANNELS * 2), SHADOW_AMOUNT);
 }
 
 
@@ -280,4 +327,53 @@ void combine_alpha(unsigned char *top, unsigned char *bottom, int down)
 	for (int ch = 0; ch < ALPHA; ch++)
 		target[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
 	target[ALPHA] = alpha;
+}
+
+
+void rgb2hsv(unsigned char *rgbint, double *hsv)
+{
+	double rgb[3] = {
+		(double)rgbint[0] / 255.0,
+		(double)rgbint[1] / 255.0,
+		(double)rgbint[2] / 255.0
+	};
+	double rgb_min, rgb_max;
+
+	// find value
+	hsv[2] = MAX3(rgb[0], rgb[1], rgb[2]);
+	if (hsv[2] == 0)
+	{
+		hsv[0] = hsv[1] = 0;
+		return;
+	}
+
+	// normalize to value 1
+	rgb[0] /= hsv[2];
+	rgb[1] /= hsv[2];
+	rgb[2] /= hsv[2];
+	rgb_min = MIN3(rgb[0], rgb[1], rgb[2]);
+	rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
+
+	// find saturation
+	hsv[1] = rgb_max - rgb_min;
+	if (hsv[1] == 0)
+	{
+		hsv[0] = 0;
+		return;
+	}
+
+	// normalize to saturation 1
+	double range = rgb_max - rgb_min;
+	rgb[0] = (rgb[0] - rgb_min) / range;
+	rgb[1] = (rgb[1] - rgb_min) / range;
+	rgb[2] = (rgb[2] - rgb_min) / range;
+	rgb_min = MIN3(rgb[0], rgb[1], rgb[2]);
+	rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
+
+	if (rgb[0] == rgb_max)
+		hsv[0] = (360.0 + 60.0 * (rgb[1] - rgb[2])) % 360.0;
+	else if (rgb[1] == rgb_max)
+		hsv[0] = 120.0 + 60.0 * (rgb[2] - rgb[0]);
+	else
+		hsv[0] = 240.0 + 60.0 * (rgb[0] - rgb[1]);
 }

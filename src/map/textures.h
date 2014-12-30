@@ -72,6 +72,7 @@ shape;
 
 typedef struct biome
 {
+	char exists;
 	unsigned char foliage[CHANNELS];
 	unsigned char grass[CHANNELS];
 }
@@ -82,8 +83,10 @@ typedef struct blocktype
 	unsigned char id;
 	unsigned char subtype;
 	unsigned char colours[COLOUR_COUNT][CHANNELS];
+	char biome_colour1, biome_colour2;
+	char *biome_colours;
 	char is_opaque;
-	char biome_colour;
+	char has[COLOUR_COUNT];
 	shape shapes[4];
 }
 blocktype;
