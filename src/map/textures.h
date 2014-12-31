@@ -49,6 +49,12 @@
 #define ISO_REGION_Y_MARGIN (REGION_BLOCK_LENGTH * ISO_BLOCK_TOP_HEIGHT)
 
 
+#define BLOCK_SUBTYPES 16
+
+// check whether a shape has any pixels of a colour
+#define HAS(shape, colour) ((shape)->has & (1 << colour))
+
+
 typedef enum
 {
 	BLANK,
@@ -60,12 +66,12 @@ typedef enum
 	SHADOW2,
 	COLOUR_COUNT
 }
-colourcodes;
+colours;
 
 typedef struct shape
 {
 	char is_solid;
-	char has[COLOUR_COUNT];
+	unsigned char has; // a bitfield with a bit for each colour in the palette
 	unsigned char pixels[ISO_BLOCK_AREA];
 }
 shape;
@@ -78,15 +84,15 @@ typedef struct biome
 }
 biome;
 
+typedef unsigned char palette[COLOUR_COUNT][CHANNELS];
+
 typedef struct blocktype
 {
 	unsigned char id;
 	unsigned char subtype;
-	unsigned char colours[COLOUR_COUNT][CHANNELS];
-	char biome_colour1, biome_colour2;
-	char *biome_colours;
+	palette palette;
+	palette *biome_palettes;
 	char is_opaque;
-	char has[COLOUR_COUNT];
 	shape shapes[4];
 }
 blocktype;
@@ -94,7 +100,7 @@ blocktype;
 typedef struct blockID
 {
 	unsigned char mask;
-	blocktype subtypes[16];
+	blocktype subtypes[BLOCK_SUBTYPES];
 }
 blockID;
 
@@ -102,7 +108,6 @@ typedef struct textures
 {
 	int max_blockid;
 	blockID *blockids;
-	biome *biomes;
 }
 textures;
 

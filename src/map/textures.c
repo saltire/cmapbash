@@ -93,9 +93,9 @@ static void read_shapes(shape **shapes, const char *shapepath)
 			// convert ascii value to numeric value
 			unsigned char pcolour = line[p] - '0';
 			(*shapes)[s].pixels[p] = pcolour;
-			(*shapes)[s].has[pcolour] = 1;
+			(*shapes)[s].has &= (1 << pcolour);
 		}
-		(*shapes)[s].is_solid = !((*shapes)[s].has[BLANK] == 1);
+		(*shapes)[s].is_solid = !HAS((*shapes)[s], BLANK);
 		s++;
 	}
 	fclose(scsv);
@@ -125,11 +125,12 @@ static int read_biomes(biome **biomes, const char *biomepath)
 		{
 			// read the length of the next value
 			size_t len = (pos < line + LINE_BUFFER) ? strcspn(pos, ",") : 0;
-
-			// read the value string
+			// store the value in the buffer
 			char value[LINE_BUFFER];
 			strncpy(value, pos, len);
 			*(value + len) = '\0';
+			// advance the pointer, unless we are at the end of the buffer
+			if (pos < line + LINE_BUFFER) pos += len + 1;
 
 			// remember id
 			if (i == BIOMEID)
@@ -137,15 +138,11 @@ static int read_biomes(biome **biomes, const char *biomepath)
 				id = (unsigned char)strtol(value, NULL, 0);
 				(*biomes)[id].exists = 1;
 			}
-
 			// store foliage/grass colour values
 			else if (i >= FOLIAGE_R && i <= FOLIAGE_A)
 				(*biomes)[id].foliage[i - FOLIAGE_R] = (unsigned char)strtol(value, NULL, 0);
 			else if (i >= GRASS_R && i <= GRASS_A)
 				(*biomes)[id].grass[i - GRASS_R] = (unsigned char)strtol(value, NULL, 0);
-
-			// advance the pointer, unless we are at the end of the buffer
-			if (pos < line + LINE_BUFFER) pos += len + 1;
 		}
 	}
 
@@ -160,8 +157,9 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 	shape *shapes;
 	if (shapepath != NULL) read_shapes(&shapes, shapepath);
 
+	biome *biomes;
 	int biomecount = -1;
-	if (biomepath != NULL) biomecount = read_biomes(&tex->biomes, biomepath);
+	if (biomepath != NULL) biomecount = read_biomes(&biomes, biomepath);
 
 	// colour file
 	FILE *tcsv = fopen(texpath, "r");
@@ -184,15 +182,15 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 		{
 			// read the length of the next value
 			size_t len = (pos < line + LINE_BUFFER) ? strcspn(pos, ",") : 0;
-
-			// read the value string and parse it as an integer
+			// store the value in the buffer
 			char value[LINE_BUFFER];
 			strncpy(value, pos, len);
 			*(value + len) = '\0';
-			row[i] = strcmp(value, "") ? (unsigned char)strtol(value, NULL, 0) : 0;
-
 			// advance the pointer, unless we are at the end of the buffer
 			if (pos < line + LINE_BUFFER) pos += len + 1;
+
+			// parse the value as an integer
+			row[i] = strcmp(value, "") ? (unsigned char)strtol(value, NULL, 0) : 0;
 		}
 
 		// subtype mask is specified on subtype 0 of each block type
@@ -203,7 +201,6 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
-		//btype->biome_colour = row[BIOME_COLOUR];
 
 		if (shapepath != NULL)
 		{
@@ -212,71 +209,74 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 			btype->shapes[1] = shapes[row[SHAPE_E] || row[SHAPE_N]];
 			btype->shapes[2] = shapes[row[SHAPE_S] || row[SHAPE_N]];
 			btype->shapes[3] = shapes[row[SHAPE_W] || row[SHAPE_N]];
-
-			for (int i = 0; i < COLOUR_COUNT; i++)
-			{
-				btype->has[i] = (btype->shapes[0]->has[i] & btype->shapes[1]->has[i] &
-						btype->shapes[2]->has[i] & btype->shapes[3]->has[i]);
-			}
 		}
 
 		// copy colours and adjust
-		memcpy(&btype->colours[COLOUR1], &row[RED1], CHANNELS);
-		memcpy(&btype->colours[COLOUR2], &row[RED2], CHANNELS);
-		add_hilight_and_shadow(&btype->colours[COLOUR1]);
-		add_hilight_and_shadow(&btype->colours[COLOUR2]);
+		memcpy(&btype->palette[COLOUR1], &row[RED1], CHANNELS);
+		add_hilight_and_shadow(&btype->palette[COLOUR1]);
+		memcpy(&btype->palette[COLOUR2], &row[RED2], CHANNELS);
+		add_hilight_and_shadow(&btype->palette[COLOUR2]);
 
-		if (biomepath != NULL)
+		// check if this block type uses biome colours
+		if (biomepath != NULL && (row[BIOME_COLOUR1] || row[BIOME_COLOUR2]))
 		{
-			// allocate biome colours array for this block type
-			btype->biome_colours = (unsigned char**)calloc(biomecount, sizeof(char**));
+			// calculate colours for this block type in every biome
+			btype->biome_palettes = (palette*)calloc(biomecount, sizeof(palette));
 
 			for (int b = 0; b < biomecount; b++)
-				if (tex->biomes[b].exists)
+				if (biomes[b].exists)
 				{
-					btype->biome_colours[b] = (unsigned char*)calloc(
-							COLOUR_COUNT * CHANNELS * sizeof(char));
-					unsigned char *colour1 = &btype->biome_colours[b][COLOUR1 * CHANNELS];
-					unsigned char *colour2 = &btype->biome_colours[b][COLOUR2 * CHANNELS];
-
-					if (row[BIOME_COLOUR1] > 0)
-					{
-						memcpy(colour1, &row[RED1], CHANNELS);
-						combine_alpha(row[BIOME_COLOUR1] == 1 ?
-								tex->biomes[b].foliage : tex->biomes[b].grass, colour1, 1);
-						add_colour_and_shadow(colour2);
-					}
-					if (row[BIOME_COLOUR2] > 0)
-					{
-						memcpy(colour2, &row[RED2], CHANNELS);
-						combine_alpha(row[BIOME_COLOUR2] == 1 ?
-								tex->biomes[b].foliage : tex->biomes[b].grass, colour2, 1);
-						add_colour_and_shadow(colour2);
-					}
+					mix_biome_colour(&btype->biome_palettes[b][COLOUR1], &btype->palette[COLOUR1],
+							&biomes[b], row[BIOME_COLOUR1]);
+					mix_biome_colour(&btype->biome_palettes[b][COLOUR2], &btype->palette[COLOUR2],
+							&biomes[b], row[BIOME_COLOUR2]);
 				}
 		}
+		else btype->biome_palettes = NULL;
 	}
 	fclose(tcsv);
 
 	free(shapes);
+	free(biomes);
 
 	return tex;
 }
 
 
-void add_hilight_and_shadow(unsigned char *colour)
+void mix_biome_colour(unsigned char *bcolour, const unsigned char *colour, const biome *biome,
+		const int biome_colourtype)
 {
-	memcpy(colour + CHANNELS, colour, CHANNELS);
-	memcpy(colour + (CHANNELS * 2), colour, CHANNELS);
-	adjust_colour_brightness(colour + CHANNELS, HILIGHT_AMOUNT);
-	adjust_colour_brightness(colour + (CHANNELS * 2), SHADOW_AMOUNT);
+	if (biome_colourtype > 0)
+	{
+		// copy colour from regular palette
+		memcpy(bcolour, colour, CHANNELS);
+		// blend with biome colour
+		combine_alpha(biome_colourtype == 1 ? biome.foliage : biome.grass, bcolour, 1);
+		// create highlight and shadow colours
+		add_hilight_and_shadow(bcolour);
+	}
+	// or just copy all the colours from the regular palette
+	else memcpy(bcolour, colour, CHANNELS * 3);
+}
+
+
+void add_hilight_and_shadow(palette *palette, const int colour)
+{
+	// copy the main colour to the hilight and shadow colours
+	memcpy(&palette[colour + 1], &palette[colour], CHANNELS);
+	memcpy(&palette[colour + 2], &palette[colour], CHANNELS);
+	// adjust the hilight and shadow colours
+	adjust_colour_brightness(&palette[colour + 1], HILIGHT_AMOUNT);
+	adjust_colour_brightness(&palette[colour + 2], SHADOW_AMOUNT);
 }
 
 
 void free_textures(textures *tex)
 {
+	for (int b = 0; b <= tex->max_blockid; b++)
+		for (int s = 0; s < BLOCK_SUBTYPES; s++)
+			free(tex->blockids[b].subtypes[s].biome_palettes);
 	free(tex->blockids);
-	free(tex->biomes);
 	free(tex);
 }
 
