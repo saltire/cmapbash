@@ -150,6 +150,100 @@ static int read_biomes(biome **biomes, const char *biomepath)
 }
 
 
+static void rgb2hsv(const unsigned char *rgbint, double *hsv)
+{
+	double rgb[3] = {
+		(double)rgbint[0] / 255.0,
+		(double)rgbint[1] / 255.0,
+		(double)rgbint[2] / 255.0
+	};
+	double rgb_min = MIN3(rgb[0], rgb[1], rgb[2]);
+	double rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
+	double range = rgb_max - rgb_min;
+
+	// find value
+	hsv[2] = rgb_max;
+	if (hsv[2] == 0) // black
+	{
+		hsv[0] = hsv[1] = 0;
+		return;
+	}
+
+	// find saturation
+	hsv[1] = range / rgb_max;
+	if (hsv[1] == 0) // grey
+	{
+		hsv[0] = 0;
+		return;
+	}
+
+	// find hue
+	if (rgb[0] == rgb_max)
+		hsv[0] = (rgb[1] - rgb[2]) / range;
+	else if (rgb[1] == rgb_max)
+		hsv[0] = (rgb[2] - rgb[0]) / range + 2.0;
+	else
+		hsv[0] = (rgb[0] - rgb[1]) / range + 4.0;
+	hsv[0] *= 60.0;
+	if (hsv[0] < 0.0) hsv[0] += 360.0;
+}
+
+static void hsv2rgb(const double *hsv, unsigned char *rgbint)
+{
+	double rgb[3];
+
+	if (hsv[1] == 0) // grey
+	{
+		rgb[0] = rgb[1] = rgb[2] = hsv[2];
+		return;
+	}
+
+	double h = hsv[0] / 60;
+	int i = (int)h;
+	double f = h - i;
+	double p = hsv[2] * (1 - hsv[1]);
+	double q = hsv[2] * (1 - hsv[1] * f);
+	double t = hsv[2] * (1 - hsv[1] * (1 - f));
+
+	switch(i) {
+	case 0:
+		rgb[0] = hsv[2];
+		rgb[1] = t;
+		rgb[2] = p;
+		break;
+	case 1:
+		rgb[0] = q;
+		rgb[1] = hsv[2];
+		rgb[2] = p;
+		break;
+	case 2:
+		rgb[0] = p;
+		rgb[1] = hsv[2];
+		rgb[2] = t;
+		break;
+	case 3:
+		rgb[0] = p;
+		rgb[1] = q;
+		rgb[2] = hsv[2];
+		break;
+	case 4:
+		rgb[0] = t;
+		rgb[1] = p;
+		rgb[2] = hsv[2];
+		break;
+	default: // 5
+		rgb[0] = hsv[2];
+		rgb[1] = p;
+		rgb[2] = q;
+		break;
+	}
+
+	rgbint[0] = (int)(rgb[0] * 255);
+	rgbint[1] = (int)(rgb[1] * 255);
+	rgbint[2] = (int)(rgb[2] * 255);
+}
+
+
 static void add_hilight_and_shadow(unsigned char *colour)
 {
 	// copy the main colour to the hilight and shadow colours
@@ -161,20 +255,41 @@ static void add_hilight_and_shadow(unsigned char *colour)
 }
 
 
-static void mix_biome_colour(unsigned char *bcolour, const unsigned char *colour,
+static void mix_biome_colour(unsigned char *outcolour, const unsigned char *block_colour,
 		biome *biome, const int biome_colourtype)
 {
 	if (biome_colourtype > 0)
 	{
-		// copy colour from regular palette
-		memcpy(bcolour, colour, CHANNELS);
-		// blend with biome colour
-		combine_alpha(biome_colourtype == 1 ? biome->foliage : biome->grass, bcolour, 1);
+		// generate biome colour
+		unsigned char *biome_colour = biome_colourtype == 1 ? biome->foliage : biome->grass;
+		unsigned char biome_block_colour[CHANNELS];
+
+		double block_hsv[3], biome_hsv[3];
+		rgb2hsv(block_colour, block_hsv);
+		rgb2hsv(biome_colour, biome_hsv);
+
+		double biome_block_hsv[3] = {
+			biome_hsv[0],
+			block_hsv[1],
+			block_hsv[2]
+		};
+		hsv2rgb(biome_block_hsv, biome_block_colour);
+		biome_block_colour[ALPHA] = biome_colour[ALPHA];
+
+		// copy colour from block palette
+		memcpy(outcolour, block_colour, CHANNELS);
+		// blend with biome colour using the biome colour's alpha value
+		combine_alpha(biome_block_colour, outcolour, 1);
+
+		// get hue of block colour
+		// get hue of biome colour
+		// compose colour from hue of biome and sat/val of block
+
 		// create highlight and shadow colours
-		add_hilight_and_shadow(bcolour);
+		add_hilight_and_shadow(outcolour);
 	}
-	// or just copy all the colours from the regular palette
-	else memcpy(bcolour, colour, CHANNELS * 3);
+	// or just copy all the colours from the regular block palette
+	else memcpy(outcolour, block_colour, CHANNELS * 3);
 }
 
 
@@ -327,56 +442,4 @@ void combine_alpha(unsigned char *top, unsigned char *bottom, int down)
 	for (int ch = 0; ch < ALPHA; ch++)
 		target[ch] = (top[ch] * top[ALPHA] + bottom[ch] * bottom[ALPHA] * bmod) / alpha;
 	target[ALPHA] = alpha;
-}
-
-
-void rgb2hsv(unsigned char *rgbint, double *hsv)
-{
-	double rgb[3] = {
-		(double)rgbint[0] / 255.0,
-		(double)rgbint[1] / 255.0,
-		(double)rgbint[2] / 255.0
-	};
-	double rgb_min, rgb_max;
-
-	// find value
-	hsv[2] = MAX3(rgb[0], rgb[1], rgb[2]);
-	if (hsv[2] == 0)
-	{
-		hsv[0] = hsv[1] = 0;
-		return;
-	}
-
-	// normalize to value 1
-	rgb[0] /= hsv[2];
-	rgb[1] /= hsv[2];
-	rgb[2] /= hsv[2];
-	rgb_min = MIN3(rgb[0], rgb[1], rgb[2]);
-	rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
-
-	// find saturation
-	hsv[1] = rgb_max - rgb_min;
-	if (hsv[1] == 0)
-	{
-		hsv[0] = 0;
-		return;
-	}
-
-	// normalize to saturation 1
-	double range = rgb_max - rgb_min;
-	rgb[0] = (rgb[0] - rgb_min) / range;
-	rgb[1] = (rgb[1] - rgb_min) / range;
-	rgb[2] = (rgb[2] - rgb_min) / range;
-	rgb_min = MIN3(rgb[0], rgb[1], rgb[2]);
-	rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
-
-	if (rgb[0] == rgb_max)
-	{
-		hsv[0] = 0.0 + 60.0 * (rgb[1] - rgb[2]);
-		if (hsv[0] < 0.0) hsv[0] += 360.0;
-	}
-	else if (rgb[1] == rgb_max)
-		hsv[0] = 120.0 + 60.0 * (rgb[2] - rgb[0]);
-	else
-		hsv[0] = 240.0 + 60.0 * (rgb[0] - rgb[1]);
 }
