@@ -52,7 +52,8 @@
 #define BLOCK_SUBTYPES 16
 
 // check whether a shape has any pixels of a colour
-#define HAS(shape, colour) ((shape)->has & (1 << colour))
+#define HAS(shape, colour) ((shape).has & (1 << colour))
+#define HAS_PTR(shape, colour) ((shape)->has & (1 << colour))
 
 
 typedef enum

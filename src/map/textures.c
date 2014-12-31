@@ -150,14 +150,42 @@ static int read_biomes(biome **biomes, const char *biomepath)
 }
 
 
+static void add_hilight_and_shadow(unsigned char *colour)
+{
+	// copy the main colour to the hilight and shadow colours
+	memcpy(colour + CHANNELS, colour, CHANNELS);
+	memcpy(colour + CHANNELS * 2, colour, CHANNELS);
+	// adjust the hilight and shadow colours
+	adjust_colour_brightness(colour + CHANNELS, HILIGHT_AMOUNT);
+	adjust_colour_brightness(colour + CHANNELS * 2, SHADOW_AMOUNT);
+}
+
+
+static void mix_biome_colour(unsigned char *bcolour, const unsigned char *colour,
+		biome *biome, const int biome_colourtype)
+{
+	if (biome_colourtype > 0)
+	{
+		// copy colour from regular palette
+		memcpy(bcolour, colour, CHANNELS);
+		// blend with biome colour
+		combine_alpha(biome_colourtype == 1 ? biome->foliage : biome->grass, bcolour, 1);
+		// create highlight and shadow colours
+		add_hilight_and_shadow(bcolour);
+	}
+	// or just copy all the colours from the regular palette
+	else memcpy(bcolour, colour, CHANNELS * 3);
+}
+
+
 textures *read_textures(const char *texpath, const char *shapepath, const char *biomepath)
 {
 	textures *tex = (textures*)calloc(1, sizeof(textures));
 
-	shape *shapes;
+	shape *shapes = NULL;
 	if (shapepath != NULL) read_shapes(&shapes, shapepath);
 
-	biome *biomes;
+	biome *biomes = NULL;
 	int biomecount = -1;
 	if (biomepath != NULL) biomecount = read_biomes(&biomes, biomepath);
 
@@ -213,9 +241,9 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 
 		// copy colours and adjust
 		memcpy(&btype->palette[COLOUR1], &row[RED1], CHANNELS);
-		add_hilight_and_shadow(&btype->palette[COLOUR1]);
+		add_hilight_and_shadow(btype->palette[COLOUR1]);
 		memcpy(&btype->palette[COLOUR2], &row[RED2], CHANNELS);
-		add_hilight_and_shadow(&btype->palette[COLOUR2]);
+		add_hilight_and_shadow(btype->palette[COLOUR2]);
 
 		// check if this block type uses biome colours
 		if (biomepath != NULL && (row[BIOME_COLOUR1] || row[BIOME_COLOUR2]))
@@ -226,9 +254,9 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 			for (int b = 0; b < biomecount; b++)
 				if (biomes[b].exists)
 				{
-					mix_biome_colour(&btype->biome_palettes[b][COLOUR1], &btype->palette[COLOUR1],
+					mix_biome_colour(btype->biome_palettes[b][COLOUR1], btype->palette[COLOUR1],
 							&biomes[b], row[BIOME_COLOUR1]);
-					mix_biome_colour(&btype->biome_palettes[b][COLOUR2], &btype->palette[COLOUR2],
+					mix_biome_colour(btype->biome_palettes[b][COLOUR2], btype->palette[COLOUR2],
 							&biomes[b], row[BIOME_COLOUR2]);
 				}
 		}
@@ -240,34 +268,6 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 	free(biomes);
 
 	return tex;
-}
-
-
-void mix_biome_colour(unsigned char *bcolour, const unsigned char *colour, const biome *biome,
-		const int biome_colourtype)
-{
-	if (biome_colourtype > 0)
-	{
-		// copy colour from regular palette
-		memcpy(bcolour, colour, CHANNELS);
-		// blend with biome colour
-		combine_alpha(biome_colourtype == 1 ? biome.foliage : biome.grass, bcolour, 1);
-		// create highlight and shadow colours
-		add_hilight_and_shadow(bcolour);
-	}
-	// or just copy all the colours from the regular palette
-	else memcpy(bcolour, colour, CHANNELS * 3);
-}
-
-
-void add_hilight_and_shadow(palette *palette, const int colour)
-{
-	// copy the main colour to the hilight and shadow colours
-	memcpy(&palette[colour + 1], &palette[colour], CHANNELS);
-	memcpy(&palette[colour + 2], &palette[colour], CHANNELS);
-	// adjust the hilight and shadow colours
-	adjust_colour_brightness(&palette[colour + 1], HILIGHT_AMOUNT);
-	adjust_colour_brightness(&palette[colour + 2], SHADOW_AMOUNT);
 }
 
 
@@ -371,7 +371,10 @@ void rgb2hsv(unsigned char *rgbint, double *hsv)
 	rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
 
 	if (rgb[0] == rgb_max)
-		hsv[0] = (360.0 + 60.0 * (rgb[1] - rgb[2])) % 360.0;
+	{
+		hsv[0] = 0.0 + 60.0 * (rgb[1] - rgb[2]);
+		if (hsv[0] < 0.0) hsv[0] += 360.0;
+	}
 	else if (rgb[1] == rgb_max)
 		hsv[0] = 120.0 + 60.0 * (rgb[2] - rgb[0]);
 	else

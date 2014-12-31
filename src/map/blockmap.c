@@ -42,25 +42,25 @@ static void set_light_levels(palette *palette, const shape *bshape,
 	if (draw_t && tlight < MAX_LIGHT)
 	{
 		tlight /= MAX_LIGHT;
-		set_colour_brightness(palette[COLOUR1], tlight, NIGHT_AMBIENCE);
-		if (HAS(bshape, COLOUR2))
-			set_colour_brightness(palette[COLOUR2], tlight, NIGHT_AMBIENCE);
+		set_colour_brightness((*palette)[COLOUR1], tlight, NIGHT_AMBIENCE);
+		if (HAS_PTR(bshape, COLOUR2))
+			set_colour_brightness((*palette)[COLOUR2], tlight, NIGHT_AMBIENCE);
 	}
 	if (draw_l && nlight[2] < MAX_LIGHT)
 	{
 		float llight = (float)nlight[2] / MAX_LIGHT;
-		if (HAS(bshape, HILIGHT1))
-			set_colour_brightness(palette[HILIGHT1], llight, NIGHT_AMBIENCE);
-		if (HAS(bshape, HILIGHT2))
-			set_colour_brightness(palette[HILIGHT2], llight, NIGHT_AMBIENCE);
+		if (HAS_PTR(bshape, HILIGHT1))
+			set_colour_brightness((*palette)[HILIGHT1], llight, NIGHT_AMBIENCE);
+		if (HAS_PTR(bshape, HILIGHT2))
+			set_colour_brightness((*palette)[HILIGHT2], llight, NIGHT_AMBIENCE);
 	}
 	if (draw_r && nlight[1] < MAX_LIGHT)
 	{
 		float rlight = (float)nlight[1] / MAX_LIGHT;
-		if (HAS(bshape, SHADOW1))
-			set_colour_brightness(palette[SHADOW1], rlight, NIGHT_AMBIENCE);
-		if (HAS(bshape, SHADOW2))
-			set_colour_brightness(palette[SHADOW2], rlight, NIGHT_AMBIENCE);
+		if (HAS_PTR(bshape, SHADOW1))
+			set_colour_brightness((*palette)[SHADOW1], rlight, NIGHT_AMBIENCE);
+		if (HAS_PTR(bshape, SHADOW2))
+			set_colour_brightness((*palette)[SHADOW2], rlight, NIGHT_AMBIENCE);
 	}
 
 }
@@ -72,7 +72,7 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 	// get unrotated 2d block offset from rotated coordinates
 	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
 
-	unsigned char biome = chunk->biomes[hoffset];
+	unsigned char biomeid = chunk->biomes[hoffset];
 
 	for (unsigned int y = 0; y <= MAX_HEIGHT; y++)
 	{
@@ -115,25 +115,25 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		// get block colour palette, using biome colours if applicable
 		palette palette;
 		if (opts->biomes && btype->biome_palettes != NULL)
-			memcpy(&palette, &btype->biome_palettes[biome], sizeof(palette));
+			memcpy(&palette, &btype->biome_palettes[biomeid], sizeof(palette));
 		else
 			memcpy(&palette, &btype->palette, sizeof(palette));
 
 		// adjust for height
 		for (int i = 0; i < COLOUR_COUNT; i++)
-			if (HAS(bshape, i)) add_height_shading(&palette[i], y);
+			if (HAS_PTR(bshape, i)) add_height_shading(palette[i], y);
 
 		// replace highlight and/or shadow with unshaded colour if that side is blocked
 		// FIXME: this is inexact; hilights and shadows don't necessarily appear only on one side
 		if (lbtype->shapes[opts->rotate].is_solid)
 		{
-			if (HAS(bshape, HILIGHT1)) memcpy(&palette[HILIGHT1], &palette[COLOUR1], CHANNELS);
-			if (HAS(bshape, HILIGHT2)) memcpy(&palette[HILIGHT2], &palette[COLOUR2], CHANNELS);
+			if (HAS_PTR(bshape, HILIGHT1)) memcpy(&palette[HILIGHT1], &palette[COLOUR1], CHANNELS);
+			if (HAS_PTR(bshape, HILIGHT2)) memcpy(&palette[HILIGHT2], &palette[COLOUR2], CHANNELS);
 		}
 		if (rbtype->shapes[opts->rotate].is_solid)
 		{
-			if (HAS(bshape, SHADOW1)) memcpy(&palette[SHADOW1], &palette[COLOUR1], CHANNELS);
-			if (HAS(bshape, SHADOW2)) memcpy(&palette[SHADOW2], &palette[COLOUR2], CHANNELS);
+			if (HAS_PTR(bshape, SHADOW1)) memcpy(&palette[SHADOW1], &palette[COLOUR1], CHANNELS);
+			if (HAS_PTR(bshape, SHADOW2)) memcpy(&palette[SHADOW2], &palette[COLOUR2], CHANNELS);
 		}
 
 		// darken colours according to sky light (day) or block light (night)
@@ -142,14 +142,14 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		{
 			get_neighbour_values(nlight, chunk->slight, chunk->nslight,
 					rbx, y, rbz, opts->rotate, 255);
-			set_light_levels(palette, bshape, offset, chunk->slight, nlight,
+			set_light_levels(&palette, bshape, offset, chunk->slight, nlight,
 					draw_top, draw_left, draw_right, 255);
 		}
 		else if (chunk->blight != NULL)
 		{
 			get_neighbour_values(nlight, chunk->blight, chunk->nblight,
 					rbx, y, rbz, opts->rotate, 0);
-			set_light_levels(palette, bshape, offset, chunk->blight, nlight,
+			set_light_levels(&palette, bshape, offset, chunk->blight, nlight,
 					draw_top, draw_left, draw_right, 0);
 		}
 
@@ -180,15 +180,15 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 
 
 static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, const textures *tex,
-		const unsigned int offset, const char use_biome, const unsigned char biome)
+		const unsigned int offset, const char use_biome, const unsigned char biomeid)
 {
 	const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
 
 	// copy the block colour into the pixel buffer, using biome colour if applicable
 	if (use_biome && btype->biome_palettes != NULL)
-		memcpy(pixel, btype->biome_palettes[biome][COLOUR1], CHANNELS);
+		memcpy(pixel, btype->biome_palettes[biomeid][COLOUR1], CHANNELS);
 	else
-		memcpy(pixel, btype->colours[COLOUR1], CHANNELS);
+		memcpy(pixel, btype->palette[COLOUR1], CHANNELS);
 
 	// if block colour is not fully opaque, combine with the block below it
 	if (pixel[ALPHA] < 255)
@@ -196,8 +196,7 @@ static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, cons
 		// get the next block down, or use black if this is the bottom block
 		unsigned char next[CHANNELS] = {0};
 		if (offset > CHUNK_BLOCK_AREA)
-			get_block_alpha_colour(next, chunk, tex, offset - CHUNK_BLOCK_AREA,
-					use_biome, biome);
+			get_block_alpha_colour(next, chunk, tex, offset - CHUNK_BLOCK_AREA, use_biome, biomeid);
 		combine_alpha(pixel, next, 0);
 	}
 }
@@ -212,6 +211,8 @@ void render_ortho_block(image *img, const int cpx, const int cpy, const textures
 	// get unrotated 2d block offset from rotated coordinates
 	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
 
+	unsigned char biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
+
 	for (int y = MAX_HEIGHT; y >= 0; y--)
 	{
 		// get unrotated 3d block offset
@@ -221,7 +222,7 @@ void render_ortho_block(image *img, const int cpx, const int cpy, const textures
 		if (chunk->bids[offset] == 0 || chunk->bids[offset] >= tex->max_blockid) continue;
 
 		// get block colour
-		get_block_alpha_colour(pixel, chunk, tex, offset, opts->biomes, chunk->biomes[hoffset]);
+		get_block_alpha_colour(pixel, chunk, tex, offset, opts->biomes, biomeid);
 		add_height_shading(pixel, y);
 
 		// contour highlights and shadows
