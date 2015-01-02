@@ -17,6 +17,7 @@
 */
 
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -26,27 +27,27 @@
 #include "image.h"
 
 
-image *create_image(const unsigned int width, const unsigned int height)
+image *create_image(const uint32_t width, const uint32_t height)
 {
 	image *img = (image*)malloc(sizeof(image));
 	img->width = width;
 	img->height = height;
-	img->data = (unsigned char*)calloc(width * height * CHANNELS, sizeof(char));
+	img->data = (uint8_t*)calloc(width * height * CHANNELS, sizeof(uint32_t));
 	return img;
 }
 
 
-image *load_image(const char *imgfile)
+image *load_image(const char *imgpath)
 {
 	image *img = (image*)malloc(sizeof(image));
-	lodepng_decode32_file(&img->data, &img->width, &img->height, imgfile);
+	lodepng_decode32_file(&img->data, &img->width, &img->height, imgpath);
 	return img;
 }
 
 
-void save_image(const image *img, const char *imgfile)
+void save_image(const image *img, const char *imgpath)
 {
-	lodepng_encode32_file(imgfile, img->data, img->width, img->height);
+	lodepng_encode32_file(imgpath, img->data, img->width, img->height);
 }
 
 
@@ -61,12 +62,12 @@ image *scale_image_half(const image *img)
 {
 	image *simg = create_image((img->width + 1) / 2, (img->height + 1) / 2);
 
-	for (unsigned int y = 0; y < img->height; y += 2)
+	for (uint32_t y = 0; y < img->height; y += 2)
 	{
-		for (unsigned int x = 0; x < img->width; x += 2)
+		for (uint32_t x = 0; x < img->width; x += 2)
 		{
-			unsigned int p = y * img->width + x;
-			unsigned int sp = y * img->width / 4 + x / 2;
+			uint32_t p = y * img->width + x;
+			uint32_t sp = y * img->width / 4 + x / 2;
 
 			for (int c = 0; c < CHANNELS; c++)
 			{
@@ -87,33 +88,33 @@ image *scale_image_half(const image *img)
 }
 
 
-void slice_image(const image *img, const unsigned int tilesize, const char *tiledir)
+void slice_image(const image *img, const uint32_t tilesize, const char *tiledir)
 {
-	unsigned int t = 0;
-	unsigned int count = (
+	uint32_t t = 0;
+	uint32_t count = (
 		(img->width + tilesize - 1) / tilesize *
 		(img->height + tilesize - 1) / tilesize
 	);
 
-	for (unsigned int y = 0; y < img->width; y += tilesize)
+	for (uint32_t y = 0; y < img->width; y += tilesize)
 	{
-		for (unsigned int x = 0; x < img->height; x += tilesize)
+		for (uint32_t x = 0; x < img->height; x += tilesize)
 		{
 			t++;
 			printf("Saving tile %d/%d...\n", t, count);
 
 			image *tile = create_image(tilesize, tilesize);
 
-			for (unsigned int ty = 0; ty < tilesize; ty++)
+			for (uint32_t ty = 0; ty < tilesize; ty++)
 			{
 				// if we're past the bottom of the main image, stop rendering this tile
 				if (y + ty == img->height) break;
 
-				unsigned char *row = &img->data[((y + ty) * img->width + x) * CHANNELS];
-				unsigned char *trow = &tile->data[ty * tilesize * CHANNELS];
+				uint8_t *row = &img->data[((y + ty) * img->width + x) * CHANNELS];
+				uint8_t *trow = &tile->data[ty * tilesize * CHANNELS];
 
 				// copy the lesser of the tile width, or the remainder of the image width
-				unsigned int length = (x + tilesize > img->width) ? img->width - x : tilesize;
+				uint32_t length = (x + tilesize > img->width) ? img->width - x : tilesize;
 
 				memcpy(trow, row, length * CHANNELS);
 			}

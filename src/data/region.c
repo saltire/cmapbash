@@ -18,6 +18,8 @@
 
 
 #include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,23 +29,23 @@
 #include "data.h"
 
 
-chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
-		const char rotate, const chunk_flags *flags, const unsigned int *ylimits)
+chunk_data *read_chunk(const region *reg, const uint8_t rcx, const uint8_t rcz,
+		const uint8_t rotate, const chunk_flags *flags, const uint8_t *ylimits)
 {
 	// warning: this function assumes that the region's file is already open
 	if (reg == NULL || reg->file == NULL) return NULL;
 
 	// get the byte offset of this chunk's data in the region file
-	unsigned int co = get_chunk_offset(rcx, rcz, rotate);
-	unsigned int offset = reg->offsets[co];
+	uint16_t co = get_chunk_offset(rcx, rcz, rotate);
+	uint32_t offset = reg->offsets[co];
 	if (offset == 0) return NULL;
 
-	unsigned char buffer[LENGTH_BYTES];
+	uint8_t buffer[LENGTH_BYTES];
 	fseek(reg->file, offset * SECTOR_BYTES, SEEK_SET);
 	fread(buffer, 1, LENGTH_BYTES, reg->file);
-	unsigned int length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
+	uint32_t length = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) - 1;
 
-	char *cdata = (char*)malloc(length);
+	uint8_t *cdata = (uint8_t*)malloc(length);
 	fseek(reg->file, 1, SEEK_CUR);
 	//printf("Reading %d bytes at %#lx.\n", length, ftell(rfile));
 	fread(cdata, length, 1, reg->file);
@@ -55,8 +57,7 @@ chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned
 }
 
 
-char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
-		const unsigned char rotate)
+bool chunk_exists(const region *reg, const uint8_t rcx, const uint8_t rcz, const uint8_t rotate)
 {
 	return reg->offsets[get_chunk_offset(rcx, rcz, rotate)] != 0;
 }
@@ -79,8 +80,8 @@ void close_region_file(region *reg)
 }
 
 
-region *read_region(const char *regiondir, const int rx, const int rz,
-		const unsigned int *rblimits)
+region *read_region(const char *regiondir, const int32_t rx, const int32_t rz,
+		const uint16_t *rblimits)
 {
 	region *reg = (region*)malloc(sizeof(region));
 	reg->x = rx;
@@ -94,28 +95,28 @@ region *read_region(const char *regiondir, const int rx, const int rz,
 	memset(reg->cblimits, 0, sizeof(reg->cblimits));
 
 	// default chunk limits, for looping below
-	unsigned int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
+	uint16_t rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
 
 	// store block/chunk limits for the region
 	if (rblimits == NULL) reg->blimits = NULL;
 	else {
-		reg->blimits = (unsigned int*)malloc(4 * sizeof(int));
-		for (int i = 0; i < 4; i++)
+		reg->blimits = (uint16_t*)malloc(4 * sizeof(uint16_t));
+		for (uint8_t i = 0; i < 4; i++)
 		{
 			reg->blimits[i] = rblimits[i];
 			rclimits[i] = rblimits[i] >> CHUNK_BLOCK_BITS;
 		}
 	}
 
-	for (unsigned int cz = rclimits[0]; cz <= rclimits[2]; cz++)
+	for (uint8_t cz = rclimits[0]; cz <= rclimits[2]; cz++)
 	{
-		for (unsigned int cx = rclimits[3]; cx <= rclimits[1]; cx++)
+		for (uint8_t cx = rclimits[3]; cx <= rclimits[1]; cx++)
 		{
-			unsigned int co = cz * REGION_CHUNK_LENGTH + cx;
+			uint16_t co = cz * REGION_CHUNK_LENGTH + cx;
 
 			// store this chunk's byte offset in the region file
 			fseek(reg->file, co * OFFSET_BYTES, SEEK_SET);
-			unsigned char buffer[OFFSET_BYTES];
+			uint8_t buffer[OFFSET_BYTES];
 			fread(buffer, 1, OFFSET_BYTES, reg->file);
 			reg->offsets[co] = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 
@@ -123,11 +124,11 @@ region *read_region(const char *regiondir, const int rx, const int rz,
 			if (reg->blimits != NULL)
 			{
 				// default limits, for chunk edges that aren't on a region edge
-				unsigned int cblimits[4] = {0, MAX_CHUNK_BLOCK, MAX_CHUNK_BLOCK, 0};
-				int edge = 0;
+				uint8_t cblimits[4] = {0, MAX_CHUNK_BLOCK, MAX_CHUNK_BLOCK, 0};
+				bool edge = 0;
 
 				// check if this chunk is on any edge of this region
-				for (int i = 0; i < 4; i++)
+				for (uint8_t i = 0; i < 4; i++)
 					if ((i % 2 ? cx : cz) == rclimits[i])
 					{
 						edge = 1;
@@ -135,11 +136,11 @@ region *read_region(const char *regiondir, const int rx, const int rz,
 						cblimits[i] = reg->blimits[i] & MAX_CHUNK_BLOCK;
 					}
 
-				// if no edges (all defaults), set chunk limits to null
+				// store the chunk limits if this is an edge chunk, otherwise set to null
 				if (edge)
 				{
-					reg->cblimits[co] = (unsigned int*)malloc(4 * sizeof(int));
-					memcpy(reg->cblimits[co], cblimits, 4 * sizeof(int));
+					reg->cblimits[co] = (uint8_t*)malloc(4);
+					memcpy(reg->cblimits[co], cblimits, 4);
 				}
 				else reg->cblimits[co] = NULL;
 			}
@@ -154,6 +155,6 @@ region *read_region(const char *regiondir, const int rx, const int rz,
 void free_region(region *reg)
 {
 	free(reg->blimits);
-	for (int i = 0; i < REGION_CHUNK_AREA; i++) free(reg->cblimits[i]);
+	for (uint32_t i = 0; i < REGION_CHUNK_AREA; i++) free(reg->cblimits[i]);
 	free(reg);
 }

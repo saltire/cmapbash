@@ -17,6 +17,8 @@
 */
 
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,6 +28,7 @@
 #include "textures.h"
 
 
+// add a shadow to blocks below a certain height
 static void add_height_shading(unsigned char *pixel, const unsigned int y)
 {
 	if (pixel[ALPHA] == 0 || y >= HSHADE_BLOCK_HEIGHT) return;
@@ -33,9 +36,10 @@ static void add_height_shading(unsigned char *pixel, const unsigned int y)
 }
 
 
-static void set_light_levels(palette *palette, const shape *bshape,
-		const unsigned int offset, const unsigned char *clight, const unsigned char nlight[],
-		const char draw_t, const char draw_l, const char draw_r, const unsigned char defval)
+// in isometric night mode, adjust each face of the block to reflect sky/block light
+static void set_light_levels(palette *palette, const shape *bshape, const uint16_t offset,
+		const uint8_t *clight, const uint8_t nlight[], const uint8_t defval,
+		const bool draw_t, const bool draw_l, const bool draw_r)
 {
 	int toffset = offset + CHUNK_BLOCK_AREA;
 	float tlight = toffset > CHUNK_BLOCK_VOLUME ? defval : (float)clight[toffset];
@@ -66,29 +70,29 @@ static void set_light_levels(palette *palette, const shape *bshape,
 }
 
 
-void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts)
+void render_iso_column(image *img, const int32_t cpx, const int32_t cpy, const textures *tex,
+		chunk_data *chunk, const uint8_t rbx, const uint8_t rbz, const options *opts)
 {
-	// get unrotated 2d block offset from rotated coordinates
-	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
+	// get unrotated chunk-level 2d block offset from rotated coordinates
+	uint8_t hoffset = get_block_offset(rbx, rbz, 0, opts->rotate);
 
-	unsigned char biomeid = chunk->biomes[hoffset];
+	uint8_t biomeid = chunk->biomes[hoffset];
 
-	for (unsigned int y = 0; y <= MAX_HEIGHT; y++)
+	for (uint8_t y = 0; y <= MAX_HEIGHT; y++)
 	{
-		// get unrotated 3d block offset
-		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
+		// get unrotated chunk-level 3d block offset
+		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
 
-		unsigned char bid = chunk->bids[offset];
-		unsigned char bdata = chunk->bdata[offset];
+		uint8_t bid = chunk->bids[offset];
+		uint8_t bdata = chunk->bdata[offset];
 
 		// skip air blocks or invalid block ids
 		if (bid == 0 || bid > tex->max_blockid) continue;
 
 		// get neighbour block ids and data values
-		unsigned char nbids[4], nbdata[4];
-		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, opts->rotate, 0);
-		get_neighbour_values(nbdata, chunk->bdata, chunk->nbdata, rbx, y, rbz, opts->rotate, 0);
+		uint8_t nbids[4], nbdata[4];
+		get_neighbour_values(nbids, chunk->bids, chunk->nbids, 0, rbx, rbz, y, opts->rotate);
+		get_neighbour_values(nbdata, chunk->bdata, chunk->nbdata, 0, rbx, rbz, y, opts->rotate);
 
 		// get the type of this block and neighbouring blocks
 		const blocktype *btype = get_block_type(tex, bid, bdata);
@@ -98,13 +102,13 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		const blocktype *rbtype = get_block_type(tex, nbids[1], nbdata[1]);
 
 		// if the block above is the same type or opaque, don't draw the top of this one
-		char draw_top = !(y < MAX_HEIGHT && (
+		bool draw_top = !(y < MAX_HEIGHT && (
 				(tbtype->id == btype->id && tbtype->subtype == btype->subtype) ||
 				(tbtype->shapes[opts->rotate].is_solid && tbtype->is_opaque)));
 
 		// if block in front of left or right side is solid and opaque, don't draw that side
-		char draw_left = !(lbtype->shapes[opts->rotate].is_solid && lbtype->is_opaque);
-		char draw_right = !(rbtype->shapes[opts->rotate].is_solid && rbtype->is_opaque);
+		bool draw_left = !(lbtype->shapes[opts->rotate].is_solid && lbtype->is_opaque);
+		bool draw_right = !(rbtype->shapes[opts->rotate].is_solid && rbtype->is_opaque);
 
 		// skip this block if we aren't drawing any of the faces
 		if (!draw_top && !draw_left && !draw_right) continue;
@@ -120,7 +124,7 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 			memcpy(&palette, &btype->palette, sizeof(palette));
 
 		// adjust for height
-		for (int i = 0; i < COLOUR_COUNT; i++)
+		for (uint8_t i = 0; i < COLOUR_COUNT; i++)
 			if (HAS_PTR(bshape, i)) add_height_shading(palette[i], y);
 
 		// replace highlight and/or shadow with unshaded colour if that side is blocked
@@ -137,38 +141,40 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 		}
 
 		// darken colours according to sky light (day) or block light (night)
-		unsigned char nlight[4];
+		uint8_t nlight[4];
 		if (chunk->slight != NULL)
 		{
-			get_neighbour_values(nlight, chunk->slight, chunk->nslight,
-					rbx, y, rbz, opts->rotate, 255);
-			set_light_levels(&palette, bshape, offset, chunk->slight, nlight,
-					draw_top, draw_left, draw_right, 255);
+			get_neighbour_values(nlight, chunk->slight, chunk->nslight, 255,
+					rbx, rbz, y, opts->rotate);
+			set_light_levels(&palette, bshape, offset, chunk->slight, nlight, 255,
+					draw_top, draw_left, draw_right);
 		}
 		else if (chunk->blight != NULL)
 		{
-			get_neighbour_values(nlight, chunk->blight, chunk->nblight,
-					rbx, y, rbz, opts->rotate, 0);
-			set_light_levels(&palette, bshape, offset, chunk->blight, nlight,
-					draw_top, draw_left, draw_right, 0);
+			get_neighbour_values(nlight, chunk->blight, chunk->nblight, 0,
+					rbx, rbz, y, opts->rotate);
+			set_light_levels(&palette, bshape, offset, chunk->blight, nlight, 0,
+					draw_top, draw_left, draw_right);
 		}
 
 		// translate orthographic to isometric coordinates
-		int px = cpx + (rbx + MAX_CHUNK_BLOCK - rbz) * ISO_BLOCK_WIDTH / 2;
-		int py = cpy + (rbx + rbz) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
+		uint32_t px = cpx + (rbx + MAX_CHUNK_BLOCK - rbz) * ISO_BLOCK_WIDTH / 2;
+		uint32_t py = cpy + (rbx + rbz) * ISO_BLOCK_TOP_HEIGHT + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 
 		// draw pixels
-		for (int sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
+		for (uint8_t sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 		{
+			// skip top rows if we aren't drawing them
 			if (sy < ISO_BLOCK_TOP_HEIGHT && !draw_top) continue;
-			for (int sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
+			for (uint8_t sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
-				unsigned char pcolour = bshape->pixels[sy * ISO_BLOCK_WIDTH + sx];
+				uint8_t pcolour = bshape->pixels[sy * ISO_BLOCK_WIDTH + sx];
 				if (pcolour == BLANK) continue;
 				{
-					int po = (py + sy) * img->width + px + sx;
+					uint32_t po = (py + sy) * img->width + px + sx;
 
 					if ((sy < ISO_BLOCK_TOP_HEIGHT) ||
+							// skip left/right columns if we aren't drawing them
 							(sx < ISO_BLOCK_WIDTH / 2 && draw_left) ||
 							(sx >= ISO_BLOCK_WIDTH / 2 && draw_right))
 						combine_alpha(palette[pcolour], &img->data[po * CHANNELS], 1);
@@ -179,8 +185,9 @@ void render_iso_column(image *img, const int cpx, const int cpy, const textures 
 }
 
 
-static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, const textures *tex,
-		const unsigned int offset, const char use_biome, const unsigned char biomeid)
+// get the colour of this block, alpha blended with any visible blocks below it
+static void get_block_alpha_colour(uint8_t *pixel, chunk_data *chunk, const textures *tex,
+		const uint16_t offset, const bool use_biome, const uint8_t biomeid)
 {
 	const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
 
@@ -194,7 +201,7 @@ static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, cons
 	if (pixel[ALPHA] < 255)
 	{
 		// get the next block down, or use black if this is the bottom block
-		unsigned char next[CHANNELS] = {0};
+		uint8_t next[CHANNELS] = {0};
 		if (offset > CHUNK_BLOCK_AREA)
 			get_block_alpha_colour(next, chunk, tex, offset - CHUNK_BLOCK_AREA, use_biome, biomeid);
 		combine_alpha(pixel, next, 0);
@@ -202,21 +209,21 @@ static void get_block_alpha_colour(unsigned char *pixel, chunk_data *chunk, cons
 }
 
 
-void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts)
+void render_ortho_column(image *img, const int32_t cpx, const int32_t cpy, const textures *tex,
+		chunk_data *chunk, const uint32_t rbx, const uint32_t rbz, const options *opts)
 {
 	// get pixel buffer for this block's rotated position
-	unsigned char *pixel = &img->data[((cpy + rbz) * img->width + cpx + rbx) * CHANNELS];
+	uint8_t *pixel = &img->data[((cpy + rbz) * img->width + cpx + rbx) * CHANNELS];
 
 	// get unrotated 2d block offset from rotated coordinates
-	unsigned int hoffset = get_block_offset(0, rbx, rbz, opts->rotate);
+	uint16_t hoffset = get_block_offset(rbx, rbz, 0, opts->rotate);
 
-	unsigned char biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
+	uint8_t biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
 
-	for (int y = MAX_HEIGHT; y >= 0; y--)
+	for (uint8_t y = MAX_HEIGHT; y >= 0; y--)
 	{
 		// get unrotated 3d block offset
-		unsigned int offset = y * CHUNK_BLOCK_AREA + hoffset;
+		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
 
 		// skip air blocks or invalid block ids
 		if (chunk->bids[offset] == 0 || chunk->bids[offset] >= tex->max_blockid) continue;
@@ -226,15 +233,15 @@ void render_ortho_block(image *img, const int cpx, const int cpy, const textures
 		add_height_shading(pixel, y);
 
 		// contour highlights and shadows
-		unsigned char nbids[4];
-		get_neighbour_values(nbids, chunk->bids, chunk->nbids, rbx, y, rbz, opts->rotate, 0);
-		char light = (nbids[0] == 0 || nbids[3] == 0);
-		char dark = (nbids[1] == 0 || nbids[2] == 0);
+		uint8_t nbids[4];
+		get_neighbour_values(nbids, chunk->bids, chunk->nbids, 0, rbx, rbz, y, opts->rotate);
+		bool light = (nbids[0] == 0 || nbids[3] == 0);
+		bool dark = (nbids[1] == 0 || nbids[2] == 0);
 		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);
 		if (dark && !light) adjust_colour_brightness(pixel, SHADOW_AMOUNT);
 
 		// night mode: darken colours according to block light
-		if (chunk->blight != NULL) {
+		if (opts->night) {
 			float tbl = y < MAX_HEIGHT ? chunk->blight[offset + CHUNK_BLOCK_AREA] : 0;
 			if (tbl < MAX_LIGHT) set_colour_brightness(pixel, tbl / MAX_LIGHT, NIGHT_AMBIENCE);
 		}

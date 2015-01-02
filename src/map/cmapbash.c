@@ -18,6 +18,8 @@
 
 
 #include <getopt.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,22 +40,22 @@ int main(int argc, char **argv)
 		.shapepath = "resources/shapes.csv",
 		.biomepath = "resources/biomes.csv",
 	};
-	unsigned int rotateint;
-	int fc = 0;
-	int f1, f2, f3, fx, fy, fz;
-	int tc = 0;
-	int t1, t2, t3, tx, ty, tz;
+	uint8_t rotateint;
+	int32_t fc = 0;
+	int32_t f1, f2, f3, fx, fy, fz;
+	int32_t tc = 0;
+	int32_t t1, t2, t3, tx, ty, tz;
 
 	// flush output on newlines
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
 	static struct option long_options[] =
 	{
-		{"isometric", no_argument, &opts.isometric, 1},
-		{"night",     no_argument, &opts.night,     1},
-		{"shadows",   no_argument, &opts.shadows,   1},
-		{"biomes",    no_argument, &opts.biomes,    1},
-		{"tiny",      no_argument, &opts.tiny,      1},
+		{"isometric", no_argument, (int*)&opts.isometric, 1},
+		{"night",     no_argument, (int*)&opts.night,     1},
+		{"shadows",   no_argument, (int*)&opts.shadows,   1},
+		{"biomes",    no_argument, (int*)&opts.biomes,    1},
+		{"tiny",      no_argument, (int*)&opts.tiny,      1},
 		{"rotate",    required_argument, 0, 'r'},
 		{"world",     required_argument, 0, 'w'},
 		{"output",    required_argument, 0, 'o'},
@@ -63,7 +65,7 @@ int main(int argc, char **argv)
 	};
 
 	int c;
-	int first = 1;
+	bool first = 1;
 	while (1)
 	{
 		int option_index = 2;
@@ -159,10 +161,10 @@ int main(int argc, char **argv)
 			fz = f3;
 			tz = t3;
 
-			int ylimits[2] =
+			uint8_t ylimits[2] =
 			{
-				MAX(0, MIN(f2,t2)),
-				MIN(MAX_HEIGHT, MAX(f2,t2)),
+				MAX(0, MIN(f2, t2)),
+				MIN(MAX_HEIGHT, MAX(f2, t2)),
 			};
 			opts.ylimits = ylimits;
 		}
@@ -172,12 +174,12 @@ int main(int argc, char **argv)
 			tz = t2;
 		}
 
-		int limits[4] =
+		int32_t limits[4] =
 		{
-			MIN(fz,tz),
-			MAX(fx,tx),
-			MAX(fz,tz),
-			MIN(fx,tx),
+			MIN(fz, tz),
+			MAX(fx, tx),
+			MAX(fz, tz),
+			MIN(fx, tx),
 		};
 		opts.limits = limits;
 

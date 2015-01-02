@@ -18,6 +18,8 @@
 
 
 #include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,11 +28,12 @@
 #include "data.h"
 
 
-static unsigned int get_offset(const unsigned int y, const unsigned int rx, const unsigned int rz,
-		const unsigned int length, const unsigned char rotate)
+// get the offset of an item in a rotated x/z array of dimensions length x length
+static uint16_t get_offset(const uint8_t rx, const uint8_t rz, const uint8_t y,
+		const uint8_t length, const uint8_t rotate)
 {
-	int x, z;
-	int max = length - 1;
+	uint8_t x, z;
+	uint8_t max = length - 1;
 	switch(rotate) {
 	case 0:
 		x = rx;
@@ -53,41 +56,41 @@ static unsigned int get_offset(const unsigned int y, const unsigned int rx, cons
 }
 
 
-unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
-		const unsigned int rbz, const unsigned char rotate)
+uint16_t get_block_offset(const uint8_t rbx, const uint8_t rbz, const uint8_t y,
+		const uint8_t rotate)
 {
-	return get_offset(y, rbx, rbz, CHUNK_BLOCK_LENGTH, rotate);
+	return get_offset(rbx, rbz, y, CHUNK_BLOCK_LENGTH, rotate);
 }
 
 
-unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
-		const char rotate)
+uint16_t get_chunk_offset(const uint8_t rcx, const uint8_t rcz, const uint8_t rotate)
 {
-	return get_offset(0, rcx, rcz, REGION_CHUNK_LENGTH, rotate);
+	return get_offset(rcx, rcz, 0, REGION_CHUNK_LENGTH, rotate);
 }
 
 
-void get_neighbour_values(unsigned char nvalues[4], unsigned char *data, unsigned char *ndata[4],
-		const int rbx, const int y, const int rbz, const char rotate, unsigned char defval)
+void get_neighbour_values(uint8_t nvalues[4], uint8_t *data, uint8_t *ndata[4], uint8_t defval,
+		const uint8_t rbx, const uint8_t rbz, const uint8_t y, const uint8_t rotate)
 {
-	nvalues[0] = rbz > 0 ? data[get_block_offset(y, rbx, rbz - 1, rotate)] :
+	nvalues[0] = rbz > 0 ? data[get_block_offset(rbx, rbz - 1, y, rotate)] :
 			(ndata[0] == NULL ? defval :
-					ndata[0][get_block_offset(y, rbx, MAX_CHUNK_BLOCK, rotate)]);
+					ndata[0][get_block_offset(rbx, MAX_CHUNK_BLOCK, y, rotate)]);
 
-	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx + 1, rbz, rotate)] :
-			(ndata[1] == NULL ? defval : ndata[1][get_block_offset(y, 0, rbz, rotate)]);
+	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx + 1, rbz, y, rotate)] :
+			(ndata[1] == NULL ? defval : ndata[1][get_block_offset(0, rbz, y, rotate)]);
 
-	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(y, rbx, rbz + 1, rotate)] :
-			(ndata[2] == NULL ? defval : ndata[2][get_block_offset(y, rbx, 0, rotate)]);
+	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx, rbz + 1, y, rotate)] :
+			(ndata[2] == NULL ? defval : ndata[2][get_block_offset(rbx, 0, y, rotate)]);
 
-	nvalues[3] = rbx > 0 ? data[get_block_offset(y, rbx - 1, rbz, rotate)] :
+	nvalues[3] = rbx > 0 ? data[get_block_offset(rbx - 1, rbz, y, rotate)] :
 			(ndata[3] == NULL ? defval :
-					ndata[3][get_block_offset(y, MAX_CHUNK_BLOCK, rbz, rotate)]);
+					ndata[3][get_block_offset(MAX_CHUNK_BLOCK, rbz, y, rotate)]);
 }
 
 
-static void copy_section_bytes(unsigned char *data, nbt_node *section, const char *name,
-		const unsigned int yo, const unsigned int syolimits[2], const unsigned int *cblimits)
+// read block data from an NBT byte array at 8 bits per block
+static void copy_section_bytes(uint8_t *data, nbt_node *section, const char *name,
+		const uint16_t yo, const uint16_t syolimits[2], const uint8_t *cblimits)
 {
 	nbt_node *array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
@@ -101,18 +104,19 @@ static void copy_section_bytes(unsigned char *data, nbt_node *section, const cha
 		memcpy(data + yo + syolimits[0], array->payload.tag_byte_array.data + syolimits[0],
 				syolimits[1] - syolimits[0]);
 	else
-		for (unsigned int syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
-			for (unsigned int z = cblimits[0]; z <= cblimits[2]; z++)
-				for (unsigned int x = cblimits[3]; x <= cblimits[1]; x++)
+		for (uint16_t syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
+			for (uint8_t z = cblimits[0]; z <= cblimits[2]; z++)
+				for (uint8_t x = cblimits[3]; x <= cblimits[1]; x++)
 				{
-					unsigned int b = syo + z * CHUNK_BLOCK_LENGTH + x;
-					data[yo + b] = array->payload.tag_byte_array.data[b];
+					uint16_t sbo = syo + z * CHUNK_BLOCK_LENGTH + x;
+					data[yo + sbo] = array->payload.tag_byte_array.data[sbo];
 				}
 }
 
 
-static void copy_section_nybbles(unsigned char *data, nbt_node *section, const char *name,
-		const unsigned int yo, const unsigned int syolimits[2], const unsigned int *cblimits)
+// read block data from an NBT byte array at 4 bits per block
+static void copy_section_nybbles(uint8_t *data, nbt_node *section, const char *name,
+		const uint16_t yo, const uint16_t syolimits[2], const uint8_t *cblimits)
 {
 	nbt_node *array = nbt_find_by_name(section, name);
 	if (array->type != TAG_BYTE_ARRAY ||
@@ -124,29 +128,30 @@ static void copy_section_nybbles(unsigned char *data, nbt_node *section, const c
 
 	// note: syolimits uses < instead of <=
 	if (cblimits == NULL)
-		for (unsigned int b = syolimits[0]; b < syolimits[1]; b += 2)
+		for (uint16_t b = syolimits[0]; b < syolimits[1]; b += 2)
 		{
-			unsigned char byte = array->payload.tag_byte_array.data[b / 2];
+			uint8_t byte = array->payload.tag_byte_array.data[b / 2];
 			data[yo + b] = byte & 0xf;
 			data[yo + b + 1] = byte >> 4;
 		}
 	else
-		for (unsigned int syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
-			for (unsigned int z = cblimits[0]; z <= cblimits[2]; z++)
-				for (unsigned int x = cblimits[3]; x <= cblimits[1]; x += 2)
+		for (uint16_t syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
+			for (uint8_t z = cblimits[0]; z <= cblimits[2]; z++)
+				// increment x by 2, and read two block values from each byte of data
+				for (uint8_t x = cblimits[3]; x <= cblimits[1]; x += 2)
 				{
-					unsigned int b = syo + z * CHUNK_BLOCK_LENGTH + x;
-					unsigned char byte = array->payload.tag_byte_array.data[b / 2];
-					data[yo + b] = byte & 0xf;
-					data[yo + b + 1] = byte >> 4;
+					uint16_t sbo = syo + z * CHUNK_BLOCK_LENGTH + x;
+					uint8_t byte = array->payload.tag_byte_array.data[sbo / 2];
+					data[yo + sbo] = byte & 0xf;
+					data[yo + sbo + 1] = byte >> 4;
 				}
 }
 
 
-unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char half,
-		const char defval, const unsigned int *ylimits)
+uint8_t *get_chunk_data(chunk_data *chunk, char *name, const bool half, const uint8_t defval,
+		const uint8_t *ylimits)
 {
-	unsigned char *data = (unsigned char*)malloc(CHUNK_BLOCK_VOLUME);
+	uint8_t *data = (uint8_t*)malloc(CHUNK_BLOCK_VOLUME);
 	memset(data, defval, CHUNK_BLOCK_VOLUME);
 
 	nbt_node *sections = nbt_find_by_name(chunk->nbt, "Sections");
@@ -170,8 +175,8 @@ unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char 
 						sy > ylimits[1] / SECTION_BLOCK_HEIGHT)) continue;
 
 				// get overall section offset, and start/end y offsets for this section
-				unsigned int yo = sy * SECTION_BLOCK_VOLUME;
-				unsigned int syolimits[2] = {0, SECTION_BLOCK_VOLUME};
+				uint16_t yo = sy * SECTION_BLOCK_VOLUME;
+				uint16_t syolimits[2] = {0, SECTION_BLOCK_VOLUME};
 				if (ylimits != NULL)
 				{
 					if (ylimits[0] / SECTION_BLOCK_HEIGHT == sy)
@@ -181,9 +186,9 @@ unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char 
 				}
 
 				if (half)
-					copy_section_nybbles(data, section->data, tag, yo, syolimits, chunk->blimits);
+					copy_section_nybbles(data, section->data, name, yo, syolimits, chunk->blimits);
 				else
-					copy_section_bytes(data, section->data, tag, yo, syolimits, chunk->blimits);
+					copy_section_bytes(data, section->data, name, yo, syolimits, chunk->blimits);
 			}
 		}
 	}
@@ -192,8 +197,8 @@ unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char 
 }
 
 
-chunk_data *parse_chunk_nbt(const char *cdata, const unsigned int length, const chunk_flags *flags,
-		unsigned int *cblimits, const unsigned int *ylimits)
+chunk_data *parse_chunk_nbt(const uint8_t *cdata, const uint32_t length, const chunk_flags *flags,
+		uint8_t *cblimits, const uint8_t *ylimits)
 {
 	chunk_data *chunk = (chunk_data*)malloc(sizeof(chunk_data));
 	chunk->nbt = nbt_parse_compressed(cdata, length);

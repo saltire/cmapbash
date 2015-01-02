@@ -19,6 +19,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +27,7 @@
 #include "data.h"
 
 
-region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz)
+region *get_region_from_coords(const worldinfo *world, const uint32_t rrx, const uint32_t rrz)
 {
 	// check if region is out of bounds
 	if (rrx < 0 || rrx > world->rrxmax || rrz < 0 || rrz > world->rrzmax) return NULL;
@@ -35,7 +36,7 @@ region *get_region_from_coords(const worldinfo *world, const int rrx, const int 
 }
 
 
-worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int *wblimits)
+worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits)
 {
 	worldinfo *world = (worldinfo*)malloc(sizeof(worldinfo));
 	world->rcount = 0;
@@ -58,9 +59,10 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 		return world;
 	}
 
-	int wrlimits[4], wrblimits[4];
+	int32_t wrlimits[4];
+	int16_t wrblimits[4];
 	if (wblimits != NULL)
-		for (int i = 0; i < 4; i++)
+		for (uint8_t i = 0; i < 4; i++)
 		{
 			// dividing rounds toward zero, so bit shift to get the floor instead
 			wrlimits[i] = wblimits[i] >> REGION_BLOCK_BITS;
@@ -69,7 +71,8 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 
 	// list directory to find the number of region files, and image dimensions
 	struct dirent *ent;
-	int rx, rz, rxmin, rxmax, rzmin, rzmax, length;
+	int32_t rx, rz, rxmin, rxmax, rzmin, rzmax;
+	uint8_t length;
 	char ext[4]; // three-char extension + null char
 	while ((ent = readdir(dir)) != NULL)
 	{
@@ -102,8 +105,8 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 		return world;
 	}
 
-	int rxsize = rxmax - rxmin + 1;
-	int rzsize = rzmax - rzmin + 1;
+	uint32_t rxsize = rxmax - rxmin + 1;
+	uint32_t rzsize = rzmax - rzmin + 1;
 	world->rrxsize = rotate % 2 ? rzsize : rxsize;
 	world->rrzsize = rotate % 2 ? rxsize : rzsize;
 	world->rrxmax = world->rrxsize - 1;
@@ -120,7 +123,7 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			unsigned int *rblimits;
+			uint16_t *rblimits;
 
 			// get chunk limits for this region
 			if (wblimits != NULL)
@@ -128,7 +131,7 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 				if (rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3])
 					continue;
 
-				rblimits = (unsigned int*)malloc(4 * sizeof(int));
+				rblimits = (uint16_t*)malloc(4 * sizeof(uint16_t));
 				rblimits[0] = (rz == wrlimits[0] ? wrblimits[0] : 0);
 				rblimits[1] = (rx == wrlimits[1] ? wrblimits[1] : MAX_REGION_BLOCK);
 				rblimits[2] = (rz == wrlimits[2] ? wrblimits[2] : MAX_REGION_BLOCK);
@@ -142,7 +145,7 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 			if (reg == NULL) continue;
 
 			// get rotated world-relative region coords from absolute coords
-			int rrx, rrz;
+			uint32_t rrx, rrz;
 			switch(world->rotate) {
 			case 0:
 				rrx = rx - rxmin;
@@ -171,7 +174,7 @@ worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int 
 
 void free_world(worldinfo *world)
 {
-	for (int i = 0; i < world->rrxsize * world->rrzsize; i++)
+	for (uint32_t i = 0; i < world->rrxsize * world->rrzsize; i++)
 		if (world->regionmap[i] != NULL) free_region(world->regionmap[i]);
 	free(world->regionmap);
 	free(world);

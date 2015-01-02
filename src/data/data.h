@@ -21,6 +21,9 @@
 #define DATA_H_
 
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "nbt.h"
 
 
@@ -69,78 +72,158 @@
 
 typedef struct chunk_data
 {
-	nbt_node *nbt;
-	unsigned int *blimits;
-	unsigned char *bids, *bdata, *blight, *slight, *biomes;
-	unsigned char *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
+	nbt_node *nbt;    // the NBT node for this chunk
+	uint8_t *blimits; // pointer to an array of absolute min/max x/z block coords for this chunk
+	uint8_t *bids, *bdata, *blight, *slight, *biomes;
+	                  // pointers to byte data arrays for this chunk
+	uint8_t *nbids[4], *nbdata[4], *nblight[4], *nslight[4];
+	                  // arrays of pointers to byte data arrays for each rotated neighbouring chunk
 }
 chunk_data;
 
 
 typedef struct chunk_flags
 {
-	char bids, bdata, blight, slight, biomes;
+	bool bids, bdata, blight, slight, biomes; // whether to load each type of chunk data
 }
 chunk_flags;
 
 
 typedef struct region
 {
-	int x, z;
-	char path[REGIONFILE_PATH_MAXLEN];
-	unsigned int offsets[REGION_CHUNK_AREA];
-	unsigned int *blimits, *cblimits[REGION_CHUNK_AREA];
-	FILE *file;
+	int32_t x, z;                         // absolute world-level coords of this region
+	char path[REGIONFILE_PATH_MAXLEN];    // path to the region file
+	uint32_t offsets[REGION_CHUNK_AREA];  // byte offset values for each chunk in the region file
+	uint16_t *blimits;                    // pointer to an array of absolute min/max
+	                                      //   x/z block coords for this region
+	uint8_t *cblimits[REGION_CHUNK_AREA]; // pointers to arrays of absolute min/max
+	                                      //   x/z block coords for each chunk in this region
+	FILE *file;                           // handle for the region file
 }
 region;
 
 
 typedef struct worldinfo
 {
-	char regiondir[REGIONDIR_PATH_MAXLEN];
-	unsigned int rcount, rrxsize, rrzsize, rrxmax, rrzmax;
-	unsigned char rotate;
-	region **regionmap;
+	char regiondir[REGIONDIR_PATH_MAXLEN]; // path to the region directory
+	uint32_t rcount;                       // the number of existing region files in the directory
+	uint32_t rrxsize, rrzsize;             // rotated width and height of the world in regions
+	uint32_t rrxmax, rrzmax;               // rotated maximum x/z region coords
+	                                       //   (i.e. width and height minus 1)
+	uint8_t rotate;                        // the number of times to rotate the map 90 degrees
+	region **regionmap;                    // pointer to an array of region structs,
+	                                       //   indexed by rotated offset
 }
 worldinfo;
 
 
-unsigned int get_block_offset(const unsigned int y, const unsigned int rbx,
-		const unsigned int rbz, const unsigned char rotate);
+/* get a block's absolute chunk-level 3D offset from rotated coordinates
+ *   rbx, rbz: the block's rotated chunk-level x/z coords
+ *   y:        the block's y coord
+ *   rotate:   the rotate value
+ */
+uint16_t get_block_offset(const uint8_t rbx, const uint8_t rbz, const uint8_t y,
+		const uint8_t rotate);
 
-unsigned int get_chunk_offset(const unsigned int rcx, const unsigned int rcz,
-		const char rotate);
+/* get a chunk's absolute region-level offset from rotated coordinates
+ *   rcx, rcz: the chunk's rotated region-level x/z coords
+ *   rotate:   the rotate value
+ */
+uint16_t get_chunk_offset(const uint8_t rcx, const uint8_t rcz, const uint8_t rotate);
 
-void get_neighbour_values(unsigned char nvalues[4], unsigned char *data, unsigned char *ndata[4],
-		const int rbx, const int y, const int rbz, const char rotate, unsigned char defval);
+/* get the data values for the 4 neighbouring blocks
+ *   nvalues:  an output array of 4 data values
+ *   data:     chunk data for the current chunk
+ *   ndata:    chunk data for the 4 neighbouring chunks, in case we're on an edge
+ *   rbx, rbz: the block's rotated chunk-level x/z coords
+ *   y:        the block's y coord
+ *   rotate:   the rotate value
+ *   defval:   a default value for nonexistent blocks
+ */
+void get_neighbour_values(uint8_t nvalues[4], uint8_t *data, uint8_t *ndata[4], uint8_t defval,
+		const uint8_t rbx, const uint8_t rbz, const uint8_t y, const uint8_t rotate);
 
-unsigned char *get_chunk_data(chunk_data *chunk, unsigned char *tag, const char half,
-		const char defval, const unsigned int *ylimits);
+/* get the raw byte data for a chunk
+ *   chunk:   pointer to the chunk data struct
+ *   name:    the NBT label of the byte array to read
+ *   half:    whether this array is stored as 4 bits per block instead of 8
+ *   defval:  a default value for nonexistent chunk sections
+ *   ylimits: pointer to an array of min/max y coords
+ */
+uint8_t *get_chunk_data(chunk_data *chunk, char *name, const bool half, const uint8_t defval,
+		const uint8_t *ylimits);
 
-chunk_data *parse_chunk_nbt(const char *cdata, const unsigned int length, const chunk_flags *flags,
-		unsigned int *cblimits, const unsigned int *ylimits);
+/* generate a chunk data struct from raw chunk data in the region file
+ *   cdata:    pointer to the binary data
+ *   length:   length of the binary data
+ *   flags:    pointer to a struct indicating which byte arrays to read from the NBT node
+ *   cblimits: pointer to an array of absolute min/max x/z block coords for this chunk
+ *   ylimits:  pointer to an array of min/max y coords
+ */
+chunk_data *parse_chunk_nbt(const uint8_t *cdata, const uint32_t length, const chunk_flags *flags,
+		uint8_t *cblimits, const uint8_t *ylimits);
 
-chunk_data *read_chunk(const region *reg, const unsigned int rcx, const unsigned int rcz,
-		const char rotate, const chunk_flags *flags, const unsigned int *ylimits);
+/* locate and read raw chunk data from the region file and return a chunk data struct
+ *   reg:      pointer to the region struct
+ *   rcx, rcz: the chunk's rotated region-level x/z coords
+ *   rotate:   the rotate value
+ *   flags:    pointer to a struct indicating which byte arrays to read from the NBT node
+ *   ylimits:  pointer to an array of min/max y coords
+ */
+chunk_data *read_chunk(const region *reg, const uint8_t rcx, const uint8_t rcz,
+		const uint8_t rotate, const chunk_flags *flags, const uint8_t *ylimits);
 
+/* free the memory used for a chunk data struct
+ *   chunk: pointer to the chunk data struct
+ */
 void free_chunk(chunk_data *chunk);
 
-char chunk_exists(const region *reg, const unsigned int rcx, const unsigned int rcz,
-		const unsigned char rotate);
+/* check whether a chunk's data is present in a region file
+ *   reg:      pointer to the region struct
+ *   rcx, rcz: the chunk's rotated region-level coords
+ *   rotate:   the rotate value
+ */
+bool chunk_exists(const region *reg, const uint8_t rcx, const uint8_t rcz, const uint8_t rotate);
 
+/* open the file for a region and return the file handle
+ *   reg: pointer to the region struct
+ */
 FILE *open_region_file(region *reg);
 
+/* close the file handle for a region
+ *   reg: pointer to the region struct
+ */
 void close_region_file(region *reg);
 
-region *read_region(const char *regiondir, const int rx, const int rz,
-		const unsigned int *rblimits);
+/* generate a region struct given a region directory and coordinates (or NULL if nonexistent)
+ *   regiondir: path to the region directory
+ *   rx, rz:    absolute world-level coords for the region
+ *   rblimits:  pointer to an array of absolute min/max x/z block coords for this region
+ */
+region *read_region(const char *regiondir, const int32_t rx, const int32_t rz,
+		const uint16_t *rblimits);
 
+/* free the memory used for a region struct
+ *   reg: pointer to the region struct
+ */
 void free_region(region *reg);
 
-region *get_region_from_coords(const worldinfo *world, const int rrx, const int rrz);
+/* get a stored region struct from its rotated world-relative coords
+ *   world:    pointer to the world struct
+ *   rrx, rrz: the region's rotated world-relative x/z coords
+ */
+region *get_region_from_coords(const worldinfo *world, const uint32_t rrx, const uint32_t rrz);
 
-worldinfo *measure_world(char *worldpath, const unsigned char rotate, const int *wblimits);
+/* generate a world struct given a world directory
+ *   worldpath: path to the world directory
+ *   rotate:    the rotate value to use when rendering this world
+ *   wblimits:  pointer to an array of absolute world-level min/max x/z block coords
+ */
+worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits);
 
+/* free the memory used for a world struct
+ *   world: pointer to the world struct
+ */
 void free_world(worldinfo *world);
 
 

@@ -21,6 +21,9 @@
 #define MAP_H
 
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "data.h"
 #include "image.h"
 #include "textures.h"
@@ -70,32 +73,88 @@
 
 typedef struct options
 {
-	int isometric, night, shadows, biomes, tiny, use_limits;
-	unsigned char rotate;
-	int *limits, *ylimits;
-	char *texpath, *shapepath, *biomepath;
+	bool isometric,   // whether to render an isometric (true) or orthographic (false) map.
+		night,        // whether to render in night mode
+		shadows,      // whether to include sunlight/moonlight shadows
+		biomes,       // whether to use biome colours
+		tiny;         // whether to render a minimap where each existing chunk is a white pixel
+	uint8_t rotate;   // how many times to rotate the map 90 degrees clockwise
+	int32_t *limits;  // pointer to an array of absolute min/max x/z block coords to crop to
+	                  //   (ymin, xmax, ymax, xmin)
+	uint8_t *ylimits; // pointer to an array of absolute min/max y coords to crop to
+	char *texpath,    // path to a block texture/colour CSV file
+		*shapepath,   // path to an isometric blocktype shape file
+		*biomepath;   // path to a biome colour CSV file
 }
 options;
 
 
-void render_iso_column(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts);
+/* render a single column of blocks to an isometric map
+ *   img:      pointer to the map's image struct
+ *   cpx, cpy: pixel coords of the top left corner of the current chunk
+ *   tex:      pointer to the texture struct
+ *   chunk:    pointer to the chunk data struct
+ *   rbx, rbz: the column's rotated chunk-level x/z coords
+ *   opts:     pointer to the render options struct
+ */
+void render_iso_column(image *img, const int32_t cpx, const int32_t cpy, const textures *tex,
+		chunk_data *chunk, const uint8_t rbx, const uint8_t rbz, const options *opts);
 
-void render_ortho_block(image *img, const int cpx, const int cpy, const textures *tex,
-		chunk_data *chunk, const unsigned int rbx, const unsigned int rbz, const options *opts);
+/* render a single column of blocks to an orthographic map
+ *   img:      pointer to the map's image struct
+ *   cpx, cpy: pixel coords of the top left corner of the current chunk
+ *   tex:      pointer to the texture struct
+ *   chunk:    pointer to the chunk data struct
+ *   rbx, rbz: the column's rotated chunk-level x/z coords
+ *   opts:     pointer to the render options struct
+ */
+void render_ortho_column(image *img, const int32_t cpx, const int32_t cpy, const textures *tex,
+		chunk_data *chunk, const uint32_t rbx, const uint32_t rbz, const options *opts);
 
-void get_region_margins(unsigned int *margins, region *reg, const char rotate,
-		const char isometric);
+/* get the width of empty space that would be on each edge of the rendered map for this region
+ *   margins:   pointer to the output array of pixel values for each edge
+ *   reg:       pointer to the region struct
+ *   rotate:    the rotate value
+ *   isometric: whether we are rendering an isometric or orthographic map
+ */
+void get_region_margins(uint32_t *rmargins, region *reg, const uint8_t rotate,
+		const bool isometric);
 
-void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
+/* render a single white pixel for each existing chunk in the region onto the map
+ *   img:      pointer to the image struct
+ *   rpx, rpy: pixel coords of the top left corner of this region
+ *   reg:      pointer to the region struct
+ *   opts:     pointer to the render options struct
+ */
+void render_tiny_region_map(image *img, const int32_t rpx, const int32_t rpy, region *reg,
 		const options *opts);
 
-void render_region_map(image *img, const int rpx, const int rpy, region *reg,
+/* render a full region onto the map
+ *   img:      pointer to the image struct
+ *   rpx, rpy: pixel coords of the top left corner of this region
+ *   reg:      pointer to the region struct
+ *   nregions: array of pointers to the rotated neighbouring region structs
+ *   tex:      pointer to the texture struct
+ *   opts:     pointer to the render options struct
+ */
+void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region *reg,
 		region *nregions[4], const textures *tex, const options *opts);
 
-void render_world_map(image *image, int wpx, int wpy, const worldinfo *world, const options *opts);
+/* render the full world onto the map
+ *   img:      pointer to the image struct
+ *   wpx, wpy: pixel coords of the top left corner of the world (should be zero or negative)
+ *   world:    pointer to the world struct
+ *   opts:     pointer to the render options struct
+ */
+void render_world_map(image *img, int32_t wpx, int32_t wpy, const worldinfo *world,
+		const options *opts);
 
-void save_world_map(char *worlddir, const char *imagefile, const options *opts);
+/* render a map from a world directory and save it to a file
+ *   worldpath: path to the world directory
+ *   imgpath:   path to the output image file
+ *   opts:      pointer to a render options struct
+ */
+void save_world_map(char *worldpath, const char *imgpath, const options *opts);
 
 
 #endif

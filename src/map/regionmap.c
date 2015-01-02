@@ -17,6 +17,8 @@
 */
 
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,15 +28,15 @@
 #include "textures.h"
 
 
-void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,
-		const char isometric)
+void get_region_margins(uint32_t *rmargins, region *reg, const uint8_t rotate,
+		const bool isometric)
 {
 	for (int i = 0; i < 4; i++)
 		rmargins[i] = isometric ? (rmargins[i] = i % 2 ? ISO_REGION_WIDTH : ISO_REGION_TOP_HEIGHT)
 				: REGION_BLOCK_LENGTH;
 
-	unsigned int rblimits[4] = {0, MAX_REGION_BLOCK, MAX_REGION_BLOCK, 0};
-	unsigned int rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
+	uint16_t rblimits[4] = {0, MAX_REGION_BLOCK, MAX_REGION_BLOCK, 0};
+	uint8_t rclimits[4] = {0, MAX_REGION_CHUNK, MAX_REGION_CHUNK, 0};
 
 	if (reg->blimits != NULL)
 		for (int i = 0; i < 4; i++)
@@ -43,14 +45,14 @@ void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,
 			rclimits[i] = reg->blimits[i] >> CHUNK_BLOCK_BITS;
 		}
 
-	for (unsigned int cz = rclimits[0]; cz <= rclimits[2]; cz++)
+	for (uint8_t cz = rclimits[0]; cz <= rclimits[2]; cz++)
 	{
-		for (unsigned int cx = rclimits[3]; cx <= rclimits[1]; cx++)
+		for (uint8_t cx = rclimits[3]; cx <= rclimits[1]; cx++)
 		{
 			if (!reg->offsets[cz * REGION_CHUNK_LENGTH + cx]) continue;
 
 			// block margins for this chunk
-			unsigned int cm[4] =
+			uint32_t cm[4] =
 			{
 				MAX(cz * CHUNK_BLOCK_LENGTH, rblimits[0]),
 				MAX_REGION_BLOCK - MIN(cx * CHUNK_BLOCK_LENGTH + MAX_CHUNK_BLOCK, rblimits[1]),
@@ -59,10 +61,10 @@ void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,
 			};
 
 			// rotated pixel margins for this chunk
-			unsigned int rcm[4];
-			for (int i = 0; i < 4; i++)
+			uint32_t rcm[4];
+			for (uint8_t i = 0; i < 4; i++)
 			{
-				int m = (i + rotate) % 4;
+				uint8_t m = (i + rotate) % 4;
 
 				rcm[m] = isometric ? (cm[i] + cm[(i + 3) % 4])
 						* (m % 2 ? ISO_BLOCK_X_MARGIN : ISO_BLOCK_Y_MARGIN)
@@ -76,24 +78,22 @@ void get_region_margins(unsigned int *rmargins, region *reg, const char rotate,
 }
 
 
-void render_tiny_region_map(image *img, const int rpx, const int rpy, region *reg,
+void render_tiny_region_map(image *img, const int32_t rpx, const int32_t rpy, region *reg,
 		const options *opts)
 {
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
 
-	unsigned char colour[CHANNELS] = {255, 255, 255, 255};
+	uint8_t colour[CHANNELS] = {255, 255, 255, 255};
 
-	for (unsigned int rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
+	for (uint8_t rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
 	{
-		for (unsigned int rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
+		for (uint8_t rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
 		{
 			if (!chunk_exists(reg, rcx, rcz, opts->rotate)) continue;
 
 			// colour this pixel
-			int cpx = rpx + rcx;
-			int cpy = rpy + rcz;
-			unsigned char *pixel = &img->data[(cpy * img->width + cpx) * CHANNELS];
+			uint8_t *pixel = &img->data[((rpy + rcz) * img->width + rpx + rcx) * CHANNELS];
 			memcpy(pixel, colour, CHANNELS);
 		}
 	}
@@ -102,13 +102,13 @@ void render_tiny_region_map(image *img, const int rpx, const int rpy, region *re
 }
 
 
-void render_region_map(image *img, const int rpx, const int rpy, region *reg,
+void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region *reg,
 		region *nregions[4], const textures *tex, const options *opts)
 {
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
 
-	for (int i = 0; i < 4; i++) open_region_file(nregions[i]);
+	for (uint8_t i = 0; i < 4; i++) open_region_file(nregions[i]);
 
 	chunk_data *chunk, *prev_chunk, *new_chunk, *nchunks[4];
 	chunk_flags flags = {
@@ -127,9 +127,9 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 	};
 
 	// use rotated chunk coordinates, since we need to draw them top to bottom for isometric
-	for (unsigned int rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
+	for (uint8_t rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
 	{
-		for (unsigned int rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
+		for (uint8_t rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
 		{
 			// get the actual chunk from its rotated coordinates
 			// use the "new" chunk saved by the previous iteration if possible
@@ -160,7 +160,7 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 					read_chunk(nregions[3], MAX_REGION_CHUNK, rcz, opts->rotate, &nflags,
 							opts->ylimits);
 
-			for (int i = 0; i < 4; i++)
+			for (uint8_t i = 0; i < 4; i++)
 			{
 				if (nchunks[i] == NULL)
 				{
@@ -178,7 +178,7 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 			}
 
 			// render chunk image onto region image
-			int cpx, cpy;
+			uint32_t cpx, cpy;
 			if (opts->isometric)
 			{
 				// translate orthographic to isometric coordinates
@@ -192,12 +192,12 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 			}
 
 			// loop through rotated chunk's blocks
-			for (unsigned int rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
-				for (unsigned int rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
+			for (uint16_t rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
+				for (uint16_t rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
 					if (opts->isometric)
 						render_iso_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
 					else
-						render_ortho_block(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
+						render_ortho_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
 
 			// free chunks, or save them for the next iteration if we're not at the end of a row
 			free_chunk(nchunks[0]);
@@ -217,5 +217,5 @@ void render_region_map(image *img, const int rpx, const int rpy, region *reg,
 	}
 
 	close_region_file(reg);
-	for (int i = 0; i < 4; i++) close_region_file(nregions[i]);
+	for (uint8_t i = 0; i < 4; i++) close_region_file(nregions[i]);
 }

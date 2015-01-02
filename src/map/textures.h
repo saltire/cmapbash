@@ -21,6 +21,9 @@
 #define TEXTURES_H
 
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "data.h"
 #include "image.h"
 
@@ -71,17 +74,17 @@ colours;
 
 typedef struct shape
 {
-	char is_solid;
-	unsigned char has; // a bitfield with a bit for each colour in the palette
-	unsigned char pixels[ISO_BLOCK_AREA];
+	bool is_solid;
+	uint8_t has; // a bitfield with a bit for each colour in the palette
+	uint8_t pixels[ISO_BLOCK_AREA];
 }
 shape;
 
 typedef struct biome
 {
-	char exists;
-	unsigned char foliage[CHANNELS];
-	unsigned char grass[CHANNELS];
+	bool exists;
+	uint8_t foliage[CHANNELS];
+	uint8_t grass[CHANNELS];
 }
 biome;
 
@@ -89,42 +92,68 @@ typedef unsigned char palette[COLOUR_COUNT][CHANNELS];
 
 typedef struct blocktype
 {
-	unsigned char id;
-	unsigned char subtype;
+	uint8_t id;
+	uint8_t subtype;
 	palette palette;
 	palette *biome_palettes;
-	char is_opaque;
+	bool is_opaque;
 	shape shapes[4];
 }
 blocktype;
 
 typedef struct blockID
 {
-	unsigned char mask;
+	uint8_t mask;
 	blocktype subtypes[BLOCK_SUBTYPES];
 }
 blockID;
 
 typedef struct textures
 {
-	int max_blockid;
+	uint8_t max_blockid;
 	blockID *blockids;
 }
 textures;
 
 
+/* generate a texture struct from a set of CSV files
+ *   texpath:   path to the block texture/colour CSV
+ *   shapepath: path to the isometric shape CSV (or NULL if not rendering an isometric map)
+ *   biomepath: path to the biome colour CSV (or NULL if not rendering biomes)
+ */
 textures *read_textures(const char *texpath, const char *shapepath, const char *biomepath);
 
+/* free the memory used for a texture struct
+ *   tex: pointer to the texture struct
+ */
 void free_textures(textures *tex);
 
-const blocktype *get_block_type(const textures *tex,
-		const unsigned char blockid, const unsigned char dataval);
+/* get a block type struct given a block ID and a data value
+ *   tex:     pointer to the texture struct
+ *   blockid: the ID of the block's type
+ *   dataval: the data value of the block, if any
+ */
+const blocktype *get_block_type(const textures *tex, const uint8_t blockid, const uint8_t dataval);
 
-void set_colour_brightness(unsigned char *pixel, float brightness, float ambience);
+/* set an RGB colour to a certain brightness
+ *   pixel:      pointer to the colour or pixel buffer
+ *   brightness: a float value from 0 to 1 representing the amount of light above the minimum
+ *   ambience:   a float value from 0 to 1 representing the minimum brightness
+ */
+void set_colour_brightness(uint8_t *pixel, float brightness, float ambience);
 
+/* make an RGB colour lighter or darker
+ *   pixel: pointer to the colour or pixel buffer
+ *   mod:   a float value from -1 to 1 representing the percentage to lighten or darken
+ */
 void adjust_colour_brightness(unsigned char *pixel, float mod);
 
-void combine_alpha(unsigned char *top, unsigned char *bottom, int down);
+/* alpha blend one RGBA colour on top of another, replacing one of them
+ *   top:    pointer to the top colour or pixel buffer
+ *   bottom: pointer to the bottom colour or pixel buffer
+ *   down:   whether to store the result in the bottom buffer (true) or the top buffer (false)
+ */
+void combine_alpha(uint8_t *top, uint8_t *bottom, bool down);
 
 
 #endif
