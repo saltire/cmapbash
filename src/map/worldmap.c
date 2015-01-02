@@ -34,8 +34,8 @@ static void get_world_margins(uint32_t *margins, const worldinfo *world, const b
 	// initialize margins to maximum, and decrease them as regions are found
 	if (isometric)
 	{
-		margins[1] = margins[3] = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
-		margins[0] = margins[2] = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
+		margins[LEFT] = margins[RIGHT] = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
+		margins[TOP] = margins[BOTTOM] = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
 				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 	}
 	else
@@ -77,10 +77,14 @@ static void get_world_margins(uint32_t *margins, const worldinfo *world, const b
 			else
 			{
 				// use margins for the specific edge(s) that this region touches
-				if (rrz == 0             && rmargins[0] < margins[0]) margins[0] = rmargins[0];
-				if (rrx == world->rrxmax && rmargins[1] < margins[1]) margins[1] = rmargins[1];
-				if (rrz == world->rrzmax && rmargins[2] < margins[2]) margins[2] = rmargins[2];
-				if (rrx == 0             && rmargins[3] < margins[3]) margins[3] = rmargins[3];
+				if (rrz == 0 && rmargins[TOP] < margins[TOP])
+					margins[TOP] = rmargins[TOP];
+				if (rrx == world->rrxmax && rmargins[RIGHT] < margins[RIGHT])
+					margins[RIGHT] = rmargins[RIGHT];
+				if (rrz == world->rrzmax && rmargins[BOTTOM] < margins[BOTTOM])
+					margins[BOTTOM] = rmargins[BOTTOM];
+				if (rrx == 0 && rmargins[LEFT] < margins[LEFT])
+					margins[LEFT] = rmargins[LEFT];
 			}
 		}
 	}
@@ -168,8 +172,8 @@ void save_world_map(char *worldpath, const char *imgpath, const options *opts)
 				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
 		if (opts->ylimits != NULL)
 		{
-			margins[0] += (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH;
-			margins[2] += opts->ylimits[0] * ISO_BLOCK_DEPTH;
+			margins[TOP] += (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH;
+			margins[BOTTOM] += opts->ylimits[0] * ISO_BLOCK_DEPTH;
 		}
 	}
 	else
@@ -177,14 +181,14 @@ void save_world_map(char *worldpath, const char *imgpath, const options *opts)
 		width  = world->rrxsize * REGION_BLOCK_LENGTH;
 		height = world->rrzsize * REGION_BLOCK_LENGTH;
 	}
-	width  -= (margins[1] + margins[3]);
-	height -= (margins[0] + margins[2]);
+	width  -= (margins[LEFT] + margins[RIGHT]);
+	height -= (margins[TOP] + margins[BOTTOM]);
 
 	image *img = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n", world->rcount, width, height);
 
 	clock_t start = clock();
-	render_world_map(img, -margins[3], -margins[0], world, opts);
+	render_world_map(img, -margins[LEFT], -margins[TOP], world, opts);
 	printf("Total render time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
 
 	free_world(world);

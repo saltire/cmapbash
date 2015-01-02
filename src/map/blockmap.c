@@ -50,17 +50,17 @@ static void set_light_levels(palette *palette, const shape *bshape, const uint16
 		if (HAS_PTR(bshape, COLOUR2))
 			set_colour_brightness((*palette)[COLOUR2], tlight, NIGHT_AMBIENCE);
 	}
-	if (draw_l && nlight[2] < MAX_LIGHT)
+	if (draw_l && nlight[BOTTOM_LEFT] < MAX_LIGHT)
 	{
-		float llight = (float)nlight[2] / MAX_LIGHT;
+		float llight = (float)nlight[BOTTOM_LEFT] / MAX_LIGHT;
 		if (HAS_PTR(bshape, HILIGHT1))
 			set_colour_brightness((*palette)[HILIGHT1], llight, NIGHT_AMBIENCE);
 		if (HAS_PTR(bshape, HILIGHT2))
 			set_colour_brightness((*palette)[HILIGHT2], llight, NIGHT_AMBIENCE);
 	}
-	if (draw_r && nlight[1] < MAX_LIGHT)
+	if (draw_r && nlight[BOTTOM_RIGHT] < MAX_LIGHT)
 	{
-		float rlight = (float)nlight[1] / MAX_LIGHT;
+		float rlight = (float)nlight[BOTTOM_RIGHT] / MAX_LIGHT;
 		if (HAS_PTR(bshape, SHADOW1))
 			set_colour_brightness((*palette)[SHADOW1], rlight, NIGHT_AMBIENCE);
 		if (HAS_PTR(bshape, SHADOW2))
@@ -98,8 +98,8 @@ void render_iso_column(image *img, const int32_t cpx, const int32_t cpy, const t
 		const blocktype *btype = get_block_type(tex, bid, bdata);
 		const blocktype *tbtype = y == MAX_HEIGHT ? NULL : get_block_type(tex,
 				chunk->bids[offset + CHUNK_BLOCK_AREA], chunk->bdata[offset + CHUNK_BLOCK_AREA]);
-		const blocktype *lbtype = get_block_type(tex, nbids[2], nbdata[2]);
-		const blocktype *rbtype = get_block_type(tex, nbids[1], nbdata[1]);
+		const blocktype *lbtype = get_block_type(tex, nbids[BOTTOM_LEFT], nbdata[BOTTOM_LEFT]);
+		const blocktype *rbtype = get_block_type(tex, nbids[BOTTOM_RIGHT], nbdata[BOTTOM_RIGHT]);
 
 		// if the block above is the same type or opaque, don't draw the top of this one
 		bool draw_top = !(y < MAX_HEIGHT && (
@@ -235,8 +235,8 @@ void render_ortho_column(image *img, const int32_t cpx, const int32_t cpy, const
 		// contour highlights and shadows
 		uint8_t nbids[4];
 		get_neighbour_values(nbids, chunk->bids, chunk->nbids, 0, rbx, rbz, y, opts->rotate);
-		bool light = (nbids[0] == 0 || nbids[3] == 0);
-		bool dark = (nbids[1] == 0 || nbids[2] == 0);
+		bool light = (nbids[TOP] == 0 || nbids[LEFT] == 0);
+		bool dark = (nbids[BOTTOM] == 0 || nbids[RIGHT] == 0);
 		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);
 		if (dark && !light) adjust_colour_brightness(pixel, SHADOW_AMOUNT);
 

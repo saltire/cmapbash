@@ -45,19 +45,19 @@ void get_region_margins(uint32_t *rmargins, region *reg, const uint8_t rotate,
 			rclimits[i] = reg->blimits[i] >> CHUNK_BLOCK_BITS;
 		}
 
-	for (uint8_t cz = rclimits[0]; cz <= rclimits[2]; cz++)
+	for (uint8_t cz = rclimits[NORTH]; cz <= rclimits[SOUTH]; cz++)
 	{
-		for (uint8_t cx = rclimits[3]; cx <= rclimits[1]; cx++)
+		for (uint8_t cx = rclimits[WEST]; cx <= rclimits[EAST]; cx++)
 		{
 			if (!reg->offsets[cz * REGION_CHUNK_LENGTH + cx]) continue;
 
 			// block margins for this chunk
 			uint32_t cm[4] =
 			{
-				MAX(cz * CHUNK_BLOCK_LENGTH, rblimits[0]),
-				MAX_REGION_BLOCK - MIN(cx * CHUNK_BLOCK_LENGTH + MAX_CHUNK_BLOCK, rblimits[1]),
-				MAX_REGION_BLOCK - MIN(cz * CHUNK_BLOCK_LENGTH + MAX_CHUNK_BLOCK, rblimits[2]),
-				MAX(cx * CHUNK_BLOCK_LENGTH, rblimits[3]),
+				                   MAX(rblimits[NORTH], cz * CHUNK_BLOCK_LENGTH),
+				MAX_REGION_BLOCK - MIN(rblimits[EAST],  cx * CHUNK_BLOCK_LENGTH + MAX_CHUNK_BLOCK),
+				MAX_REGION_BLOCK - MIN(rblimits[SOUTH], cz * CHUNK_BLOCK_LENGTH + MAX_CHUNK_BLOCK),
+				                   MAX(rblimits[WEST],  cx * CHUNK_BLOCK_LENGTH),
 			};
 
 			// rotated pixel margins for this chunk

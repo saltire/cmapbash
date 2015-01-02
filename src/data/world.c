@@ -80,8 +80,9 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 		if (sscanf(ent->d_name, "r.%d.%d.%3s%n", &rx, &rz, ext, &length) &&
 				!strcmp(ext, "mca") && length == strlen(ent->d_name))
 		{
-			if (wblimits != NULL &&
-					(rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3]))
+			if (wblimits != NULL && (
+					rz < wrlimits[NORTH] || rx > wrlimits[EAST] ||
+					rz > wrlimits[SOUTH] || rx < wrlimits[WEST]))
 				continue;
 
 			if (world->rcount == 0)
@@ -128,14 +129,15 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 			// get chunk limits for this region
 			if (wblimits != NULL)
 			{
-				if (rz < wrlimits[0] || rx > wrlimits[1] || rz > wrlimits[2] || rx < wrlimits[3])
+				if (rz < wrlimits[NORTH] || rx > wrlimits[EAST] ||
+					rz > wrlimits[SOUTH] || rx < wrlimits[WEST])
 					continue;
 
 				rblimits = (uint16_t*)malloc(4 * sizeof(uint16_t));
-				rblimits[0] = (rz == wrlimits[0] ? wrblimits[0] : 0);
-				rblimits[1] = (rx == wrlimits[1] ? wrblimits[1] : MAX_REGION_BLOCK);
-				rblimits[2] = (rz == wrlimits[2] ? wrblimits[2] : MAX_REGION_BLOCK);
-				rblimits[3] = (rx == wrlimits[3] ? wrblimits[3] : 0);
+				rblimits[NORTH] = (rz == wrlimits[NORTH] ? wrblimits[NORTH] : 0);
+				rblimits[EAST]  = (rx == wrlimits[EAST]  ? wrblimits[EAST]  : MAX_REGION_BLOCK);
+				rblimits[SOUTH] = (rz == wrlimits[SOUTH] ? wrblimits[SOUTH] : MAX_REGION_BLOCK);
+				rblimits[WEST]  = (rx == wrlimits[WEST]  ? wrblimits[WEST]  : 0);
 			}
 			else rblimits = NULL;
 

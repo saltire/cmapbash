@@ -70,6 +70,36 @@
 #define LENGTH_BYTES 4
 
 
+typedef enum
+{
+	NORTH,
+	EAST,
+	SOUTH,
+	WEST
+}
+dirs;
+
+
+typedef enum
+{
+	TOP,
+	RIGHT,
+	BOTTOM,
+	LEFT
+}
+edges;
+
+
+typedef enum
+{
+	TOP_RIGHT,
+	BOTTOM_RIGHT,
+	BOTTOM_LEFT,
+	TOP_LEFT
+}
+iso_edges;
+
+
 typedef struct chunk_data
 {
 	nbt_node *nbt;    // the NBT node for this chunk

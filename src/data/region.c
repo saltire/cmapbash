@@ -108,9 +108,9 @@ region *read_region(const char *regiondir, const int32_t rx, const int32_t rz,
 		}
 	}
 
-	for (uint8_t cz = rclimits[0]; cz <= rclimits[2]; cz++)
+	for (uint8_t cz = rclimits[NORTH]; cz <= rclimits[SOUTH]; cz++)
 	{
-		for (uint8_t cx = rclimits[3]; cx <= rclimits[1]; cx++)
+		for (uint8_t cx = rclimits[WEST]; cx <= rclimits[EAST]; cx++)
 		{
 			uint16_t co = cz * REGION_CHUNK_LENGTH + cx;
 
