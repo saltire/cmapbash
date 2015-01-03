@@ -82,8 +82,9 @@ static void read_shapes(shape **shapes, const char *shapepath)
 	char line[LINE_BUFFER];
 
 	// count shapes and allocate array
-	uint8_t c, scount = 0;
-	while ((c = getc(scsv)) != EOF) if (c == '\n') scount++;
+	uint32_t c;
+	uint8_t scount = 0;
+	while ((c = fgetc(scsv)) != EOF) if (c == '\n') scount++;
 	*shapes = (shape*)calloc(scount, sizeof(shape));
 
 	// read shape pixel maps
@@ -95,8 +96,10 @@ static void read_shapes(shape **shapes, const char *shapepath)
 		{
 			// convert ascii value to numeric value
 			uint8_t pcolour = line[p] - '0';
+			// store colour value for this pixel
 			(*shapes)[s].pixels[p] = pcolour;
-			(*shapes)[s].has &= (1 << pcolour);
+			// add colour value to the bitfield of used colours
+			(*shapes)[s].has |= (1 << pcolour);
 		}
 		(*shapes)[s].is_solid = !HAS((*shapes)[s], BLANK);
 		s++;

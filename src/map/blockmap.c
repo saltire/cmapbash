@@ -76,9 +76,10 @@ void render_iso_column(image *img, const int32_t cpx, const int32_t cpy, const t
 	// get unrotated chunk-level 2d block offset from rotated coordinates
 	uint8_t hoffset = get_block_offset(rbx, rbz, 0, opts->rotate);
 
-	uint8_t biomeid = chunk->biomes[hoffset];
+	uint8_t biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
 
-	for (uint8_t y = 0; y <= MAX_HEIGHT; y++)
+	uint8_t y = 0;
+	do
 	{
 		// get unrotated chunk-level 3d block offset
 		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
@@ -182,6 +183,7 @@ void render_iso_column(image *img, const int32_t cpx, const int32_t cpy, const t
 			}
 		}
 	}
+	while (y++ < MAX_HEIGHT);
 }
 
 

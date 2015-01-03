@@ -71,8 +71,7 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 
 	// list directory to find the number of region files, and image dimensions
 	struct dirent *ent;
-	int32_t rx, rz, rxmin, rxmax, rzmin, rzmax;
-	uint8_t length;
+	int32_t rx, rz, rxmin, rxmax, rzmin, rzmax, length;
 	char ext[4]; // three-char extension + null char
 	while ((ent = readdir(dir)) != NULL)
 	{
