@@ -22,16 +22,34 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "data.h"
 #include "map.h"
+#include "image.h"
+
+
+// save the map to a PNG file
+static void save_world_map(image *img, const char *imgpath)
+{
+	printf("Saving image to %s ...\n", imgpath);
+	clock_t start = clock();
+	save_image(img, imgpath);
+	printf("Total save time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
+}
+
+
+//// slice the map into a set of tiles for use with google maps
+//static void slice_world_map(image *img, const char *slicepath)
+//{
+//
+//}
 
 
 int main(int argc, char **argv)
 {
 	char *inpath = NULL;
 	char *outpath = "map.png";
-	char *action = "generate";
 	static options opts =
 	{
 		.limits    = NULL,
@@ -65,7 +83,6 @@ int main(int argc, char **argv)
 	};
 
 	int c;
-	bool first = 1;
 	while (1)
 	{
 		int option_index = 2;
@@ -76,10 +93,6 @@ int main(int argc, char **argv)
 		{
 		case 0: // flag set with long option
 		case '?': // unknown option
-			break;
-
-		case '\1': // non-option
-			if (first) action = optarg;
 			break;
 
 		case 'i':
@@ -132,16 +145,6 @@ int main(int argc, char **argv)
 		default:
 			abort();
 		}
-
-		first = 0;
-	}
-
-	if (action == "generate")
-		printf("Generating map.\n");
-	else
-	{
-		printf("Unknown action.\n");
-		return 1;
 	}
 
 	if (inpath == NULL)
@@ -208,16 +211,10 @@ int main(int argc, char **argv)
 		if (opts.biomes) printf("Biomes are on\n");
 	}
 
-	save_world_map(inpath, outpath, &opts);
+	image *img = create_world_map(inpath, &opts);
 
-	return 0;
-}
-
-int slice_test(int argc, char **argv)
-{
-	image *img = load_image("map-ortho-day.png");
-
-	slice_image(img, 512, "tiles");
+	// TODO: create an option to slice the map into tiles instead of saving one big image
+	save_world_map(img, outpath);
 
 	free_image(img);
 

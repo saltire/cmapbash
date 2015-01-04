@@ -150,12 +150,12 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 void render_world_map(image *img, int32_t wpx, int32_t wpy, const worldinfo *world,
 		const options *opts);
 
-/* render a map from a world directory and save it to a file
+/* render a map from a world directory and return a pointer to an image struct
  *   worldpath: path to the world directory
  *   imgpath:   path to the output image file
  *   opts:      pointer to a render options struct
  */
-void save_world_map(char *worldpath, const char *imgpath, const options *opts);
+image *create_world_map(char *worldpath, const options *opts);
 
 
 #endif

@@ -150,10 +150,10 @@ void render_world_map(image *img, int32_t wpx, int32_t wpy, const worldinfo *wor
 }
 
 
-void save_world_map(char *worldpath, const char *imgpath, const options *opts)
+image *create_world_map(char *worldpath, const options *opts)
 {
 	worldinfo *world = measure_world(worldpath, opts->rotate, opts->limits);
-	if (!world->rcount) return;
+	if (!world->rcount) return NULL;
 
 	uint32_t width, height, margins[4];
 	get_world_margins(margins, world, opts->isometric);
@@ -193,10 +193,5 @@ void save_world_map(char *worldpath, const char *imgpath, const options *opts)
 
 	free_world(world);
 
-	printf("Saving image to %s ...\n", imgpath);
-	start = clock();
-	save_image(img, imgpath);
-	printf("Total save time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
-
-	free_image(img);
+	return img;
 }
