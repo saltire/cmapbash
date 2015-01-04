@@ -95,12 +95,11 @@ static void read_shapes(shape **shapes, const char *shapepath)
 		{
 			// convert ascii value to numeric value
 			uint8_t pcolour = line[p] - '0';
-			// store colour value for this pixel
-			(*shapes)[s].pixels[p] = pcolour;
-			// add colour value to the bitfield of used colours
-			(*shapes)[s].has |= (1 << pcolour);
+			// store colour code for this pixel
+			(*shapes)[s].pixmap[p] = pcolour;
+			// increment the count for this colour code
+			(*shapes)[s].clrcount[pcolour] += 1;
 		}
-		(*shapes)[s].is_solid = !HAS((*shapes)[s], BLANK);
 		s++;
 	}
 	fclose(scsv);
@@ -406,16 +405,6 @@ void free_textures(textures *tex)
 const blocktype *get_block_type(const textures *tex, const uint8_t blockid, const uint8_t dataval)
 {
 	return &tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].subtype_mask];
-}
-
-
-void set_colour_brightness(uint8_t *pixel, float brightness, float ambience)
-{
-	if (pixel[ALPHA] == 0) return;
-
-	for (uint8_t c = 0; c < ALPHA; c++)
-		// darken pixel to ambient light only, then add brightness
-		pixel[c] *= (ambience + (1 - ambience) * brightness);
 }
 
 

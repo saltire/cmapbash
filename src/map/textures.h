@@ -54,10 +54,6 @@
 
 #define BLOCK_SUBTYPES 16
 
-// check whether a shape has any pixels of a colour
-#define HAS(shape, colour) ((shape).has & (1 << colour))
-#define HAS_PTR(shape, colour) ((shape)->has & (1 << colour))
-
 
 // isometric colour codes as used in the shape CSV
 typedef enum
@@ -76,9 +72,8 @@ colours;
 // pixel map used to colour isometric blocks
 typedef struct shape
 {
-	bool is_solid;                  // whether this shape has no blank pixels
-	uint8_t has;                    // bitfield with a bit for each colour code used
-	uint8_t pixels[ISO_BLOCK_AREA]; // array of colour codes for each pixel in this shape
+	uint8_t pixmap[ISO_BLOCK_AREA]; // array of colour codes for each pixel in this shape
+	uint8_t clrcount[COLOUR_COUNT]; // array of counts for each colour code
 }
 shape;
 
@@ -142,13 +137,6 @@ void free_textures(textures *tex);
  *   dataval: the data value of the block, if any
  */
 const blocktype *get_block_type(const textures *tex, const uint8_t blockid, const uint8_t dataval);
-
-/* set an RGB colour to a certain brightness
- *   pixel:      pointer to the colour or pixel buffer
- *   brightness: a float value from 0 to 1 representing the amount of light above the minimum
- *   ambience:   a float value from 0 to 1 representing the minimum brightness
- */
-void set_colour_brightness(uint8_t *pixel, float brightness, float ambience);
 
 /* make an RGB colour lighter or darker
  *   pixel: pointer to the colour or pixel buffer

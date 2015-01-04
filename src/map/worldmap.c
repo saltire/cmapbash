@@ -98,10 +98,10 @@ void render_world_map(image *img, int32_t wpx, int32_t wpy, const worldinfo *wor
 			opts->isometric ? opts->shapepath : NULL, opts->biomes ? opts->biomepath : NULL));
 
 	uint32_t r = 0;
-	// we need to render the regions in order from top to bottom for isometric view
-	for (uint32_t rrz = 0; rrz <= world->rrzmax; rrz++)
+	// we need to render the regions in order from bottom to top for isometric view
+	for (int32_t rrz = world->rrzmax; rrz >= 0; rrz--)
 	{
-		for (uint32_t rrx = 0; rrx <= world->rrxmax; rrx++)
+		for (int32_t rrx = world->rrxmax; rrx >= 0; rrx--)
 		{
 			// get region, or skip if it doesn't exist
 			region *reg = get_region_from_coords(world, rrx, rrz);

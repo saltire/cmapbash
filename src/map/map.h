@@ -92,24 +92,24 @@ options;
 
 /* render a single column of blocks to an isometric map
  *   img:      pointer to the map's image struct
- *   cpx, cpy: pixel coords of the top left corner of the current chunk
+ *   px, py:   pixel coords of the top left corner of the column
  *   tex:      pointer to the texture struct
  *   chunk:    pointer to the chunk data struct
  *   rbx, rbz: the column's rotated chunk-level x/z coords
  *   opts:     pointer to the render options struct
  */
-void render_iso_column(image *img, const int32_t cpx, const int32_t cpy, const textures *tex,
+void render_iso_column(image *img, const int32_t px, const int32_t py, const textures *tex,
 		chunk_data *chunk, const uint8_t rbx, const uint8_t rbz, const options *opts);
 
 /* render a single column of blocks to an orthographic map
  *   img:      pointer to the map's image struct
- *   cpx, cpy: pixel coords of the top left corner of the current chunk
+ *   px, py:   pixel coords of the top left corner of the column
  *   tex:      pointer to the texture struct
  *   chunk:    pointer to the chunk data struct
  *   rbx, rbz: the column's rotated chunk-level x/z coords
  *   opts:     pointer to the render options struct
  */
-void render_ortho_column(image *img, const int32_t cpx, const int32_t cpy, const textures *tex,
+void render_ortho_column(image *img, const int32_t px, const int32_t py, const textures *tex,
 		chunk_data *chunk, const uint32_t rbx, const uint32_t rbz, const options *opts);
 
 /* get the width of empty space that would be on each edge of the rendered map for this region

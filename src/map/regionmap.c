@@ -126,18 +126,18 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 		0
 	};
 
-	// use rotated chunk coordinates, since we need to draw them top to bottom for isometric
-	for (uint8_t rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
+	// use rotated chunk coordinates, since we need to draw them from bottom to top for isometric
+	for (int8_t rcz = MAX_REGION_CHUNK; rcz >= 0; rcz--)
 	{
-		for (uint8_t rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
+		for (int8_t rcx = MAX_REGION_CHUNK; rcx >= 0; rcx--)
 		{
 			// get the actual chunk from its rotated coordinates
 			// use the "new" chunk saved by the previous iteration if possible
-			chunk = rcx > 0 && prev_chunk != NULL ? new_chunk :
+			chunk = rcx < MAX_REGION_CHUNK && prev_chunk != NULL ? new_chunk :
 					read_chunk(reg, rcx, rcz, opts->rotate, &flags, opts->ylimits);
 			if (chunk == NULL)
 			{
-				if (rcx > 0) free_chunk(prev_chunk);
+				if (rcx < MAX_REGION_CHUNK) free_chunk(prev_chunk);
 				prev_chunk = NULL;
 				continue;
 			}
@@ -148,15 +148,15 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 					read_chunk(nregions[0], rcx, MAX_REGION_CHUNK, opts->rotate, &nflags,
 							opts->ylimits);
 
-			nchunks[1] = rcx < MAX_REGION_CHUNK ?
-					read_chunk(reg, rcx + 1, rcz, opts->rotate, &flags, opts->ylimits) :
+			nchunks[1] = rcx < MAX_REGION_CHUNK ? prev_chunk :
 					read_chunk(nregions[1], 0, rcz, opts->rotate, &nflags, opts->ylimits);
 
 			nchunks[2] = rcz < MAX_REGION_CHUNK ?
 					read_chunk(reg, rcx, rcz + 1, opts->rotate, &flags, opts->ylimits) :
 					read_chunk(nregions[2], rcx, 0, opts->rotate, &nflags, opts->ylimits);
 
-			nchunks[3] = rcx > 0 ? prev_chunk :
+			nchunks[3] = rcx > 0 ?
+					read_chunk(reg, rcx - 1, rcz, opts->rotate, &flags, opts->ylimits) :
 					read_chunk(nregions[3], MAX_REGION_CHUNK, rcz, opts->rotate, &nflags,
 							opts->ylimits);
 
@@ -192,26 +192,31 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 			}
 
 			// loop through rotated chunk's blocks
-			for (uint16_t rbz = 0; rbz <= MAX_CHUNK_BLOCK; rbz++)
-				for (uint16_t rbx = 0; rbx <= MAX_CHUNK_BLOCK; rbx++)
+			for (int16_t rbz = MAX_CHUNK_BLOCK; rbz >= 0; rbz--)
+				for (int16_t rbx = MAX_CHUNK_BLOCK; rbx >= 0; rbx--)
 					if (opts->isometric)
-						render_iso_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
+					{
+						// translate orthographic to isometric coordinates
+						uint32_t px = cpx + (rbx + MAX_CHUNK_BLOCK - rbz) * ISO_BLOCK_WIDTH / 2;
+						uint32_t py = cpy + (rbx + rbz) * ISO_BLOCK_TOP_HEIGHT;
+						render_iso_column(img, px, py, tex, chunk, rbx, rbz, opts);
+					}
 					else
-						render_ortho_column(img, cpx, cpy, tex, chunk, rbx, rbz, opts);
+						render_ortho_column(img, cpx + rbx, cpy + rbz, tex, chunk, rbx, rbz, opts);
 
 			// free chunks, or save them for the next iteration if we're not at the end of a row
 			free_chunk(nchunks[0]);
+			free_chunk(nchunks[1]);
 			free_chunk(nchunks[2]);
-			free_chunk(nchunks[3]);
-			if (rcx == MAX_REGION_CHUNK)
+			if (rcx == 0)
 			{
 				free_chunk(chunk);
-				free_chunk(nchunks[1]);
+				free_chunk(nchunks[3]);
 			}
 			else
 			{
 				prev_chunk = chunk;
-				new_chunk = nchunks[1];
+				new_chunk = nchunks[3];
 			}
 		}
 	}
