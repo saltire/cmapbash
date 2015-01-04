@@ -70,6 +70,7 @@
 #define LENGTH_BYTES 4
 
 
+// absolute directions relative to block data
 typedef enum
 {
 	NORTH,
@@ -79,7 +80,7 @@ typedef enum
 }
 dirs;
 
-
+// directions relative to the rotated map image
 typedef enum
 {
 	TOP,
@@ -89,7 +90,7 @@ typedef enum
 }
 edges;
 
-
+// directions relative to rotated isometric blocks
 typedef enum
 {
 	TOP_RIGHT,
@@ -99,7 +100,7 @@ typedef enum
 }
 iso_edges;
 
-
+// binary data for a chunk of blocks
 typedef struct chunk_data
 {
 	nbt_node *nbt;    // the NBT node for this chunk
@@ -111,14 +112,14 @@ typedef struct chunk_data
 }
 chunk_data;
 
-
+// booleans indicating which types of chunk data to load for this render
 typedef struct chunk_flags
 {
 	bool bids, bdata, blight, slight, biomes; // whether to load each type of chunk data
 }
 chunk_flags;
 
-
+// a region containing a number of chunks
 typedef struct region
 {
 	int32_t x, z;                         // absolute world-level coords of this region
@@ -132,7 +133,7 @@ typedef struct region
 }
 region;
 
-
+// a world containing a number of regions
 typedef struct worldinfo
 {
 	char regiondir[REGIONDIR_PATH_MAXLEN]; // path to the region directory

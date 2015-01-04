@@ -59,6 +59,7 @@
 #define HAS_PTR(shape, colour) ((shape)->has & (1 << colour))
 
 
+// isometric colour codes as used in the shape CSV
 typedef enum
 {
 	BLANK,
@@ -72,46 +73,53 @@ typedef enum
 }
 colours;
 
+// pixel map used to colour isometric blocks
 typedef struct shape
 {
-	bool is_solid;
-	uint8_t has; // a bitfield with a bit for each colour in the palette
-	uint8_t pixels[ISO_BLOCK_AREA];
+	bool is_solid;                  // whether this shape has no blank pixels
+	uint8_t has;                    // bitfield with a bit for each colour code used
+	uint8_t pixels[ISO_BLOCK_AREA]; // array of colour codes for each pixel in this shape
 }
 shape;
 
+// colour overlays for foliage and grass blocks in a specific biome
 typedef struct biome
 {
-	bool exists;
-	uint8_t foliage[CHANNELS];
-	uint8_t grass[CHANNELS];
+	bool exists;               // whether a biome with this id is present in the CSV file
+	uint8_t foliage[CHANNELS]; // RGBA colour overlay for foliage blocks
+	uint8_t grass[CHANNELS];   // RGBA colour overlay for grass blocks
 }
 biome;
 
+// array of RGBA colours, one for each colour code
 typedef unsigned char palette[COLOUR_COUNT][CHANNELS];
 
+// a type of block with a specific block id and subtype id
 typedef struct blocktype
 {
-	uint8_t id;
-	uint8_t subtype;
-	palette palette;
-	palette *biome_palettes;
-	bool is_opaque;
-	shape shapes[4];
+	uint8_t id;              // numerical block id of this block type
+	uint8_t subtype;         // numerical subtype id of this block type
+	palette palette;         // palette to use for this block type
+	palette *biome_palettes; // array of palettes to use for this block in each biome
+	                         //   or NULL if biomes don't apply to this block type
+	bool is_opaque;          // whether this block type has no transparent colours
+	shape shapes[4];         // array of isometric shape structs to use for each rotation
 }
 blocktype;
 
+// a block id which has one or more block types associated with it
 typedef struct blockID
 {
-	uint8_t mask;
-	blocktype subtypes[BLOCK_SUBTYPES];
+	uint8_t subtype_mask;               // bitmask for getting the subtype from the block data
+	blocktype subtypes[BLOCK_SUBTYPES]; // array of subtypes for this block id
 }
 blockID;
 
+// a set of block types and their corresponding colour/shape data
 typedef struct textures
 {
-	uint8_t max_blockid;
-	blockID *blockids;
+	uint8_t max_blockid; // highest block id present in the CSV file
+	blockID *blockids;   // array of block id structs for each block id in the CSV file
 }
 textures;
 

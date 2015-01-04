@@ -27,6 +27,7 @@
 #define CHANNELS 4
 #define ALPHA (CHANNELS - 1)
 
+
 typedef struct image {
 	uint32_t width, height; // pixel dimensions of the image
 	uint8_t* data;          // pointer to an RGBA pixel buffer for the image

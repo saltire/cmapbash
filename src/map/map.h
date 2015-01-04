@@ -71,6 +71,7 @@
 	_y > _z ? (_x > _y ? _x : _y) : (_x > _z ? _x : _z); })
 
 
+// options for rendering the map
 typedef struct options
 {
 	bool isometric,   // whether to render an isometric (true) or orthographic (false) map.

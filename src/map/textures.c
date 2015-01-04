@@ -35,7 +35,7 @@
 typedef enum
 {
 	BLOCKID,
-	MASK,
+	SUBTYPE_MASK,
 	SUBTYPE,
 	RED1,
 	GREEN1,
@@ -76,7 +76,6 @@ biomecols;
 // generate an array of shape structs from a CSV file
 static void read_shapes(shape **shapes, const char *shapepath)
 {
-	// shape file
 	FILE *scsv = fopen(shapepath, "r");
 	if (scsv == NULL) printf("Error %d reading shape file: %s\n", errno, shapepath);
 	char line[LINE_BUFFER];
@@ -111,7 +110,6 @@ static void read_shapes(shape **shapes, const char *shapepath)
 // generate an array of biome structs from a CSV file
 static int read_biomes(biome **biomes, const char *biomepath)
 {
-	// biome file
 	FILE *bcsv = fopen(biomepath, "r");
 	if (bcsv == NULL) printf("Error %d reading biome file: %s\n", errno, biomepath);
 	char line[LINE_BUFFER];
@@ -280,9 +278,10 @@ static void mix_biome_colour(uint8_t *outcolour, const uint8_t *block_colour,
 		rgb2hsv(block_colour, block_hsv);
 		rgb2hsv(biome_colour, biome_hsv);
 
+		// use hue/sat from biome colour, and val from block colour
 		double biome_block_hsv[3] = {
 			biome_hsv[0],
-			block_hsv[1],
+			biome_hsv[1],
 			block_hsv[2]
 		};
 		hsv2rgb(biome_block_hsv, biome_block_colour);
@@ -312,7 +311,7 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 	uint8_t biomecount;
 	if (biomepath != NULL) biomecount = read_biomes(&biomes, biomepath);
 
-	// colour file
+	// colour/texture file
 	FILE *tcsv = fopen(texpath, "r");
 	if (tcsv == NULL) printf("Error %d reading texture file: %s\n", errno, texpath);
 	char line[LINE_BUFFER];
@@ -345,22 +344,13 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 		}
 
 		// subtype mask is specified on subtype 0 of each block type
-		if (row[SUBTYPE] == 0) tex->blockids[row[BLOCKID]].mask = row[MASK];
+		if (row[SUBTYPE] == 0) tex->blockids[row[BLOCKID]].subtype_mask = row[SUBTYPE_MASK];
 
 		// copy values for this block type
 		blocktype *btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
 		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
-
-		if (shapepath != NULL)
-		{
-			// copy shapes for each rotation; if any of the last 3 are blank or zero, use the first
-			btype->shapes[0] = shapes[row[SHAPE_N]];
-			btype->shapes[1] = shapes[row[SHAPE_E] || row[SHAPE_N]];
-			btype->shapes[2] = shapes[row[SHAPE_S] || row[SHAPE_N]];
-			btype->shapes[3] = shapes[row[SHAPE_W] || row[SHAPE_N]];
-		}
 
 		// copy colours and adjust
 		memcpy(&btype->palette[COLOUR1], &row[RED1], CHANNELS);
@@ -384,6 +374,15 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 				}
 		}
 		else btype->biome_palettes = NULL;
+
+		if (shapepath != NULL)
+		{
+			// copy shapes for each rotation; if any of the last 3 are blank or zero, use the first
+			btype->shapes[0] = shapes[row[SHAPE_N]];
+			btype->shapes[1] = shapes[row[SHAPE_E] || row[SHAPE_N]];
+			btype->shapes[2] = shapes[row[SHAPE_S] || row[SHAPE_N]];
+			btype->shapes[3] = shapes[row[SHAPE_W] || row[SHAPE_N]];
+		}
 	}
 	fclose(tcsv);
 
@@ -406,7 +405,7 @@ void free_textures(textures *tex)
 
 const blocktype *get_block_type(const textures *tex, const uint8_t blockid, const uint8_t dataval)
 {
-	return &tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].mask];
+	return &tex->blockids[blockid].subtypes[dataval % tex->blockids[blockid].subtype_mask];
 }
 
 
