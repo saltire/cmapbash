@@ -95,11 +95,8 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 		// get unrotated chunk-level 3d block offset
 		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
 
-		uint8_t bid = chunk->bids[offset];
-		uint8_t bdata = chunk->bdata[offset];
-
 		// skip air blocks or invalid block ids
-		if (bid == 0 || bid > tex->max_blockid) continue;
+		if (chunk->bids[offset] == 0 || chunk->bids[offset] > tex->max_blockid) continue;
 
 		// get block's pixel y coord
 		uint32_t bpy = py + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
@@ -123,7 +120,7 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 		get_neighbour_values(nbdata, chunk->bdata, chunk->nbdata, 0, rbx, rbz, y, opts->rotate);
 
 		// get the type of this block and overlapping blocks
-		const blocktype *btype = get_block_type(tex, bid, bdata);
+		const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
 		const blocktype *tbtype = y == MAX_HEIGHT ? NULL : get_block_type(tex,
 				chunk->bids[offset + CHUNK_BLOCK_AREA], chunk->bdata[offset + CHUNK_BLOCK_AREA]);
 		const blocktype *lbtype = get_block_type(tex, nbids[BOTTOM_LEFT], nbdata[BOTTOM_LEFT]);
@@ -187,30 +184,6 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 }
 
 
-// get the colour of this block, alpha blended with any visible blocks below it
-static void get_block_alpha_colour(uint8_t *pixel, chunk_data *chunk, const textures *tex,
-		const uint16_t offset, const bool use_biome, const uint8_t biomeid)
-{
-	const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
-
-	// copy the block colour into the pixel buffer, using biome colour if applicable
-	if (use_biome && btype->biome_palettes != NULL)
-		memcpy(pixel, btype->biome_palettes[biomeid][COLOUR1], CHANNELS);
-	else
-		memcpy(pixel, btype->palette[COLOUR1], CHANNELS);
-
-	// if block colour is not fully opaque, combine with the block below it
-	if (pixel[ALPHA] < 255)
-	{
-		// get the next block down, or use black if this is the bottom block
-		uint8_t next[CHANNELS] = {0};
-		if (offset > CHUNK_BLOCK_AREA)
-			get_block_alpha_colour(next, chunk, tex, offset - CHUNK_BLOCK_AREA, use_biome, biomeid);
-		combine_alpha(pixel, next, 0);
-	}
-}
-
-
 void render_ortho_column(image *img, const int32_t px, const int32_t py, const textures *tex,
 		chunk_data *chunk, const uint32_t rbx, const uint32_t rbz, const options *opts)
 {
@@ -222,7 +195,8 @@ void render_ortho_column(image *img, const int32_t px, const int32_t py, const t
 
 	uint8_t biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
 
-	for (uint8_t y = MAX_HEIGHT; y >= 0; y--)
+	uint8_t y = MAX_HEIGHT;
+	do
 	{
 		// get unrotated 3d block offset
 		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
@@ -230,24 +204,34 @@ void render_ortho_column(image *img, const int32_t px, const int32_t py, const t
 		// skip air blocks or invalid block ids
 		if (chunk->bids[offset] == 0 || chunk->bids[offset] >= tex->max_blockid) continue;
 
-		// get block colour
-		get_block_alpha_colour(pixel, chunk, tex, offset, opts->biomes, biomeid);
-		add_height_shading(pixel, y);
+		// get the type of this block
+		const blocktype *btype = get_block_type(tex, chunk->bids[offset], chunk->bdata[offset]);
+
+		// copy the block colour, using biomes if applicable
+		uint8_t colour[CHANNELS];
+		if (opts->biomes && btype->biome_palettes != NULL)
+			memcpy(colour, btype->biome_palettes[biomeid][COLOUR1], CHANNELS);
+		else
+			memcpy(colour, btype->palette[COLOUR1], CHANNELS);
+
+		// adjust colour for height
+		add_height_shading(colour, y);
 
 		// contour highlights and shadows
 		uint8_t nbids[4];
 		get_neighbour_values(nbids, chunk->bids, chunk->nbids, 0, rbx, rbz, y, opts->rotate);
 		bool light = (nbids[TOP] == 0 || nbids[LEFT] == 0);
 		bool dark = (nbids[BOTTOM] == 0 || nbids[RIGHT] == 0);
-		if (light && !dark) adjust_colour_brightness(pixel, HILIGHT_AMOUNT);
-		if (dark && !light) adjust_colour_brightness(pixel, SHADOW_AMOUNT);
+		if (light && !dark) adjust_colour_brightness(colour, HILIGHT_AMOUNT);
+		if (dark && !light) adjust_colour_brightness(colour, SHADOW_AMOUNT);
 
 		// night mode: darken colours according to block light
 		if (opts->night) {
 			float tbl = y < MAX_HEIGHT ? chunk->blight[offset + CHUNK_BLOCK_AREA] : 0;
-			if (tbl < MAX_LIGHT) set_light_level(pixel, tbl / MAX_LIGHT, NIGHT_AMBIENCE);
+			if (tbl < MAX_LIGHT) set_light_level(colour, tbl / MAX_LIGHT, NIGHT_AMBIENCE);
 		}
 
-		break;
+		combine_alpha(pixel, colour, 0);
 	}
+	while (y-- > 0 && pixel[ALPHA] < 255);
 }
