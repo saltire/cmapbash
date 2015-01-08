@@ -103,7 +103,6 @@ iso_edges;
 // binary data for a chunk of blocks
 typedef struct chunk_data
 {
-	nbt_node *nbt;    // the NBT node for this chunk
 	uint8_t *blimits; // pointer to an array of absolute min/max x/z block coords for this chunk
 	uint8_t *bids, *bdata, *blight, *slight, *biomes;
 	                  // pointers to byte data arrays for this chunk
@@ -173,16 +172,6 @@ uint16_t get_chunk_offset(const uint8_t rcx, const uint8_t rcz, const uint8_t ro
  */
 void get_neighbour_values(uint8_t nvalues[4], uint8_t *data, uint8_t *ndata[4], uint8_t defval,
 		const uint8_t rbx, const uint8_t rbz, const uint8_t y, const uint8_t rotate);
-
-/* get the raw byte data for a chunk
- *   chunk:   pointer to the chunk data struct
- *   name:    the NBT label of the byte array to read
- *   half:    whether this array is stored as 4 bits per block instead of 8
- *   defval:  a default value for nonexistent chunk sections
- *   ylimits: pointer to an array of min/max y coords
- */
-uint8_t *get_chunk_data(chunk_data *chunk, char *name, const bool half, const uint8_t defval,
-		const uint8_t *ylimits);
 
 /* generate a chunk data struct from raw chunk data in the region file
  *   cdata:    pointer to the binary data

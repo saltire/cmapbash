@@ -143,21 +143,21 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 			}
 
 			// get neighbouring chunks, either from this region or a neighbouring one
-			nchunks[0] = rcz > 0 ?
+			nchunks[TOP] = rcz > 0 ?
 					read_chunk(reg, rcx, rcz - 1, opts->rotate, &flags, opts->ylimits) :
-					read_chunk(nregions[0], rcx, MAX_REGION_CHUNK, opts->rotate, &nflags,
+					read_chunk(nregions[TOP], rcx, MAX_REGION_CHUNK, opts->rotate, &nflags,
 							opts->ylimits);
 
-			nchunks[1] = rcx < MAX_REGION_CHUNK ? prev_chunk :
-					read_chunk(nregions[1], 0, rcz, opts->rotate, &nflags, opts->ylimits);
+			nchunks[RIGHT] = rcx < MAX_REGION_CHUNK ? prev_chunk :
+					read_chunk(nregions[RIGHT], 0, rcz, opts->rotate, &nflags, opts->ylimits);
 
-			nchunks[2] = rcz < MAX_REGION_CHUNK ?
+			nchunks[BOTTOM] = rcz < MAX_REGION_CHUNK ?
 					read_chunk(reg, rcx, rcz + 1, opts->rotate, &flags, opts->ylimits) :
-					read_chunk(nregions[2], rcx, 0, opts->rotate, &nflags, opts->ylimits);
+					read_chunk(nregions[BOTTOM], rcx, 0, opts->rotate, &nflags, opts->ylimits);
 
-			nchunks[3] = rcx > 0 ?
+			nchunks[LEFT] = rcx > 0 ?
 					read_chunk(reg, rcx - 1, rcz, opts->rotate, &flags, opts->ylimits) :
-					read_chunk(nregions[3], MAX_REGION_CHUNK, rcz, opts->rotate, &nflags,
+					read_chunk(nregions[LEFT], MAX_REGION_CHUNK, rcz, opts->rotate, &nflags,
 							opts->ylimits);
 
 			for (uint8_t i = 0; i < 4; i++)
@@ -205,18 +205,18 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 						render_ortho_column(img, cpx + rbx, cpy + rbz, tex, chunk, rbx, rbz, opts);
 
 			// free chunks, or save them for the next iteration if we're not at the end of a row
-			free_chunk(nchunks[0]);
-			free_chunk(nchunks[1]);
-			free_chunk(nchunks[2]);
+			free_chunk(nchunks[TOP]);
+			free_chunk(nchunks[RIGHT]);
+			free_chunk(nchunks[BOTTOM]);
 			if (rcx == 0)
 			{
 				free_chunk(chunk);
-				free_chunk(nchunks[3]);
+				free_chunk(nchunks[LEFT]);
 			}
 			else
 			{
 				prev_chunk = chunk;
-				new_chunk = nchunks[3];
+				new_chunk = nchunks[LEFT];
 			}
 		}
 	}

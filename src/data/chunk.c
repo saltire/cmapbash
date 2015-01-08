@@ -72,19 +72,21 @@ uint16_t get_chunk_offset(const uint8_t rcx, const uint8_t rcz, const uint8_t ro
 void get_neighbour_values(uint8_t nvalues[4], uint8_t *data, uint8_t *ndata[4], uint8_t defval,
 		const uint8_t rbx, const uint8_t rbz, const uint8_t y, const uint8_t rotate)
 {
-	nvalues[0] = rbz > 0 ? data[get_block_offset(rbx, rbz - 1, y, rotate)] :
-			(ndata[0] == NULL ? defval :
-					ndata[0][get_block_offset(rbx, MAX_CHUNK_BLOCK, y, rotate)]);
+	nvalues[TOP] = rbz > 0 ? data[get_block_offset(rbx, rbz - 1, y, rotate)] :
+			(ndata[TOP] == NULL ? defval :
+					ndata[TOP][get_block_offset(rbx, MAX_CHUNK_BLOCK, y, rotate)]);
 
-	nvalues[1] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx + 1, rbz, y, rotate)] :
-			(ndata[1] == NULL ? defval : ndata[1][get_block_offset(0, rbz, y, rotate)]);
+	nvalues[RIGHT] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx + 1, rbz, y, rotate)] :
+			(ndata[RIGHT] == NULL ? defval :
+					ndata[RIGHT][get_block_offset(0, rbz, y, rotate)]);
 
-	nvalues[2] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx, rbz + 1, y, rotate)] :
-			(ndata[2] == NULL ? defval : ndata[2][get_block_offset(rbx, 0, y, rotate)]);
+	nvalues[BOTTOM] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx, rbz + 1, y, rotate)] :
+			(ndata[BOTTOM] == NULL ? defval :
+					ndata[BOTTOM][get_block_offset(rbx, 0, y, rotate)]);
 
-	nvalues[3] = rbx > 0 ? data[get_block_offset(rbx - 1, rbz, y, rotate)] :
-			(ndata[3] == NULL ? defval :
-					ndata[3][get_block_offset(MAX_CHUNK_BLOCK, rbz, y, rotate)]);
+	nvalues[LEFT] = rbx > 0 ? data[get_block_offset(rbx - 1, rbz, y, rotate)] :
+			(ndata[LEFT] == NULL ? defval :
+					ndata[LEFT][get_block_offset(MAX_CHUNK_BLOCK, rbz, y, rotate)]);
 }
 
 
@@ -105,8 +107,8 @@ static void copy_section_bytes(uint8_t *data, nbt_node *section, const char *nam
 				syolimits[1] - syolimits[0]);
 	else
 		for (uint16_t syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
-			for (uint8_t z = cblimits[0]; z <= cblimits[2]; z++)
-				for (uint8_t x = cblimits[3]; x <= cblimits[1]; x++)
+			for (uint8_t z = cblimits[NORTH]; z <= cblimits[SOUTH]; z++)
+				for (uint8_t x = cblimits[WEST]; x <= cblimits[EAST]; x++)
 				{
 					uint16_t sbo = syo + z * CHUNK_BLOCK_LENGTH + x;
 					data[yo + sbo] = array->payload.tag_byte_array.data[sbo];
@@ -136,9 +138,9 @@ static void copy_section_nybbles(uint8_t *data, nbt_node *section, const char *n
 		}
 	else
 		for (uint16_t syo = syolimits[0]; syo < syolimits[1]; syo += CHUNK_BLOCK_AREA)
-			for (uint8_t z = cblimits[0]; z <= cblimits[2]; z++)
+			for (uint8_t z = cblimits[NORTH]; z <= cblimits[SOUTH]; z++)
 				// increment x by 2, and read two block values from each byte of data
-				for (uint8_t x = cblimits[3]; x <= cblimits[1]; x += 2)
+				for (uint8_t x = cblimits[WEST]; x <= cblimits[EAST]; x += 2)
 				{
 					uint16_t sbo = syo + z * CHUNK_BLOCK_LENGTH + x;
 					uint8_t byte = array->payload.tag_byte_array.data[sbo / 2];
@@ -148,13 +150,14 @@ static void copy_section_nybbles(uint8_t *data, nbt_node *section, const char *n
 }
 
 
-uint8_t *get_chunk_data(chunk_data *chunk, char *name, const bool half, const uint8_t defval,
-		const uint8_t *ylimits)
+// parse a chunk's NBT node for a particular array of byte data
+static uint8_t *get_chunk_data(nbt_node *nbt, char *name, const bool half, const uint8_t defval,
+		const uint8_t *ylimits, const uint8_t *blimits)
 {
 	uint8_t *data = (uint8_t*)malloc(CHUNK_BLOCK_VOLUME);
 	memset(data, defval, CHUNK_BLOCK_VOLUME);
 
-	nbt_node *sections = nbt_find_by_name(chunk->nbt, "Sections");
+	nbt_node *sections = nbt_find_by_name(nbt, "Sections");
 	if (sections->type == TAG_LIST)
 	{
 		struct list_head *pos;
@@ -186,9 +189,9 @@ uint8_t *get_chunk_data(chunk_data *chunk, char *name, const bool half, const ui
 				}
 
 				if (half)
-					copy_section_nybbles(data, section->data, name, yo, syolimits, chunk->blimits);
+					copy_section_nybbles(data, section->data, name, yo, syolimits, blimits);
 				else
-					copy_section_bytes(data, section->data, name, yo, syolimits, chunk->blimits);
+					copy_section_bytes(data, section->data, name, yo, syolimits, blimits);
 			}
 		}
 	}
@@ -201,7 +204,7 @@ chunk_data *parse_chunk_nbt(const uint8_t *cdata, const uint32_t length, const c
 		uint8_t *cblimits, const uint8_t *ylimits)
 {
 	chunk_data *chunk = (chunk_data*)malloc(sizeof(chunk_data));
-	chunk->nbt = nbt_parse_compressed(cdata, length);
+	nbt_node *nbt = nbt_parse_compressed(cdata, length);
 	if (errno != NBT_OK)
 	{
 		fprintf(stderr, "Error %d parsing chunk\n", errno);
@@ -212,12 +215,24 @@ chunk_data *parse_chunk_nbt(const uint8_t *cdata, const uint32_t length, const c
 	chunk->blimits = cblimits;
 
 	// get chunk's byte data
-	chunk->bids = flags->bids ? get_chunk_data(chunk, "Blocks", 0, 0, ylimits) : NULL;
-	chunk->bdata = flags->bdata ? get_chunk_data(chunk, "Data", 1, 0, ylimits) : NULL;
-	chunk->blight = flags->blight ? get_chunk_data(chunk, "BlockLight", 1, 0, ylimits) : NULL;
-	chunk->slight = flags->slight ? get_chunk_data(chunk, "SkyLight", 1, 255, ylimits) : NULL;
-	chunk->biomes = flags->biomes ?
-			nbt_find_by_name(chunk->nbt, "Biomes")->payload.tag_byte_array.data : NULL;
+	chunk->bids = flags->bids ?
+			get_chunk_data(nbt, "Blocks", 0, 0, ylimits, chunk->blimits) : NULL;
+	chunk->bdata = flags->bdata ?
+			get_chunk_data(nbt, "Data", 1, 0, ylimits, chunk->blimits) : NULL;
+	chunk->blight = flags->blight ?
+			get_chunk_data(nbt, "BlockLight", 1, 0, ylimits, chunk->blimits) : NULL;
+	chunk->slight = flags->slight ?
+			get_chunk_data(nbt, "SkyLight", 1, 255, ylimits, chunk->blimits) : NULL;
+
+	if (flags->biomes)
+	{
+		chunk->biomes = (uint8_t*)malloc(CHUNK_BLOCK_AREA);
+		memcpy(chunk->biomes, nbt_find_by_name(nbt, "Biomes")->payload.tag_byte_array.data,
+				CHUNK_BLOCK_AREA);
+	}
+	else chunk->biomes = NULL;
+
+	nbt_free(nbt);
 
 	return chunk;
 }
@@ -226,10 +241,10 @@ chunk_data *parse_chunk_nbt(const uint8_t *cdata, const uint32_t length, const c
 void free_chunk(chunk_data *chunk)
 {
 	if (chunk == NULL) return;
-	nbt_free(chunk->nbt);
 	free(chunk->bids);
 	free(chunk->bdata);
 	free(chunk->blight);
 	free(chunk->slight);
+	free(chunk->biomes);
 	free(chunk);
 }
