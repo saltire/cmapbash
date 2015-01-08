@@ -58,18 +58,6 @@
 	__typeof__(y) _y = (y); \
 	_x > _y ? _x : _y; })
 
-#define MIN3(x, y, z) ({ \
-	__typeof__(x) _x = (x); \
-	__typeof__(y) _y = (y); \
-	__typeof__(z) _z = (z); \
-	_y < _z ? (_x < _y ? _x : _y) : (_x < _z ? _x : _z); })
-
-#define MAX3(x, y, z) ({ \
-	__typeof__(x) _x = (x); \
-	__typeof__(y) _y = (y); \
-	__typeof__(z) _z = (z); \
-	_y > _z ? (_x > _y ? _x : _y) : (_x > _z ? _x : _z); })
-
 
 // options for rendering the map
 typedef struct options

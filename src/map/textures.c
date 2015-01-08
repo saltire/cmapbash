@@ -63,11 +63,9 @@ typedef enum
 	FOLIAGE_R,
 	FOLIAGE_G,
 	FOLIAGE_B,
-	FOLIAGE_A,
 	GRASS_R,
 	GRASS_G,
 	GRASS_B,
-	GRASS_A,
 	BIOMECOL_COUNT
 }
 biomecols;
@@ -143,9 +141,9 @@ static int read_biomes(biome **biomes, const char *biomepath)
 				(*biomes)[id].exists = 1;
 			}
 			// store foliage/grass colour values
-			else if (i >= FOLIAGE_R && i <= FOLIAGE_A)
+			else if (i >= FOLIAGE_R && i <= FOLIAGE_B)
 				(*biomes)[id].foliage[i - FOLIAGE_R] = (uint8_t)strtol(value, NULL, 0);
-			else if (i >= GRASS_R && i <= GRASS_A)
+			else if (i >= GRASS_R && i <= GRASS_B)
 				(*biomes)[id].grass[i - GRASS_R] = (uint8_t)strtol(value, NULL, 0);
 		}
 	}
@@ -157,13 +155,11 @@ static int read_biomes(biome **biomes, const char *biomepath)
 // convert a 24-bit RGB colour to float-based HSV
 static void rgb2hsv(const uint8_t *rgbint, double *hsv)
 {
-	double rgb[3] = {
-		(double)rgbint[0] / 255.0,
-		(double)rgbint[1] / 255.0,
-		(double)rgbint[2] / 255.0
-	};
-	double rgb_min = MIN3(rgb[0], rgb[1], rgb[2]);
-	double rgb_max = MAX3(rgb[0], rgb[1], rgb[2]);
+	double r = rgbint[0] / 255.0;
+	double g = rgbint[1] / 255.0;
+	double b = rgbint[2] / 255.0;
+	double rgb_min = g < b ? (r < g ? r : g) : (r < b ? r : b);
+	double rgb_max = g > b ? (r > g ? r : g) : (r > b ? r : b);
 	double range = rgb_max - rgb_min;
 
 	// find value
@@ -183,12 +179,12 @@ static void rgb2hsv(const uint8_t *rgbint, double *hsv)
 	}
 
 	// find hue
-	if (rgb[0] == rgb_max)
-		hsv[0] = (rgb[1] - rgb[2]) / range;
-	else if (rgb[1] == rgb_max)
-		hsv[0] = (rgb[2] - rgb[0]) / range + 2.0;
+	if (r == rgb_max)
+		hsv[0] = (g - b) / range;
+	else if (g == rgb_max)
+		hsv[0] = (b - r) / range + 2.0;
 	else
-		hsv[0] = (rgb[0] - rgb[1]) / range + 4.0;
+		hsv[0] = (r - g) / range + 4.0;
 	hsv[0] *= 60.0;
 	if (hsv[0] < 0.0) hsv[0] += 360.0;
 }
@@ -197,57 +193,57 @@ static void rgb2hsv(const uint8_t *rgbint, double *hsv)
 // convert a float-based HSV colour to 24-bit RGB
 static void hsv2rgb(const double *hsv, uint8_t *rgbint)
 {
-	double rgb[3];
+	double r, g, b;
 
 	if (hsv[1] == 0) // grey
 	{
-		rgb[0] = rgb[1] = rgb[2] = hsv[2];
+		r = g = b = hsv[2];
 		return;
 	}
 
-	double h = hsv[0] / 60;
+	double h = hsv[0] / 60; // hue, 0 to 6
 	uint8_t i = (uint8_t)h;
-	double f = h - i;
+	double f = h - i; // fractional hue
 	double p = hsv[2] * (1 - hsv[1]);
 	double q = hsv[2] * (1 - hsv[1] * f);
 	double t = hsv[2] * (1 - hsv[1] * (1 - f));
 
 	switch(i) {
 	case 0:
-		rgb[0] = hsv[2];
-		rgb[1] = t;
-		rgb[2] = p;
+		r = hsv[2];
+		g = t;
+		b = p;
 		break;
 	case 1:
-		rgb[0] = q;
-		rgb[1] = hsv[2];
-		rgb[2] = p;
+		r = q;
+		g = hsv[2];
+		b = p;
 		break;
 	case 2:
-		rgb[0] = p;
-		rgb[1] = hsv[2];
-		rgb[2] = t;
+		r = p;
+		g = hsv[2];
+		b = t;
 		break;
 	case 3:
-		rgb[0] = p;
-		rgb[1] = q;
-		rgb[2] = hsv[2];
+		r = p;
+		g = q;
+		b = hsv[2];
 		break;
 	case 4:
-		rgb[0] = t;
-		rgb[1] = p;
-		rgb[2] = hsv[2];
+		r = t;
+		g = p;
+		b = hsv[2];
 		break;
 	default: // 5
-		rgb[0] = hsv[2];
-		rgb[1] = p;
-		rgb[2] = q;
+		r = hsv[2];
+		g = p;
+		b = q;
 		break;
 	}
 
-	rgbint[0] = (uint8_t)(rgb[0] * 255);
-	rgbint[1] = (uint8_t)(rgb[1] * 255);
-	rgbint[2] = (uint8_t)(rgb[2] * 255);
+	rgbint[0] = (uint8_t)(r * 255);
+	rgbint[1] = (uint8_t)(g * 255);
+	rgbint[2] = (uint8_t)(b * 255);
 }
 
 
@@ -264,14 +260,13 @@ static void add_hilight_and_shadow(uint8_t *colour)
 
 
 // adjust a block colour's hue toward that of a biome colour
-static void mix_biome_colour(uint8_t *outcolour, const uint8_t *block_colour,
+static void mix_biome_colour(uint8_t *biome_block_colour, const uint8_t *block_colour,
 		biome *biome, const uint8_t biome_colourtype)
 {
 	if (biome_colourtype > 0)
 	{
 		// generate biome colour
 		uint8_t *biome_colour = biome_colourtype == 1 ? biome->foliage : biome->grass;
-		uint8_t biome_block_colour[CHANNELS];
 
 		double block_hsv[3], biome_hsv[3];
 		rgb2hsv(block_colour, block_hsv);
@@ -284,18 +279,13 @@ static void mix_biome_colour(uint8_t *outcolour, const uint8_t *block_colour,
 			block_hsv[2]
 		};
 		hsv2rgb(biome_block_hsv, biome_block_colour);
-		biome_block_colour[ALPHA] = biome_colour[ALPHA];
-
-		// copy colour from block palette
-		memcpy(outcolour, block_colour, CHANNELS);
-		// blend with biome colour using the biome colour's alpha value
-		combine_alpha(biome_block_colour, outcolour, 1);
+		biome_block_colour[ALPHA] = block_colour[ALPHA];
 
 		// create highlight and shadow colours
-		add_hilight_and_shadow(outcolour);
+		add_hilight_and_shadow(biome_block_colour);
 	}
 	// or just copy all the colours from the regular block palette
-	else memcpy(outcolour, block_colour, CHANNELS * 3);
+	else memcpy(biome_block_colour, block_colour, CHANNELS * 3);
 }
 
 
