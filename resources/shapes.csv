@@ -24,3 +24,22 @@
 0000000000001441,flat with alternate colour
 0000011002300230,fence
 0040401014144111,fire
+0000110022001100,ladder facing north
+3300110033000000,ladder facing east
+0011002200110000,ladder facing south
+0000003300110033,ladder facing west
+0022002200220000,vines north
+0000003300330033,vines east
+0000220022002200,vines south
+3300330033000000,vines west
+0022003300330033,vines north + east
+0000223322332233,vines east + south
+3300220022002200,vines south + west
+3322332233220000,vines west + north
+0011111111111100,vines north + south
+3300333333330033,vines east + west
+0022223322332233,vines north + east + south
+3300223322332233,vines east + south + west
+3322222222222200,vines south + west + north
+3322333333330033,vines west + north + east
+3322223322332233,vines north + east + south + west

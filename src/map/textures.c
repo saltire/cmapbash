@@ -332,14 +332,13 @@ textures *read_textures(const char *texpath, const char *shapepath, const char *
 			row[i] = strcmp(value, "") ? (uint8_t)strtol(value, NULL, 0) : 0;
 		}
 
-		// subtype mask is specified on subtype 0 of each block type
-		if (row[SUBTYPE] == 0) tex->blockids[row[BLOCKID]].subtype_mask = row[SUBTYPE_MASK];
+		// subtype mask is specified on one (generally the first) subtype of each block type
+		if (row[SUBTYPE_MASK]) tex->blockids[row[BLOCKID]].subtype_mask = row[SUBTYPE_MASK];
 
 		// copy values for this block type
 		blocktype *btype = &tex->blockids[row[BLOCKID]].subtypes[row[SUBTYPE]];
 		btype->id = row[BLOCKID];
 		btype->subtype = row[SUBTYPE];
-		btype->is_opaque = (row[ALPHA1] == 255 && (row[ALPHA2] == 255 || row[ALPHA2] == 0));
 
 		// copy colours and adjust
 		memcpy(&btype->palette[COLOUR1], &row[RED1], CHANNELS);

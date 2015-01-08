@@ -97,7 +97,6 @@ typedef struct blocktype
 	palette palette;         // palette to use for this block type
 	palette *biome_palettes; // array of palettes to use for this block in each biome
 	                         //   or NULL if biomes don't apply to this block type
-	bool is_opaque;          // whether this block type has no transparent colours
 	shape shapes[4];         // array of isometric shape structs to use for each rotation
 }
 blocktype;
