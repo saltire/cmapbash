@@ -29,7 +29,7 @@
 
 
 // add a shadow to blocks below a certain height
-static void add_height_shading(unsigned char *pixel, const unsigned int y)
+static inline void add_height_shading(unsigned char *pixel, const unsigned int y)
 {
 	if (pixel[ALPHA] == 0 || y >= HSHADE_BLOCK_HEIGHT) return;
 	adjust_colour_brightness(pixel, (((float)y / HSHADE_BLOCK_HEIGHT) - 1) * HSHADE_AMOUNT);
@@ -37,7 +37,7 @@ static void add_height_shading(unsigned char *pixel, const unsigned int y)
 
 
 // adjust a colour's brightness based on ambient light + light from another source
-static void set_light_level(uint8_t *pixel, float brightness, float ambience)
+static void set_light_level(uint8_t *pixel, const float brightness, const float ambience)
 {
 	if (pixel[ALPHA] == 0) return;
 
@@ -48,14 +48,12 @@ static void set_light_level(uint8_t *pixel, float brightness, float ambience)
 
 
 // in isometric night mode, adjust each face of the block to reflect sky/block light
-static void set_block_light_levels(palette *palette, const shape *bshape, const uint16_t offset,
-		const uint8_t *clight, const uint8_t nlight[], const uint8_t defval)
+static void set_block_light_levels(palette *palette, const shape *bshape, const uint8_t tlight_i,
+		const uint8_t nlight[])
 {
-	int toffset = offset + CHUNK_BLOCK_AREA;
-	float tlight = toffset > CHUNK_BLOCK_VOLUME ? defval : (float)clight[toffset];
-	if (tlight < MAX_LIGHT)
+	if (tlight_i < MAX_LIGHT)
 	{
-		tlight /= MAX_LIGHT;
+		float tlight = (float)tlight_i / MAX_LIGHT;
 		if (bshape->clrcount[COLOUR1])
 			set_light_level((*palette)[COLOUR1], tlight, NIGHT_AMBIENCE);
 		if (bshape->clrcount[COLOUR2])
@@ -77,7 +75,23 @@ static void set_block_light_levels(palette *palette, const shape *bshape, const 
 		if (bshape->clrcount[SHADOW2])
 			set_light_level((*palette)[SHADOW2], rlight, NIGHT_AMBIENCE);
 	}
+}
 
+
+static inline void replace_pixel(shape *bshape, const uint8_t so, const uint8_t colour)
+{
+	bshape->clrcount[bshape->pixmap[so]] -= 1;
+	bshape->clrcount[colour] += 1;
+	bshape->pixmap[so] = colour;
+}
+
+
+static inline void replace_colour(shape *bshape, palette *palette, const uint8_t old,
+		const uint8_t new)
+{
+	memcpy((*palette)[old], (*palette)[new], CHANNELS);
+	bshape->clrcount[new] += bshape->clrcount[old];
+	bshape->clrcount[old] = 0;
 }
 
 
@@ -89,8 +103,7 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 
 	uint8_t biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
 
-	uint8_t y = MAX_HEIGHT;
-	do
+	for (int16_t y = MAX_HEIGHT; y >= 0; y--)
 	{
 		// get unrotated chunk-level 3d block offset
 		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
@@ -101,18 +114,17 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 		// get block's pixel y coord
 		uint32_t bpy = py + (MAX_HEIGHT - y) * ISO_BLOCK_DEPTH;
 
-		// find which pixels are still unobscured, and skip this block if none are
-		bool visible = 0;
-		uint8_t mask[ISO_BLOCK_AREA];
+		// find which pixels are obscured, and skip this block if they all are
+		uint16_t mask = 0;
 		for (uint8_t sy = 0; sy < ISO_BLOCK_HEIGHT; sy++)
 			for (uint8_t sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
 				uint8_t so = sy * ISO_BLOCK_WIDTH + sx;
 				uint8_t alpha = img->data[((bpy + sy) * img->width + px + sx) * CHANNELS + ALPHA];
-				mask[so] = alpha;
-				if (alpha < 255) visible = 1;
+				// flip the bit for this pixel if it is already fully opaque in the image
+				if (alpha == 255) mask |= 1 << so;
 			}
-		if (!visible) continue;
+		if (mask == 0xffff) continue;
 
 		// get neighbour block ids and data values
 		uint8_t nbids[4], nbdata[4];
@@ -127,7 +139,16 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 		const blocktype *rbtype = get_block_type(tex, nbids[BOTTOM_RIGHT], nbdata[BOTTOM_RIGHT]);
 
 		// get block shape for this rotation
-		const shape *bshape = &btype->shapes[opts->rotate];
+		shape bshape = btype->shapes[opts->rotate];
+
+		// don't draw the top layer if the block above is the same type as this one, and is solid
+		// otherwise stripes will appear in columns of translucent blocks
+		if (tbtype->id == btype->id && bshape.clrcount[BLANK] == 0)
+			mask |= (1 << ISO_BLOCK_WIDTH * ISO_BLOCK_TOP_HEIGHT) - 1;
+
+		// replace each masked pixel's colour with blank - may save time later
+		for (uint8_t so = 0; so < ISO_BLOCK_AREA; so++)
+			if ((mask & (1 << so)) && bshape.pixmap[so] != BLANK) replace_pixel(&bshape, so, BLANK);
 
 		// get block colour palette, using biome colours if applicable
 		palette palette;
@@ -138,33 +159,38 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 
 		// adjust colours for height
 		for (uint8_t c = 0; c < COLOUR_COUNT; c++)
-			if (bshape->clrcount[c]) add_height_shading(palette[c], y);
+			if (bshape.clrcount[c]) add_height_shading(palette[c], y);
 
 		// replace highlight and/or shadow with unshaded colour if that side is blocked
 		if (lbtype->shapes[opts->rotate].clrcount[BLANK] == 0)
 		{
-			if (bshape->clrcount[HILIGHT1]) memcpy(&palette[HILIGHT1], &palette[COLOUR1], CHANNELS);
-			if (bshape->clrcount[HILIGHT2]) memcpy(&palette[HILIGHT2], &palette[COLOUR2], CHANNELS);
+			if (bshape.clrcount[HILIGHT1]) replace_colour(&bshape, &palette, HILIGHT1, COLOUR1);
+			if (bshape.clrcount[HILIGHT2]) replace_colour(&bshape, &palette, HILIGHT2, COLOUR2);
 		}
 		if (rbtype->shapes[opts->rotate].clrcount[BLANK] == 0)
 		{
-			if (bshape->clrcount[SHADOW1]) memcpy(&palette[SHADOW1], &palette[COLOUR1], CHANNELS);
-			if (bshape->clrcount[SHADOW2]) memcpy(&palette[SHADOW2], &palette[COLOUR2], CHANNELS);
+			if (bshape.clrcount[SHADOW1]) replace_colour(&bshape, &palette, SHADOW1, COLOUR1);
+			if (bshape.clrcount[SHADOW2]) replace_colour(&bshape, &palette, SHADOW2, COLOUR2);
 		}
 
 		// darken colours according to sky light (day + shadows) or block light (night)
-		uint8_t nlight[4];
-		if (chunk->slight != NULL)
+		if (opts->shadows || opts->night)
 		{
-			get_neighbour_values(nlight, chunk->slight, chunk->nslight, 255,
-					rbx, rbz, y, opts->rotate);
-			set_block_light_levels(&palette, bshape, offset, chunk->slight, nlight, 255);
-		}
-		else if (chunk->blight != NULL)
-		{
-			get_neighbour_values(nlight, chunk->blight, chunk->nblight, 0,
-					rbx, rbz, y, opts->rotate);
-			set_block_light_levels(&palette, bshape, offset, chunk->blight, nlight, 0);
+			uint8_t tlight, nlight[4];
+			uint32_t toffset = offset + CHUNK_BLOCK_AREA;
+			if (opts->shadows)
+			{
+				tlight = toffset > CHUNK_BLOCK_VOLUME ? 255 : chunk->slight[toffset];
+				get_neighbour_values(nlight, chunk->slight, chunk->nslight, 255,
+						rbx, rbz, y, opts->rotate);
+			}
+			else if (opts->night)
+			{
+				tlight = toffset > CHUNK_BLOCK_VOLUME ? 0 : chunk->blight[toffset];
+				get_neighbour_values(nlight, chunk->blight, chunk->nblight, 0,
+						rbx, rbz, y, opts->rotate);
+			}
+			set_block_light_levels(&palette, &bshape, tlight, nlight);
 		}
 
 		// draw pixels
@@ -172,15 +198,14 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 			for (uint8_t sx = 0; sx < ISO_BLOCK_WIDTH; sx++)
 			{
 				uint8_t so = sy * ISO_BLOCK_WIDTH + sx;
-				uint8_t pcolour = bshape->pixmap[so];
-				if (pcolour == BLANK || mask[so] == 255) continue;
+				uint8_t pcolour = bshape.pixmap[so];
+				if (pcolour == BLANK) continue;
 				{
 					uint32_t po = (bpy + sy) * img->width + px + sx;
 					combine_alpha(&img->data[po * CHANNELS], palette[pcolour], 0);
 				}
 			}
 	}
-	while (y-- > 0);
 }
 
 
@@ -195,8 +220,7 @@ void render_ortho_column(image *img, const int32_t px, const int32_t py, const t
 
 	uint8_t biomeid = opts->biomes ? chunk->biomes[hoffset] : 0;
 
-	uint8_t y = MAX_HEIGHT;
-	do
+	for (int16_t y = MAX_HEIGHT; y >= 0 && pixel[ALPHA] < 255; y--)
 	{
 		// get unrotated 3d block offset
 		uint16_t offset = y * CHUNK_BLOCK_AREA + hoffset;
@@ -233,5 +257,4 @@ void render_ortho_column(image *img, const int32_t px, const int32_t py, const t
 
 		combine_alpha(pixel, colour, 0);
 	}
-	while (y-- > 0 && pixel[ALPHA] < 255);
 }
