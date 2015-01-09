@@ -32,7 +32,7 @@ image *create_image(const uint32_t width, const uint32_t height)
 	image *img = (image*)malloc(sizeof(image));
 	img->width = width;
 	img->height = height;
-	img->data = (uint8_t*)calloc(width * height * CHANNELS, sizeof(uint32_t));
+	img->data = (uint8_t*)calloc(width * height * CHANNELS, sizeof(uint8_t));
 	return img;
 }
 
