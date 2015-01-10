@@ -92,18 +92,21 @@ void slice_image(const image *img, const uint32_t tilesize, const char *tiledir)
 {
 	uint32_t t = 0;
 	uint32_t count = (
-		(img->width + tilesize - 1) / tilesize *
-		(img->height + tilesize - 1) / tilesize
+		((img->width + tilesize - 1) / tilesize) *
+		((img->height + tilesize - 1) / tilesize)
 	);
 
-	for (uint32_t y = 0; y < img->width; y += tilesize)
+	for (uint32_t y = 0; y < img->height; y += tilesize)
 	{
-		for (uint32_t x = 0; x < img->height; x += tilesize)
+		for (uint32_t x = 0; x < img->width; x += tilesize)
 		{
 			t++;
 			printf("Saving tile %d/%d...\n", t, count);
 
 			image *tile = create_image(tilesize, tilesize);
+
+			// copy the lesser of the tile width, or the remainder of the image width
+			uint32_t length = (x + tilesize > img->width) ? img->width - x : tilesize;
 
 			for (uint32_t ty = 0; ty < tilesize; ty++)
 			{
@@ -112,9 +115,6 @@ void slice_image(const image *img, const uint32_t tilesize, const char *tiledir)
 
 				uint8_t *row = &img->data[((y + ty) * img->width + x) * CHANNELS];
 				uint8_t *trow = &tile->data[ty * tilesize * CHANNELS];
-
-				// copy the lesser of the tile width, or the remainder of the image width
-				uint32_t length = (x + tilesize > img->width) ? img->width - x : tilesize;
 
 				memcpy(trow, row, length * CHANNELS);
 			}

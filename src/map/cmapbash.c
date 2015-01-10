@@ -17,11 +17,16 @@
 */
 
 
+#define _XOPEN_SOURCE 500 // for FTW
+
+#include <ftw.h>
 #include <getopt.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include "data.h"
@@ -29,8 +34,12 @@
 #include "image.h"
 
 
+#define TILESIZE 1024
+#define MAX_ZOOMEDOUT_SIZE 1920
+
+
 // save the map to a PNG file
-static void save_world_map(image *img, const char *imgpath)
+static void save_world_map_image(image *img, const char *imgpath)
 {
 	printf("Saving image to %s ...\n", imgpath);
 	clock_t start = clock();
@@ -39,17 +48,54 @@ static void save_world_map(image *img, const char *imgpath)
 }
 
 
-//// slice the map into a set of tiles for use with google maps
-//static void slice_world_map(image *img, const char *slicepath)
-//{
-//
-//}
+// nftw function to remove a file
+static int rm_file(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
+{
+	remove(fpath);
+	return 0;
+}
+
+
+// slice the map into a set of tiles for use with google maps
+static void save_world_map_slices(image *img, const char *slicepath)
+{
+	printf("Slicing image into %s...\n", slicepath);
+	mkdir(slicepath, S_IRWXU | S_IRWXG | S_IRWXO);
+
+	uint8_t zoomlevels = (uint8_t)ceil(log2(
+			(double)MAX(img->width, img->height) / (double)MAX_ZOOMEDOUT_SIZE));
+
+	image *zimg = img;
+	for (int8_t z = zoomlevels; z >= 0; z--)
+	{
+		printf("Zoom level %d (1:%d): %d x %d pixels, %d x %d tiles\n", z,
+				(uint8_t)pow(2, zoomlevels - z), zimg->width, zimg->height,
+				(zimg->width + TILESIZE - 1) / TILESIZE, (zimg->height + TILESIZE - 1) / TILESIZE);
+
+		char zoompath[255];
+		sprintf(zoompath, "%s/zoom%d", slicepath, z);
+
+		// clear all files in zoom directory
+		printf("Clearing/creating directory %s\n", zoompath);
+		nftw(zoompath, rm_file, 1, FTW_DEPTH);
+		mkdir(zoompath, S_IRWXU | S_IRWXG | S_IRWXO);
+
+		// slice
+		slice_image(zimg, TILESIZE, zoompath);
+
+		// replace image with 50% scaled version
+		image *nextimg = z > 0 ? scale_image_half(zimg) : NULL;
+		if (zimg != img) free(zimg);
+		zimg = nextimg;
+	}
+}
 
 
 int main(int argc, char **argv)
 {
 	char *inpath = NULL;
-	char *outpath = "map.png";
+	char *outpath = NULL;
+	char *slicepath = NULL;
 	static options opts =
 	{
 		.limits    = NULL,
@@ -77,6 +123,7 @@ int main(int argc, char **argv)
 		{"rotate",    required_argument, 0, 'r'},
 		{"world",     required_argument, 0, 'w'},
 		{"output",    required_argument, 0, 'o'},
+		{"googlemap", required_argument, 0, 'g'},
 		{"from",      required_argument, 0, 'F'},
 		{"to",        required_argument, 0, 'T'},
 		{0, 0, 0, 0}
@@ -86,7 +133,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		int option_index = 2;
-		c = getopt_long(argc, argv, "-insbtr:w:o:F:T:", long_options, &option_index);
+		c = getopt_long(argc, argv, "-insbtr:w:o:g:F:T:", long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c)
@@ -130,6 +177,10 @@ int main(int argc, char **argv)
 			outpath = optarg;
 			break;
 
+		case 'g':
+			slicepath = optarg;
+			break;
+
 		case 'F':
 			fc = sscanf(optarg, "%d,%d,%d", &f1, &f2, &f3);
 			if (fc < 2)
@@ -151,6 +202,11 @@ int main(int argc, char **argv)
 	{
 		printf("Please specify a region directory with -w.\n");
 		return 1;
+	}
+
+	if (outpath == NULL && slicepath == NULL)
+	{
+		outpath = "map.png";
 	}
 
 	if (fc != tc)
@@ -212,9 +268,10 @@ int main(int argc, char **argv)
 	}
 
 	image *img = create_world_map(inpath, &opts);
+	if (img == NULL) return 1;
 
-	// TODO: create an option to slice the map into tiles instead of saving one big image
-	save_world_map(img, outpath);
+	if (outpath != NULL) save_world_map_image(img, outpath);
+	if (slicepath != NULL) save_world_map_slices(img, slicepath);
 
 	free_image(img);
 

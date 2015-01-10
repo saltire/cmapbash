@@ -46,7 +46,8 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 	if (dirlen > WORLDDIR_PATH_MAXLEN)
 	{
 		fprintf(stderr, "World path is too long (max 255 characters)\n");
-		return world;
+		free_world(world);
+		return NULL;
 	}
 	if (worldpath[dirlen - 1] == '/')
 		worldpath[dirlen - 1] = 0;
@@ -56,7 +57,8 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 	if (dir == NULL)
 	{
 		fprintf(stderr, "Error %d reading region directory: %s\n", errno, world->regiondir);
-		return world;
+		free_world(world);
+		return NULL;
 	}
 
 	int32_t wrlimits[4];
@@ -102,7 +104,8 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 	if (!world->rcount)
 	{
 		fprintf(stderr, "No regions found in world region directory: %s\n", world->regiondir);
-		return world;
+		free_world(world);
+		return NULL;
 	}
 
 	uint32_t rxsize = rxmax - rxmin + 1;

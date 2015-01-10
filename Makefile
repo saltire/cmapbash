@@ -18,7 +18,7 @@ dir_guard = @mkdir -p $(@D)
 
 bin/cmapbash: $(mapobj) $(dataobj)
 	$(dir_guard)
-	$(CC) $(CFLAGS) $(mapobj) $(dataobj) -lz -o bin/cmapbash
+	$(CC) $(CFLAGS) $(mapobj) $(dataobj) -lm -lz -o bin/cmapbash
 	@cp -r resources bin
 
 obj/%.o: src/%.c
