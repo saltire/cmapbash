@@ -163,14 +163,14 @@ uint16_t get_chunk_offset(const uint8_t rcx, const uint8_t rcz, const uint8_t ro
 
 /* get the data values for the 4 neighbouring blocks
  *   nvalues:  an output array of 4 data values
- *   data:     chunk data for the current chunk
- *   ndata:    chunk data for the 4 neighbouring chunks, in case we're on an edge
+ *   cdata:    chunk data for the current chunk
+ *   ncdata:   chunk data for the 4 neighbouring chunks, in case we're on an edge
  *   rbx, rbz: the block's rotated chunk-level x/z coords
  *   y:        the block's y coord
  *   rotate:   the rotate value
  *   defval:   a default value for nonexistent blocks
  */
-void get_neighbour_values(uint8_t nvalues[4], uint8_t *data, uint8_t *ndata[4], uint8_t defval,
+void get_neighbour_values(uint8_t nvalues[4], uint8_t *cdata, uint8_t *ncdata[4], uint8_t defval,
 		const uint8_t rbx, const uint8_t rbz, const uint8_t y, const uint8_t rotate);
 
 /* generate a chunk data struct from raw chunk data in the region file

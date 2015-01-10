@@ -69,24 +69,24 @@ uint16_t get_chunk_offset(const uint8_t rcx, const uint8_t rcz, const uint8_t ro
 }
 
 
-void get_neighbour_values(uint8_t nvalues[4], uint8_t *data, uint8_t *ndata[4], uint8_t defval,
+void get_neighbour_values(uint8_t nvalues[4], uint8_t *cdata, uint8_t *ncdata[4], uint8_t defval,
 		const uint8_t rbx, const uint8_t rbz, const uint8_t y, const uint8_t rotate)
 {
-	nvalues[TOP] = rbz > 0 ? data[get_block_offset(rbx, rbz - 1, y, rotate)] :
-			(ndata[TOP] == NULL ? defval :
-					ndata[TOP][get_block_offset(rbx, MAX_CHUNK_BLOCK, y, rotate)]);
+	nvalues[TOP] = rbz > 0 ? cdata[get_block_offset(rbx, rbz - 1, y, rotate)] :
+			(ncdata[TOP] == NULL ? defval :
+					ncdata[TOP][get_block_offset(rbx, MAX_CHUNK_BLOCK, y, rotate)]);
 
-	nvalues[RIGHT] = rbx < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx + 1, rbz, y, rotate)] :
-			(ndata[RIGHT] == NULL ? defval :
-					ndata[RIGHT][get_block_offset(0, rbz, y, rotate)]);
+	nvalues[RIGHT] = rbx < MAX_CHUNK_BLOCK ? cdata[get_block_offset(rbx + 1, rbz, y, rotate)] :
+			(ncdata[RIGHT] == NULL ? defval :
+					ncdata[RIGHT][get_block_offset(0, rbz, y, rotate)]);
 
-	nvalues[BOTTOM] = rbz < MAX_CHUNK_BLOCK ? data[get_block_offset(rbx, rbz + 1, y, rotate)] :
-			(ndata[BOTTOM] == NULL ? defval :
-					ndata[BOTTOM][get_block_offset(rbx, 0, y, rotate)]);
+	nvalues[BOTTOM] = rbz < MAX_CHUNK_BLOCK ? cdata[get_block_offset(rbx, rbz + 1, y, rotate)] :
+			(ncdata[BOTTOM] == NULL ? defval :
+					ncdata[BOTTOM][get_block_offset(rbx, 0, y, rotate)]);
 
-	nvalues[LEFT] = rbx > 0 ? data[get_block_offset(rbx - 1, rbz, y, rotate)] :
-			(ndata[LEFT] == NULL ? defval :
-					ndata[LEFT][get_block_offset(MAX_CHUNK_BLOCK, rbz, y, rotate)]);
+	nvalues[LEFT] = rbx > 0 ? cdata[get_block_offset(rbx - 1, rbz, y, rotate)] :
+			(ncdata[LEFT] == NULL ? defval :
+					ncdata[LEFT][get_block_offset(MAX_CHUNK_BLOCK, rbz, y, rotate)]);
 }
 
 

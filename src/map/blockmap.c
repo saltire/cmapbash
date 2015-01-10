@@ -143,7 +143,7 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 
 		// don't draw the top layer if the block above is the same type as this one, and is solid
 		// otherwise stripes will appear in columns of translucent blocks
-		if (tbtype->id == btype->id && bshape.clrcount[BLANK] == 0)
+		if (tbtype != NULL && tbtype->id == btype->id && bshape.clrcount[BLANK] == 0)
 			mask |= (1 << ISO_BLOCK_WIDTH * ISO_BLOCK_TOP_HEIGHT) - 1;
 
 		// replace each masked pixel's colour with blank - may save time later

@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
+#include <string.h>
 #include <time.h>
 
 #include "data.h"
@@ -57,10 +57,16 @@ static int rm_file(const char *fpath, const struct stat *sb, int tflag, struct F
 
 
 // slice the map into a set of tiles for use with google maps
-static void save_world_map_slices(image *img, const char *slicepath)
+static void save_world_map_slices(image *img, char *slicepath)
 {
+	// strip trailing slash
+	size_t dirlen = strlen(slicepath);
+	if (slicepath[dirlen - 1] == '/')
+		slicepath[dirlen - 1] = 0;
+
 	printf("Slicing image into %s...\n", slicepath);
 	mkdir(slicepath, S_IRWXU | S_IRWXG | S_IRWXO);
+	clock_t start = clock();
 
 	uint8_t zoomlevels = (uint8_t)ceil(log2(
 			(double)MAX(img->width, img->height) / (double)MAX_ZOOMEDOUT_SIZE));
@@ -84,10 +90,17 @@ static void save_world_map_slices(image *img, const char *slicepath)
 		slice_image(zimg, TILESIZE, zoompath);
 
 		// replace image with 50% scaled version
-		image *nextimg = z > 0 ? scale_image_half(zimg) : NULL;
-		if (zimg != img) free(zimg);
+		image *nextimg;
+		if (z > 0)
+		{
+			printf("Scaling image by half\n");
+			nextimg = scale_image_half(zimg);
+		}
+		if (z < zoomlevels) free(zimg);
 		zimg = nextimg;
 	}
+
+	printf("Total save time: %f seconds\n", (double)(clock() - start) / CLOCKS_PER_SEC);
 }
 
 
@@ -183,14 +196,12 @@ int main(int argc, char **argv)
 
 		case 'F':
 			fc = sscanf(optarg, "%d,%d,%d", &f1, &f2, &f3);
-			if (fc < 2)
-				fprintf(stderr, "Invalid 'from' coordinates: %s\n", optarg);
+			if (!fc) fprintf(stderr, "Invalid 'from' coordinates: %s\n", optarg);
 			break;
 
 		case 'T':
 			tc = sscanf(optarg, "%d,%d,%d", &t1, &t2, &t3);
-			if (tc < 2)
-				fprintf(stderr, "Invalid 'to' coordinates: %s\n", optarg);
+			if (!tc) fprintf(stderr, "Invalid 'to' coordinates: %s\n", optarg);
 			break;
 
 		default:
@@ -204,14 +215,21 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (outpath == NULL && slicepath == NULL)
-	{
-		outpath = "map.png";
-	}
+	// default to single-image mode
+	if (outpath == NULL && slicepath == NULL) outpath = "map.png";
 
 	if (fc != tc)
 		fprintf(stderr, "'From' and 'to' coordinates must be in the same format (X,Z or X,Y,Z).\n");
-	else if (fc >= 2)
+	else if (fc == 1)
+	{
+		uint8_t ylimits[2] =
+		{
+			MAX(0, MIN(f1, t1)),
+			MIN(MAX_HEIGHT, MAX(f1, t1)),
+		};
+		opts.ylimits = ylimits;
+	}
+	else if (fc > 1)
 	{
 		fx = f1;
 		tx = t1;
