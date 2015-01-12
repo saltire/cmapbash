@@ -86,10 +86,10 @@ static inline void replace_pixel(shape *bshape, const uint8_t so, const uint8_t 
 }
 
 
-static inline void replace_colour(shape *bshape, palette *palette, const uint8_t old,
-		const uint8_t new)
+static inline void replace_colour(shape *bshape, const uint8_t old, const uint8_t new)
 {
-	memcpy((*palette)[old], (*palette)[new], CHANNELS);
+	for (uint8_t so = 0; so < ISO_BLOCK_AREA; so++)
+		if (bshape->pixmap[so] == old) bshape->pixmap[so] = new;
 	bshape->clrcount[new] += bshape->clrcount[old];
 	bshape->clrcount[old] = 0;
 }
@@ -164,13 +164,13 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 		// replace highlight and/or shadow with unshaded colour if that side is blocked
 		if (lbtype->shapes[opts->rotate].clrcount[BLANK] == 0)
 		{
-			if (bshape.clrcount[HILIGHT1]) replace_colour(&bshape, &palette, HILIGHT1, COLOUR1);
-			if (bshape.clrcount[HILIGHT2]) replace_colour(&bshape, &palette, HILIGHT2, COLOUR2);
+			if (bshape.clrcount[HILIGHT1]) replace_colour(&bshape, HILIGHT1, COLOUR1);
+			if (bshape.clrcount[HILIGHT2]) replace_colour(&bshape, HILIGHT2, COLOUR2);
 		}
 		if (rbtype->shapes[opts->rotate].clrcount[BLANK] == 0)
 		{
-			if (bshape.clrcount[SHADOW1]) replace_colour(&bshape, &palette, SHADOW1, COLOUR1);
-			if (bshape.clrcount[SHADOW2]) replace_colour(&bshape, &palette, SHADOW2, COLOUR2);
+			if (bshape.clrcount[SHADOW1]) replace_colour(&bshape, SHADOW1, COLOUR1);
+			if (bshape.clrcount[SHADOW2]) replace_colour(&bshape, SHADOW2, COLOUR2);
 		}
 
 		// darken colours according to sky light (day + shadows) or block light (night)
