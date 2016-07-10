@@ -1,0 +1,36 @@
+{
+  "bindir": "/path/to/cmapbash/bin",
+  "tilesize": 1024,
+  "maptypes": [
+    {
+      "name": "Top down (day)",
+      "dir": "ortho-day",
+      "iso": false,
+      "night": false
+    },
+    {
+      "name": "Top down (night)",
+      "dir": "ortho-night",
+      "iso": false,
+      "night": true
+    },
+    {
+      "name": "Isometric (day)",
+      "dir": "iso-day",
+      "iso": true,
+      "night": false
+    },
+    {
+      "name": "Isometric (night)",
+      "dir": "iso-night",
+      "iso": true,
+      "night": true
+    }
+  ],
+  "worlds": {
+    "World": {
+      "worlddir": "/path/to/saves/World",
+      "wwwdir": "/path/to/public/html"
+    }
+  }
+}
