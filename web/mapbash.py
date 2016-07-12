@@ -55,14 +55,14 @@ def get_worlds(config):
         #     else:
         #         raise Exception('Could not find S3 path for {}.'.format(worldname))
 
-        print(world)
         worlds.append(world)
 
     return worlds
 
 
-def render_world(bindir, world):
-    info = {'tileSize': world['tilesize'],
+def render_world(config, world):
+    info = {'apiKey': config['apikey'],
+            'tileSize': world['tilesize'],
             'types': [],
             }
 
@@ -72,7 +72,7 @@ def render_world(bindir, world):
         mapdir = os.path.join(world['wwwdir'], maptype['dir'])
 
         command = [arg for arg in
-                   [os.path.join(bindir, 'cmapbash'),
+                   [os.path.join(config['bindir'], 'cmapbash'),
                     '-n' if maptype['night'] else None,
                     '-i' if maptype['iso'] else None,
                     '-b',
@@ -83,7 +83,8 @@ def render_world(bindir, world):
                    if arg]
         print(' '.join(command))
 
-        proc = subprocess.Popen(command, cwd=bindir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(command, cwd=config['bindir'],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in iter(proc.stdout.readline, ''):
             if not line:
                 break
@@ -118,4 +119,4 @@ if __name__ == '__main__':
         config = json.load(configfile)
 
     for world in get_worlds(config):
-        render_world(config['bindir'], world)
+        render_world(config, world)

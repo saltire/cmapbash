@@ -13,10 +13,11 @@ Options so far:
 - `-i` - Isometric mode.
 - `-n` - Night mode.
 - `-s` - Render sunlight shadows in isometric mode.
+- `-b` - Render biome colours.
 - `-t` - Tiny mode. Renders a quick minimap of all existing chunks.
 - `-w <directory>` - The path to the Minecraft world folder (required).
 - `-o <filename>` - The path at which to save a single image.
-  Defaults to `map.png`, unless `-g` is specified, in which case defaults to none. 
+  Defaults to `map.png`, unless `-g` is specified, in which case defaults to none.
 - `-g <directory>` - The directory in which to save a set of tiles,
   suitable for use with Google Maps.
   This will create subfolders for a number of zoom levels, depending on the map's size.

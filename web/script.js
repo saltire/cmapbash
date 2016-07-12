@@ -1,5 +1,5 @@
-function initMap() {
-    $.get('./info.json', function (info) {
+$.get('./info.json', function (info) {
+    $.getScript('https://maps.googleapis.com/maps/api/js?key=' + info.apiKey, function () {
         var mids = $.map(info.types, function (mtype) {
             return mtype.id;
         });
@@ -34,4 +34,4 @@ function initMap() {
         $('.date').text(info.time);
         $('#note').show();
     });
-}
+});

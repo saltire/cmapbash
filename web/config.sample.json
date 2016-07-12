@@ -1,4 +1,5 @@
 {
+  "apikey": "google-api-key",
   "bindir": "/path/to/cmapbash/bin",
   "tilesize": 1024,
   "maptypes": [
