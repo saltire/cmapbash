@@ -108,15 +108,16 @@ def render_world(config, world):
         json.dump(info, infofile)
 
     # put google maps page in www dir
-    shutil.copy('./index.html', world['wwwdir'])
-    shutil.copy('./style.css', world['wwwdir'])
-    shutil.copy('./script.js', world['wwwdir'])
+    dirname = os.path.dirname(__file__)
+    shutil.copy(os.path.join(dirname, 'index.html'), world['wwwdir'])
+    shutil.copy(os.path.join(dirname, 'style.css'), world['wwwdir'])
+    shutil.copy(os.path.join(dirname, 'script.js'), world['wwwdir'])
 
 
 if __name__ == '__main__':
-    configpath = sys.argv[1] if len(sys.argv) > 1 else './config.json'
+    configpath = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), 'config.json')
     with open(configpath, 'rb') as configfile:
-        config = json.load(configfile)
+        config = json.loads(configfile.read().decode('utf-8'))
 
     for world in get_worlds(config):
         render_world(config, world)
