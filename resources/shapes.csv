@@ -43,3 +43,6 @@
 3322222222222200,vines south + west + north
 3322333333330033,vines west + north + east
 3322223322332233,vines north + east + south + west
+0110023002300230,rod upright
+0000001111000000,rod north-south
+0000110000110000,rod east-west
