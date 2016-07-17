@@ -101,7 +101,9 @@ void slice_image(const image *img, const uint32_t tilesize, const char *tiledir)
 		for (uint32_t x = 0; x < img->width; x += tilesize)
 		{
 			t++;
-			printf("Saving tile %d/%d...\n", t, count);
+			uint32_t tilex = x / tilesize;
+			uint32_t tiley = y / tilesize;
+			printf("Saving tile %d/%d (%d,%d)...\n", t, count, tilex, tiley);
 
 			image *tile = create_image(tilesize, tilesize);
 
@@ -120,8 +122,7 @@ void slice_image(const image *img, const uint32_t tilesize, const char *tiledir)
 			}
 
 			char tilepath[255];
-			sprintf(tilepath, "%s/%d.%d.png", tiledir, x / tilesize, y / tilesize);
-
+			sprintf(tilepath, "%s/%d.%d.png", tiledir, tilex, tiley);
 			save_image(tile, tilepath);
 
 			free_image(tile);

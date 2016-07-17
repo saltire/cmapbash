@@ -35,7 +35,6 @@
 
 
 #define TILESIZE 1024
-#define MAX_ZOOMEDOUT_SIZE 1920
 
 
 // save the map to a PNG file
@@ -68,8 +67,7 @@ static void save_world_map_slices(image *img, char *slicepath)
 	mkdir(slicepath, S_IRWXU | S_IRWXG | S_IRWXO);
 	clock_t start = clock();
 
-	uint8_t zoomlevels = (uint8_t)ceil(log2(
-			(double)MAX(img->width, img->height) / (double)MAX_ZOOMEDOUT_SIZE));
+	uint8_t zoomlevels = (uint8_t)ceil(log2((double)img->height / TILESIZE));
 
 	image *zimg = img;
 	for (int8_t z = zoomlevels; z >= 0; z--)
