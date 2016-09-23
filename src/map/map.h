@@ -66,7 +66,9 @@ typedef struct options
 		night,        // whether to render in night mode
 		shadows,      // whether to include sunlight/moonlight shadows
 		biomes,       // whether to use biome colours
-		tiny;         // whether to render a minimap where each existing chunk is a white pixel
+		tiny,         // whether to render a minimap where each existing chunk is a white pixel
+		hell,         // whether to render the nether/hell dimension
+		end;          // whether to render the end dimension (overridden by options.hell)
 	uint8_t rotate;   // how many times to rotate the map 90 degrees clockwise
 	int32_t *limits;  // pointer to an array of absolute min/max x/z block coords to crop to
 	                  //   (ymin, xmax, ymax, xmin)

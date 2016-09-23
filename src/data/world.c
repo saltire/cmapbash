@@ -36,7 +36,8 @@ region *get_region_from_coords(const worldinfo *world, const uint32_t rrx, const
 }
 
 
-worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits)
+worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits,
+	const bool hell, const bool end)
 {
 	worldinfo *world = (worldinfo*)malloc(sizeof(worldinfo));
 	world->rcount = 0;
@@ -51,7 +52,7 @@ worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *w
 	}
 	if (worldpath[dirlen - 1] == '/')
 		worldpath[dirlen - 1] = 0;
-	sprintf(world->regiondir, "%s/region", worldpath);
+	sprintf(world->regiondir, "%s%s/region", worldpath, hell ? "/DIM-1" : (end ? "/DIM1" : ""));
 
 	DIR *dir = opendir(world->regiondir);
 	if (dir == NULL)

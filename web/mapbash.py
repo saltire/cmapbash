@@ -75,6 +75,8 @@ def render_world(config, world):
                    [os.path.join(config['bindir'], 'cmapbash'),
                     '-n' if maptype['night'] else None,
                     '-i' if maptype['iso'] else None,
+                    '-h' if maptype['hell'] or maptype['nether'] else None,
+                    '-e' if maptype['end'] else None,
                     '-b',
                     # '-o', imgpath,
                     '-w', world['worlddir'],

@@ -16,7 +16,6 @@ $.get('./info.json', function (info) {
         });
 
         $.each(info.types, function (i, mtype) {
-            console.log(mtype);
             map.mapTypes.set(mtype.id, new google.maps.ImageMapType({
                 name: mtype.name,
                 alt: mtype.name,

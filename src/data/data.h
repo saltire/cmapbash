@@ -58,7 +58,7 @@
 // path lengths
 
 #define WORLDDIR_PATH_MAXLEN 255
-#define REGIONDIR_PATH_MAXLEN (WORLDDIR_PATH_MAXLEN + 7)
+#define REGIONDIR_PATH_MAXLEN (WORLDDIR_PATH_MAXLEN + 13)
 #define REGION_COORD_MAXLEN 8
 #define REGIONFILE_PATH_MAXLEN (REGIONDIR_PATH_MAXLEN + REGION_COORD_MAXLEN * 2 + 8)
 
@@ -238,8 +238,11 @@ region *get_region_from_coords(const worldinfo *world, const uint32_t rrx, const
  *   worldpath: path to the world directory
  *   rotate:    the rotate value to use when rendering this world
  *   wblimits:  pointer to an array of absolute world-level min/max x/z block coords
+ *   hell:      whether to render hell dimension (overrides end)
+ *   end:       whether to render end dimension
  */
-worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits);
+worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits,
+	const bool hell, const bool end);
 
 /* free the memory used for a world struct
  *   world: pointer to the world struct

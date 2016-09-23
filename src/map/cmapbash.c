@@ -131,6 +131,8 @@ int main(int argc, char **argv)
 		{"shadows",   no_argument, (int*)&opts.shadows,   1},
 		{"biomes",    no_argument, (int*)&opts.biomes,    1},
 		{"tiny",      no_argument, (int*)&opts.tiny,      1},
+		{"hell",      no_argument, (int*)&opts.hell,      1},
+		{"end",       no_argument, (int*)&opts.end,       1},
 		{"rotate",    required_argument, 0, 'r'},
 		{"world",     required_argument, 0, 'w'},
 		{"output",    required_argument, 0, 'o'},
@@ -144,7 +146,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		int option_index = 2;
-		c = getopt_long(argc, argv, "-insbtr:w:o:g:F:T:", long_options, &option_index);
+		c = getopt_long(argc, argv, "-insbther:w:o:g:F:T:", long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c)
@@ -171,6 +173,14 @@ int main(int argc, char **argv)
 
 		case 't':
 			opts.tiny = 1;
+			break;
+
+		case 'h':
+			opts.hell = 1;
+			break;
+
+		case 'e':
+			opts.end = 1;
 			break;
 
 		case 'r':
@@ -209,7 +219,7 @@ int main(int argc, char **argv)
 
 	if (inpath == NULL)
 	{
-		printf("Please specify a region directory with -w.\n");
+		fprintf(stderr, "Please specify a region directory with -w.\n");
 		return 1;
 	}
 
@@ -281,6 +291,9 @@ int main(int argc, char **argv)
 		else if (opts.isometric && opts.shadows) printf("Daytime shadows are on\n");
 
 		if (opts.biomes) printf("Biomes are on\n");
+
+		if (opts.hell) printf("Rendering hell dimension\n");
+		else if (opts.end) printf("Rendering end dimension\n");
 	}
 
 	image *img = create_world_map(inpath, &opts);
