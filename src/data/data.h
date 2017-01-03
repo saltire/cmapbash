@@ -238,11 +238,11 @@ region *get_region_from_coords(const worldinfo *world, const uint32_t rrx, const
  *   worldpath: path to the world directory
  *   rotate:    the rotate value to use when rendering this world
  *   wblimits:  pointer to an array of absolute world-level min/max x/z block coords
- *   hell:      whether to render hell dimension (overrides end)
+ *   nether:    whether to render nether dimension (overrides end)
  *   end:       whether to render end dimension
  */
 worldinfo *measure_world(char *worldpath, const uint8_t rotate, const int32_t *wblimits,
-	const bool hell, const bool end);
+	const bool nether, const bool end);
 
 /* free the memory used for a world struct
  *   world: pointer to the world struct

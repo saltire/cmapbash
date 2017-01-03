@@ -114,15 +114,15 @@ void render_region_map(image *img, const int32_t rpx, const int32_t rpy, region 
 	chunk_flags flags = {
 		1,
 		1,
-		opts->night,
-		opts->isometric && !opts->night && opts->shadows,
+		opts->dark,
+		opts->isometric && !opts->dark && opts->shadows,
 		opts->biomes
 	};
 	chunk_flags nflags = {
 		1,
 		opts->isometric,
-		opts->isometric && opts->night,
-		opts->isometric && !opts->night && opts->shadows,
+		opts->isometric && opts->dark,
+		opts->isometric && !opts->dark && opts->shadows,
 		0
 	};
 

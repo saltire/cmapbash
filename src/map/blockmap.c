@@ -47,7 +47,7 @@ static void set_light_level(uint8_t *pixel, const float brightness, const float 
 }
 
 
-// in isometric night mode, adjust each face of the block to reflect sky/block light
+// in isometric dark mode, adjust each face of the block to reflect sky/block light
 static void set_block_light_levels(palette *palette, const shape *bshape, const uint8_t tlight_i,
 		const uint8_t nlight[])
 {
@@ -173,8 +173,8 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 			if (bshape.clrcount[SHADOW2]) replace_colour(&bshape, SHADOW2, COLOUR2);
 		}
 
-		// darken colours according to sky light (day + shadows) or block light (night)
-		if (opts->shadows || opts->night)
+		// darken colours according to sky light (day + shadows) or block light (dark)
+		if (opts->shadows || opts->dark)
 		{
 			uint8_t tlight, nlight[4];
 			uint32_t toffset = offset + CHUNK_BLOCK_AREA;
@@ -184,7 +184,7 @@ void render_iso_column(image *img, const int32_t px, const int32_t py, const tex
 				get_neighbour_values(nlight, chunk->slight, chunk->nslight, 255,
 						rbx, rbz, y, opts->rotate);
 			}
-			else if (opts->night)
+			else if (opts->dark)
 			{
 				tlight = toffset > CHUNK_BLOCK_VOLUME ? 0 : chunk->blight[toffset];
 				get_neighbour_values(nlight, chunk->blight, chunk->nblight, 0,
@@ -249,8 +249,8 @@ void render_ortho_column(image *img, const int32_t px, const int32_t py, const t
 		if (light && !dark) adjust_colour_brightness(colour, HILIGHT_AMOUNT);
 		if (dark && !light) adjust_colour_brightness(colour, SHADOW_AMOUNT);
 
-		// night mode: darken colours according to block light
-		if (opts->night) {
+		// dark mode: darken colours according to block light
+		if (opts->dark) {
 			float tbl = y < MAX_HEIGHT ? chunk->blight[offset + CHUNK_BLOCK_AREA] : 0;
 			if (tbl < MAX_LIGHT) set_light_level(colour, tbl / MAX_LIGHT, NIGHT_AMBIENCE);
 		}

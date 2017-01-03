@@ -127,11 +127,11 @@ int main(int argc, char **argv)
 	static struct option long_options[] =
 	{
 		{"isometric", no_argument, (int*)&opts.isometric, 1},
-		{"night",     no_argument, (int*)&opts.night,     1},
+		{"dark",      no_argument, (int*)&opts.dark,      1},
 		{"shadows",   no_argument, (int*)&opts.shadows,   1},
 		{"biomes",    no_argument, (int*)&opts.biomes,    1},
 		{"tiny",      no_argument, (int*)&opts.tiny,      1},
-		{"hell",      no_argument, (int*)&opts.hell,      1},
+		{"nether",    no_argument, (int*)&opts.nether,    1},
 		{"end",       no_argument, (int*)&opts.end,       1},
 		{"rotate",    required_argument, 0, 'r'},
 		{"world",     required_argument, 0, 'w'},
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		int option_index = 2;
-		c = getopt_long(argc, argv, "-insbther:w:o:g:F:T:", long_options, &option_index);
+		c = getopt_long(argc, argv, "-idsbtner:w:o:g:F:T:", long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c)
@@ -159,8 +159,8 @@ int main(int argc, char **argv)
 			opts.isometric = 1;
 			break;
 
-		case 'n':
-			opts.night = 1;
+		case 'd':
+			opts.dark = 1;
 			break;
 
 		case 's':
@@ -175,8 +175,8 @@ int main(int argc, char **argv)
 			opts.tiny = 1;
 			break;
 
-		case 'h':
-			opts.hell = 1;
+		case 'n':
+			opts.nether = 1;
 			break;
 
 		case 'e':
@@ -287,12 +287,12 @@ int main(int argc, char **argv)
 	{
 		printf("Rendering in %s mode\n", opts.isometric ? "isometric" : "orthographic");
 
-		if (opts.night) printf("Night mode is on\n");
+		if (opts.dark) printf("Dark mode is on\n");
 		else if (opts.isometric && opts.shadows) printf("Daytime shadows are on\n");
 
 		if (opts.biomes) printf("Biomes are on\n");
 
-		if (opts.hell) printf("Rendering hell dimension\n");
+		if (opts.nether) printf("Rendering nether dimension\n");
 		else if (opts.end) printf("Rendering end dimension\n");
 	}
 

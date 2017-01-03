@@ -152,7 +152,8 @@ void render_world_map(image *img, int32_t wpx, int32_t wpy, const worldinfo *wor
 
 image *create_world_map(char *worldpath, const options *opts)
 {
-	worldinfo *world = measure_world(worldpath, opts->rotate, opts->limits, opts->hell, opts->end);
+	worldinfo *world = measure_world(worldpath,
+		opts->rotate, opts->limits, opts->nether, opts->end);
 	if (world == NULL) return NULL;
 
 	uint32_t width, height, margins[4];

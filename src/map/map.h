@@ -35,7 +35,7 @@
 #define SHADOW_AMOUNT -0.125 // amount to darken isometric block shadows
 #define HSHADE_HEIGHT 0.3 // height below which to add shadows
 #define HSHADE_AMOUNT 0.7 // amount of shadow to add
-#define NIGHT_AMBIENCE 0.2 // base light level for night renders
+#define NIGHT_AMBIENCE 0.2 // base light level for dark renders
 
 #define HSHADE_BLOCK_HEIGHT (HSHADE_HEIGHT * MAX_HEIGHT)
 
@@ -63,12 +63,12 @@
 typedef struct options
 {
 	bool isometric,   // whether to render an isometric (true) or orthographic (false) map.
-		night,        // whether to render in night mode
+		dark,         // whether to render in dark mode
 		shadows,      // whether to include sunlight/moonlight shadows
 		biomes,       // whether to use biome colours
 		tiny,         // whether to render a minimap where each existing chunk is a white pixel
-		hell,         // whether to render the nether/hell dimension
-		end;          // whether to render the end dimension (overridden by options.hell)
+		nether,       // whether to render the nether dimension (overrides options.end)
+		end;          // whether to render the end dimension
 	uint8_t rotate;   // how many times to rotate the map 90 degrees clockwise
 	int32_t *limits;  // pointer to an array of absolute min/max x/z block coords to crop to
 	                  //   (ymin, xmax, ymax, xmin)

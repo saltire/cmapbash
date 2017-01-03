@@ -11,11 +11,11 @@ Supports orthographic and isometric rendering.
 
 Options so far:
 - `-i` - Isometric mode.
-- `-n` - Night mode.
+- `-d` - Dark mode.
 - `-s` - Render sunlight shadows in isometric mode.
 - `-b` - Render biome colours.
 - `-t` - Tiny mode. Renders a quick minimap of all existing chunks.
-- `-h` - Render nether/hell dimension. Overrides `-e`.
+- `-n` - Render nether dimension. Overrides `-e`.
 - `-e` - Render end dimension.
 - `-w <directory>` - The path to the Minecraft world folder (required).
 - `-o <filename>` - The path at which to save a single image.

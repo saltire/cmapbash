@@ -7,25 +7,25 @@
       "name": "Top down (day)",
       "dir": "ortho-day",
       "iso": false,
-      "night": false
+      "dark": false
     },
     {
-      "name": "Top down (night)",
-      "dir": "ortho-night",
+      "name": "Top down (dark)",
+      "dir": "ortho-dark",
       "iso": false,
-      "night": true
+      "dark": true
     },
     {
       "name": "Isometric (day)",
       "dir": "iso-day",
       "iso": true,
-      "night": false
+      "dark": false
     },
     {
-      "name": "Isometric (night)",
-      "dir": "iso-night",
+      "name": "Isometric (dark)",
+      "dir": "iso-dark",
       "iso": true,
-      "night": true
+      "dark": true
     }
   ],
   "worlds": {
