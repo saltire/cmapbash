@@ -84,16 +84,16 @@ void render_tiny_region_map(image *img, const int32_t rpx, const int32_t rpy, re
 	open_region_file(reg);
 	if (reg == NULL || reg->file == NULL) return;
 
-	uint8_t colour[CHANNELS] = {255, 255, 255, 255};
+	uint8_t colour_on[CHANNELS] = {255, 255, 255, 255};
+	uint8_t colour_off[CHANNELS] = {0, 0, 0, 255};
 
 	for (uint8_t rcz = 0; rcz < REGION_CHUNK_LENGTH; rcz++)
 	{
 		for (uint8_t rcx = 0; rcx < REGION_CHUNK_LENGTH; rcx++)
 		{
-			if (!chunk_exists(reg, rcx, rcz, opts->rotate)) continue;
-
 			// colour this pixel
 			uint8_t *pixel = &img->data[((rpy + rcz) * img->width + rpx + rcx) * CHANNELS];
+			uint8_t *colour = chunk_exists(reg, rcx, rcz, opts->rotate) ? colour_on : colour_off;
 			memcpy(pixel, colour, CHANNELS);
 		}
 	}

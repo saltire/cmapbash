@@ -114,8 +114,8 @@ void render_world_map(image *img, int32_t wpx, int32_t wpy, const worldinfo *wor
 
 			if (opts->tiny)
 			{
-				rpx = rrx * REGION_CHUNK_LENGTH + wpx;
-				rpy = rrz * REGION_CHUNK_LENGTH + wpy;
+				rpx = rrx * REGION_CHUNK_LENGTH;
+				rpy = rrz * REGION_CHUNK_LENGTH;
 				render_tiny_region_map(img, rpx, rpy, reg, opts);
 			}
 			else
@@ -157,33 +157,35 @@ image *create_world_map(char *worldpath, const options *opts)
 	if (world == NULL) return NULL;
 
 	uint32_t width, height, margins[4];
-	get_world_margins(margins, world, opts->isometric);
 
 	if (opts->tiny)
 	{
 		width  = world->rrxsize * REGION_CHUNK_LENGTH;
 		height = world->rrzsize * REGION_CHUNK_LENGTH;
-		// tiny map's scale is 1 pixel per chunk
-		for (uint8_t i = 0; i < 4; i++) margins[i] /= CHUNK_BLOCK_LENGTH;
-	}
-	else if (opts->isometric)
-	{
-		width  = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
-		height = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
-				- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
-		if (opts->ylimits != NULL)
-		{
-			margins[TOP] += (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH;
-			margins[BOTTOM] += opts->ylimits[0] * ISO_BLOCK_DEPTH;
-		}
 	}
 	else
 	{
-		width  = world->rrxsize * REGION_BLOCK_LENGTH;
-		height = world->rrzsize * REGION_BLOCK_LENGTH;
+		if (opts->isometric)
+		{
+			width  = (world->rrxsize + world->rrzsize) * ISO_REGION_X_MARGIN;
+			height = (world->rrxsize + world->rrzsize) * ISO_REGION_Y_MARGIN
+					- ISO_BLOCK_TOP_HEIGHT + ISO_CHUNK_DEPTH;
+			if (opts->ylimits != NULL)
+			{
+				margins[TOP] += (MAX_HEIGHT - opts->ylimits[1]) * ISO_BLOCK_DEPTH;
+				margins[BOTTOM] += opts->ylimits[0] * ISO_BLOCK_DEPTH;
+			}
+		}
+		else
+		{
+			width  = world->rrxsize * REGION_BLOCK_LENGTH;
+			height = world->rrzsize * REGION_BLOCK_LENGTH;
+		}
+
+		get_world_margins(margins, world, opts->isometric);
+		width  -= (margins[LEFT] + margins[RIGHT]);
+		height -= (margins[TOP] + margins[BOTTOM]);
 	}
-	width  -= (margins[LEFT] + margins[RIGHT]);
-	height -= (margins[TOP] + margins[BOTTOM]);
 
 	image *img = create_image(width, height);
 	printf("Read %d regions. Image dimensions: %d x %d\n", world->rcount, width, height);
